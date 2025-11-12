@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clio OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+          },
+        },
+      }
+    </script>
+    <style>
+      .abnt-editor {
+        font-family: Arial, sans-serif;
+        font-size: 12pt;
+        line-height: 1.5;
+        text-align: justify;
+        padding: 1rem 1.5rem;
+        color: #cbd5e1; /* slate-300 */
+        white-space: pre-wrap;
+      }
+      .abnt-editor:focus {
+        outline: none;
+      }
+      .abnt-editor p {
+        text-indent: 1.25cm;
+        margin-bottom: 0.5em; /* Espaçamento entre parágrafos */
+      }
+      .abnt-editor:empty::before {
+          content: 'Comece a escrever sua nota aqui...';
+          color: #64748b; /* slate-500 */
+          pointer-events: none;
+      }
+      .quick-note-editor:empty::before {
+          content: 'Comece a escrever...';
+          color: #94a3b8; /* slate-400 */
+          pointer-events: none;
+      }
+      .animated-gradient {
+        background: linear-gradient(-45deg, #0f172a, #1e3a8a, #3b82f6, #22d3ee);
+        background-size: 400% 400%;
+        animation: gradient 15s ease infinite;
+      }
+      @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
+    "jspdf": "https://cdn.skypack.dev/jspdf",
+    "html2canvas": "https://cdn.skypack.dev/html2canvas"
+  }
+}
+</script>
+</head>
+  <body class="bg-slate-900 text-white overflow-hidden">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
