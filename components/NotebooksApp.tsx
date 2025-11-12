@@ -154,9 +154,9 @@ const NotebooksApp: React.FC<NotebooksAppProps> = ({ notebooks, handleSaveNotebo
     };
 
     return (
-        <div className="flex h-full w-full bg-slate-900 text-white">
+        <div className="flex flex-col md:flex-row h-full w-full text-white">
             {/* Column 1: Notebooks */}
-            <div className="w-1/4 max-w-xs bg-slate-800 border-r border-slate-700 flex flex-col">
+            <div className="w-full md:w-1/4 md:max-w-xs bg-slate-900 border-r border-slate-700 flex flex-col h-1/4 md:h-full">
                 <div className="p-4 border-b border-slate-700 flex justify-between items-center">
                     <h2 className="text-lg font-bold">Cadernos</h2>
                     <button onClick={() => openNotebookModal()} className="p-1 text-slate-300 hover:bg-slate-700 rounded-md"><PlusIcon className="w-5 h-5"/></button>
@@ -174,7 +174,7 @@ const NotebooksApp: React.FC<NotebooksAppProps> = ({ notebooks, handleSaveNotebo
             </div>
 
             {/* Column 2: Notes */}
-            <div className="w-1/3 max-w-sm bg-slate-850 border-r border-slate-700 flex flex-col">
+            <div className="w-full md:w-1/3 md:max-w-sm bg-slate-800 border-r border-slate-700 flex flex-col h-1/4 md:h-full">
                 <div className="p-4 border-b border-slate-700 flex justify-between items-center">
                     <h2 className="text-lg font-bold truncate">{selectedNotebook?.name || 'Notas'}</h2>
                     <button onClick={handleAddNewNote} className="p-1 text-slate-300 hover:bg-slate-700 rounded-md" disabled={!selectedNotebookId}><PlusIcon className="w-5 h-5"/></button>
@@ -195,7 +195,7 @@ const NotebooksApp: React.FC<NotebooksAppProps> = ({ notebooks, handleSaveNotebo
             </div>
 
             {/* Column 3: Editor */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 w-full md:w-auto flex flex-col bg-slate-900 h-1/2 md:h-full">
                 {selectedNote ? (
                     <>
                         <div className="p-4 border-b border-slate-700 flex justify-between items-center">

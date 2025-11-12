@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { HomeIcon, InfoIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon } from './icons';
+import { HomeIcon, InfoIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, RadioIcon } from './icons';
 
 const DocSection: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
-  <section className="bg-slate-800 p-6 rounded-lg shadow-md mb-8">
+  <section className="bg-slate-900 p-6 rounded-lg shadow-md mb-8 border-t border-lime-400">
     <div className="flex items-center mb-4">
-      <div className="p-2 bg-slate-700 rounded-full mr-4">
+      <div className="p-2 bg-slate-800 rounded-full mr-4">
         {icon}
       </div>
       <h2 className="text-2xl font-bold text-lime-400">{title}</h2>
@@ -159,6 +159,133 @@ const sections = [
         </ul>
       </>
     )
+  },
+  {
+    id: 'finances',
+    title: 'Finanças',
+    icon: <WalletIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'financeiro, orçamento, despesas, receitas, caixa, projetos, transações, dinheiro',
+    content: (
+      <>
+        <p>O aplicativo de Finanças é uma ferramenta poderosa para gerenciar todos os aspectos monetários do seu evento. Ele permite um controle detalhado sobre o fluxo de caixa, garantindo transparência e organização.</p>
+        <ul>
+          <li><strong>Projetos Financeiros:</strong> Crie diferentes "caixas" ou projetos para separar orçamentos (ex: "Caixa Geral do Evento", "Verba de Alimentação"). Isso ajuda a rastrear de onde o dinheiro vem e para onde vai com mais clareza.</li>
+          <li><strong>Registro de Transações:</strong> Dentro de cada projeto, você pode adicionar receitas (entradas) e despesas (saídas), especificando descrição, valor, data e categoria.</li>
+          <li><strong>Balanço Automático:</strong> O sistema calcula automaticamente o total de receitas, despesas e o saldo final para cada projeto, oferecendo uma visão clara da saúde financeira a qualquer momento.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'gallery',
+    title: 'Galeria de Fotos',
+    icon: <ImageIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'fotos, galeria, álbum, imagens, recordações, upload, lightbox',
+    content: (
+      <>
+        <p>A Galeria de Fotos é o seu espaço para criar um acervo visual e afetivo dos seus eventos. Organize e compartilhe as memórias do coletivo de forma elegante.</p>
+        <ul>
+          <li><strong>Criação de Álbuns:</strong> Organize suas fotos em álbuns temáticos (ex: "Sarau das Vozes Urbanas - Edição I", "Bastidores").</li>
+          <li><strong>Upload em Lote:</strong> Envie múltiplas fotos de uma só vez para um álbum, agilizando o processo de catalogação.</li>
+          <li><strong>Visualização Lightbox:</strong> Ao clicar em uma foto, ela é exibida em tela cheia (lightbox), permitindo navegar por todas as imagens do álbum com as setas do teclado ou clicando na tela.</li>
+          <li><strong>Gerenciamento Simples:</strong> Exclua fotos individuais de um álbum facilmente.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'collab_clio',
+    title: 'Collab Clio (Governança)',
+    icon: <BriefcaseIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'governança, documentos, atas, votação, decisões, coletivo, colaboração',
+    content: (
+      <>
+        <p>O Collab Clio é o centro de governança do seu coletivo. É aqui que a organização interna, as decisões formais e o acervo intelectual são gerenciados, garantindo transparência e registro histórico.</p>
+        <ul>
+          <li><strong>Documentos:</strong> Uma área para armazenar arquivos importantes do coletivo, como estatutos, editais, propostas de projetos e outros documentos oficiais. Faça upload e baixe quando precisar.</li>
+          <li><strong>Atas de Reunião:</strong> Crie registros formais de suas reuniões. Adicione a data, os participantes presentes, as pautas discutidas e as decisões tomadas. Mantenha um histórico claro do que foi decidido.</li>
+          <li><strong>Votações:</strong> Tome decisões democráticas. Crie tópicos de votação com múltiplas opções. Os membros podem votar, e os resultados são exibidos em tempo real. O criador da votação pode encerrá-la quando o prazo acabar.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'notebooks',
+    title: 'Cadernos de Anotações',
+    icon: <BookMarkedIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'notas, caderno, bloco de notas, editor de texto, escrever, ABNT, ideias',
+    content: (
+      <>
+        <p>O aplicativo de Cadernos é o seu espaço pessoal e colaborativo para anotações, brainstorms, escrita de poesias e o que mais a sua criatividade permitir. Mantenha tudo organizado em um só lugar.</p>
+        <ul>
+          <li><strong>Múltiplos Cadernos:</strong> Crie diferentes cadernos para organizar suas notas por tema (ex: "Ideias para o Sarau", "Poesias", "Contatos").</li>
+          <li><strong>Editor de Texto:</strong> Cada nota possui um editor de texto simples que permite formatação básica, como negrito, itálico, sublinhado e justificação de texto, seguindo um estilo visual limpo.</li>
+          <li><strong>Salvamento Automático:</strong> Suas alterações nas notas são salvas automaticamente enquanto você digita, para que você nunca perca uma ideia.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'radio_sarau',
+    title: 'Rádio Sarau',
+    icon: <RadioIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'rádio, música, playlist, som, colaborativa, mp3, trilha sonora',
+    content: (
+      <>
+        <p>A Rádio Sarau é a playlist colaborativa do coletivo. Um espaço para que todos possam adicionar músicas e criar a trilha sonora perfeita para os encontros, reuniões de planejamento ou para o próprio evento.</p>
+        <ul>
+          <li><strong>Playlist Compartilhada:</strong> Todos os membros da equipe veem e ouvem a mesma playlist.</li>
+          <li><strong>Adicionar por URL:</strong> Adicione novas músicas à fila de reprodução fornecendo um link direto para um arquivo MP3.</li>
+          <li><strong>Controles de Reprodução:</strong> Controles simples para tocar, pausar, pular para a próxima música ou voltar para a anterior, sincronizados para todos.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'browser',
+    title: 'Navegador Web',
+    icon: <GlobeIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'browser, internet, web, site, url, pesquisa',
+    content: (
+      <>
+        <p>Um navegador web simples integrado ao Clio OS para pesquisas rápidas e acesso a sites sem precisar sair do ambiente de trabalho do coletivo.</p>
+        <ul>
+          <li><strong>Navegação Básica:</strong> Digite uma URL na barra de endereço para carregar uma página da web.</li>
+          <li><strong>Aviso de Compatibilidade:</strong> Por razões de segurança, alguns sites complexos (como redes sociais, serviços do Google, etc.) podem bloquear o carregamento dentro de aplicativos de terceiros. Use-o para pesquisas e acesso a sites mais simples.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'profile',
+    title: 'Meu Perfil',
+    icon: <UserIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'perfil, usuário, conta, senha, avatar, foto, pessoal',
+    content: (
+      <>
+        <p>Gerencie suas informações pessoais e de segurança dentro do Clio OS. Mantenha seus dados sempre atualizados.</p>
+        <ul>
+          <li><strong>Informações Pessoais:</strong> Atualize seu nome e sua função/cargo dentro do coletivo. Essas informações aparecerão em outras partes do sistema, como na atribuição de tarefas.</li>
+          <li><strong>Foto de Perfil:</strong> Altere sua foto de perfil (avatar) enviando uma nova imagem do seu computador.</li>
+          <li><strong>Alteração de Senha:</strong> Por segurança, você pode alterar sua senha de acesso ao sistema a qualquer momento.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'personalize',
+    title: 'Personalizar',
+    icon: <BrushIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'papel de parede, wallpaper, fundo, tela de login, gadgets, relógio, widgets, customizar, aparência',
+    content: (
+      <>
+        <p>Deixe o Clio OS com a sua cara. A personalização permite que você altere a aparência da sua área de trabalho e adicione ferramentas para agilizar seu dia a dia.</p>
+        <ul>
+          <li><strong>Papel de Parede:</strong> Escolha uma imagem da galeria padrão ou envie seu próprio papel de parede para a área de trabalho e também para a tela de login.</li>
+          <li><strong>Gadgets:</strong> Adicione pequenos "widgets" à sua área de trabalho, como um relógio analógico, uma contagem regressiva para o evento, um bloco de notas rápidas, um uploader de mídias ou um resumo financeiro. Você pode arrastá-los e posicioná-los onde quiser.</li>
+        </ul>
+      </>
+    )
   }
 ];
 
@@ -207,7 +334,7 @@ const Documentation: React.FC = () => {
             </DocSection>
           ))
         ) : (
-          <div className="text-center py-16 bg-slate-800 rounded-lg">
+          <div className="text-center py-16 bg-slate-900 rounded-lg border-t border-slate-700">
             <p className="text-slate-400 text-lg">Nenhum tópico encontrado para "{searchTerm}".</p>
           </div>
         )}

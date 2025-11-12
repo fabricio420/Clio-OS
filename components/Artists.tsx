@@ -1,6 +1,7 @@
 import React, { useState, memo } from 'react';
 import type { Artist } from '../types';
 import { MicIcon, PlusIcon, MoreVerticalIcon, WhatsappIcon, InstagramIcon } from './icons';
+import Header from './Header';
 
 interface ArtistsProps {
   onOpenModal: (view: 'artist', data?: Artist) => void;
@@ -16,15 +17,15 @@ const ArtistCard: React.FC<{
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="bg-slate-800 rounded-lg shadow-md p-6 border-l-4 border-lime-500 relative flex flex-col">
+    <div className="bg-slate-900 rounded-lg shadow-md p-6 border-t border-lime-400 relative flex flex-col">
       <div className="absolute top-4 right-4">
         <button onClick={() => setMenuOpen(!menuOpen)} className="text-slate-400 hover:text-white">
           <MoreVerticalIcon className="h-5 w-5" />
         </button>
         {menuOpen && (
-          <div className="absolute right-0 mt-2 w-32 bg-slate-900 border border-slate-700 rounded-md shadow-lg z-10">
-            <button onClick={() => { onEdit(artist); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Editar</button>
-            <button onClick={() => { onDelete(artist.id); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-700">Excluir</button>
+          <div className="absolute right-0 mt-2 w-32 bg-slate-950 border border-slate-700 rounded-md shadow-lg z-10">
+            <button onClick={() => { onEdit(artist); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">Editar</button>
+            <button onClick={() => { onDelete(artist.id); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-800">Excluir</button>
           </div>
         )}
       </div>
@@ -64,31 +65,36 @@ const ArtistCard: React.FC<{
 
 const Artists: React.FC<ArtistsProps> = ({ onOpenModal, artists, handleDeleteArtist }) => {
   return (
-    <div className="p-4 md:p-8">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-white">Artistas e Participantes</h2>
-        <button 
-          onClick={() => onOpenModal('artist')}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition"
-        >
-          <PlusIcon className="h-5 w-5" />
-          <span>Novo Artista</span>
-        </button>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {artists.map(artist => (
-          <ArtistCard 
-            key={artist.id}
-            artist={artist}
-            onEdit={(artistToEdit) => onOpenModal('artist', artistToEdit)}
-            onDelete={handleDeleteArtist}
-          />
-        ))}
-         {artists.length === 0 && (
-          <div className="col-span-full bg-slate-800 rounded-lg p-6 text-center text-slate-400">
-            Nenhum artista cadastrado.
-          </div>
-        )}
+    <div className="h-full flex flex-col">
+      <Header
+        title="Artistas e Participantes"
+        subtitle="Gerencie o banco de dados de todos os artistas do seu evento."
+        action={
+          <button
+            onClick={() => onOpenModal('artist')}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition"
+          >
+            <PlusIcon className="h-5 w-5" />
+            <span>Novo Artista</span>
+          </button>
+        }
+      />
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {artists.map(artist => (
+            <ArtistCard
+              key={artist.id}
+              artist={artist}
+              onEdit={(artistToEdit) => onOpenModal('artist', artistToEdit)}
+              onDelete={handleDeleteArtist}
+            />
+          ))}
+          {artists.length === 0 && (
+            <div className="col-span-full bg-slate-900 rounded-lg p-6 text-center text-slate-400 border-t border-slate-700">
+              Nenhum artista cadastrado.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

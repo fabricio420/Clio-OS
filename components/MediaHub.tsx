@@ -1,6 +1,7 @@
 import React, { useState, memo } from 'react';
 import type { Artist, MediaItem } from '../types';
 import { PlusIcon, MoreVerticalIcon, WhatsappIcon, InstagramIcon } from './icons';
+import Header from './Header';
 
 interface MediaHubProps {
   onOpenModal: () => void;
@@ -29,8 +30,8 @@ const MediaCard: React.FC<{
   const cardSubtitle = artist ? artist.performanceType : item.fileName;
 
   return (
-    <div className="bg-slate-800 rounded-lg shadow-md overflow-hidden group flex flex-col">
-      <div className="aspect-w-16 aspect-h-9 bg-slate-700">
+    <div className="bg-slate-900 rounded-lg shadow-md overflow-hidden group flex flex-col border-t border-lime-400">
+      <div className="aspect-w-16 aspect-h-9 bg-slate-800">
         <img src={item.fileDataUrl} alt={cardTitle} className="w-full h-full object-cover" />
       </div>
       <div className="p-4 flex justify-between items-start flex-grow">
@@ -43,9 +44,9 @@ const MediaCard: React.FC<{
             <MoreVerticalIcon className="h-5 w-5" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-32 bg-slate-900 border border-slate-700 rounded-md shadow-lg z-10">
-              <button onClick={handleDownload} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Baixar</button>
-              <button onClick={() => { onDelete(item.id); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-700">Excluir</button>
+            <div className="absolute right-0 mt-2 w-32 bg-slate-950 border border-slate-700 rounded-md shadow-lg z-10">
+              <button onClick={handleDownload} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">Baixar</button>
+              <button onClick={() => { onDelete(item.id); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-800">Excluir</button>
             </div>
           )}
         </div>
@@ -89,61 +90,64 @@ const MediaHub: React.FC<MediaHubProps> = ({ onOpenModal, mediaItems, artists, h
   );
 
   return (
-    <div className="p-4 md:p-8 space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-        <div>
-            <h2 className="text-3xl font-bold text-white">Hub de Mídia</h2>
-            <p className="text-slate-400 mt-1">Gerencie todo o material de arte e divulgação do evento.</p>
-        </div>
-        <button
-          onClick={onOpenModal}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition self-start sm:self-center"
-        >
-          <PlusIcon className="h-5 w-5" />
-          <span>Adicionar Mídia</span>
-        </button>
+    <div className="h-full flex flex-col">
+      <Header
+        title="Hub de Mídia"
+        subtitle="Gerencie todo o material de arte e divulgação do evento."
+        action={
+          <button
+            onClick={onOpenModal}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition"
+          >
+            <PlusIcon className="h-5 w-5" />
+            <span>Adicionar Mídia</span>
+          </button>
+        }
+      />
+      <div className="px-4 md:px-8 flex-shrink-0">
+          <div className="flex items-center space-x-2 border-b border-slate-700 pb-4">
+            <FilterButton label="Todos" value="all" currentFilter={filter} setFilter={setFilter} />
+            <FilterButton label="Divulgação Geral" value="general" currentFilter={filter} setFilter={setFilter} />
+            <FilterButton label="Mídia de Artista" value="artist" currentFilter={filter} setFilter={setFilter} />
+          </div>
       </div>
 
-      <div className="flex items-center space-x-2 border-b border-slate-700 pb-4">
-        <FilterButton label="Todos" value="all" currentFilter={filter} setFilter={setFilter} />
-        <FilterButton label="Divulgação Geral" value="general" currentFilter={filter} setFilter={setFilter} />
-        <FilterButton label="Mídia de Artista" value="artist" currentFilter={filter} setFilter={setFilter} />
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 pt-8 pb-8 space-y-8">
+        {(filter === 'all' || filter === 'general') && (
+          <div>
+            <h3 className="text-xl font-semibold text-lime-400 mb-4">Material de Divulgação Geral</h3>
+            {generalItems.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {generalItems.map(item => (
+                  <MediaCard key={item.id} item={item} onDelete={handleDeleteMediaItem} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-slate-900 rounded-lg border-t border-slate-700">
+                <p className="text-slate-400">Nenhum material de divulgação geral adicionado.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(filter === 'all' || filter === 'artist') && (
+          <div>
+            <h3 className="text-xl font-semibold text-sky-400 mb-4">Mídia dos Artistas</h3>
+            {artistItems.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {artistItems.map(item => {
+                    const artist = artists.find(a => a.id === item.artistId);
+                    return <MediaCard key={item.id} item={item} artist={artist} onDelete={handleDeleteMediaItem} />
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-slate-900 rounded-lg border-t border-slate-700">
+                <p className="text-slate-400">Nenhuma mídia de artista adicionada.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-
-      {(filter === 'all' || filter === 'general') && (
-        <div>
-          <h3 className="text-xl font-semibold text-lime-400 mb-4">Material de Divulgação Geral</h3>
-          {generalItems.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {generalItems.map(item => (
-                <MediaCard key={item.id} item={item} onDelete={handleDeleteMediaItem} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 bg-slate-800 rounded-lg">
-              <p className="text-slate-400">Nenhum material de divulgação geral adicionado.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {(filter === 'all' || filter === 'artist') && (
-        <div>
-          <h3 className="text-xl font-semibold text-sky-400 mb-4">Mídia dos Artistas</h3>
-           {artistItems.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {artistItems.map(item => {
-                  const artist = artists.find(a => a.id === item.artistId);
-                  return <MediaCard key={item.id} item={item} artist={artist} onDelete={handleDeleteMediaItem} />
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-8 bg-slate-800 rounded-lg">
-              <p className="text-slate-400">Nenhuma mídia de artista adicionada.</p>
-            </div>
-          )}
-        </div>
-      )}
 
     </div>
   );

@@ -23,8 +23,8 @@ const StatBox: React.FC<{
     label: string;
     colorClass: string;
 }> = memo(({ icon, value, label, colorClass }) => (
-    <div className="bg-slate-800 p-4 rounded-lg flex items-center space-x-4">
-        <div className={`p-3 rounded-full bg-slate-700 ${colorClass}`}>
+    <div className="bg-slate-900 p-4 rounded-lg flex items-center space-x-4 border-t border-slate-700">
+        <div className={`p-3 rounded-full bg-slate-800 ${colorClass}`}>
             {icon}
         </div>
         <div>
@@ -42,10 +42,10 @@ const MetricCard: React.FC<{
     progress?: number;
     colorClass: string;
 }> = memo(({ icon, title, value, description, progress, colorClass }) => (
-    <div className="bg-slate-800 p-4 rounded-lg shadow-md flex flex-col justify-between">
+    <div className="bg-slate-900 p-4 rounded-lg shadow-md flex flex-col justify-between border-t border-lime-400">
         <div>
             <div className="flex items-center space-x-3 mb-2">
-                <div className={`p-2 rounded-full bg-slate-700 ${colorClass}`}>{icon}</div>
+                <div className={`p-2 rounded-full bg-slate-800 ${colorClass}`}>{icon}</div>
                 <div>
                     <p className="text-sm text-slate-400">{title}</p>
                     <p className="text-xl font-bold text-white">{value}</p>
@@ -60,7 +60,7 @@ const MetricCard: React.FC<{
                         <span>{progress.toFixed(0)}%</span>
                     </div>
                     <div className="w-full bg-slate-700 rounded-full h-2">
-                        <div className={`h-2 rounded-full ${colorClass}`} style={{ width: `${progress}%` }}></div>
+                        <div className={`h-2 rounded-full ${colorClass.replace('text-white', '')}`} style={{ width: `${progress}%` }}></div>
                     </div>
                 </>
             ) : (
@@ -106,7 +106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onOpenModal, eventInfo, tasks, sc
             </p>
         </div>
 
-        <div className="bg-slate-800 p-6 rounded-lg shadow-lg text-center border-t-4 border-blue-500">
+        <div className="bg-slate-900 p-6 rounded-lg shadow-lg text-center border-t-4 border-blue-500">
             <h3 className="text-lg font-semibold text-slate-300 mb-3">Contagem Regressiva para o Evento</h3>
             <div className="flex justify-center items-center space-x-4 md:space-x-8 text-white">
                 {Object.entries(countdown).map(([unit, value]) => (
@@ -180,11 +180,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onOpenModal, eventInfo, tasks, sc
         </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-slate-800 p-6 rounded-lg shadow-md">
+        <div className="bg-slate-900 p-6 rounded-lg shadow-md border-t border-lime-400">
           <h3 className="text-xl font-semibold mb-4 text-lime-400">Tarefas Pendentes</h3>
           <ul className="space-y-3">
             {tasks.filter(t => t.status !== TaskStatus.Done).slice(0, 5).map(task => (
-              <li key={task.id} className="bg-slate-700 p-3 rounded-md flex justify-between items-center">
+              <li key={task.id} className="bg-slate-800 p-3 rounded-md flex justify-between items-center">
                 <span className="text-slate-200">{task.title}</span>
                 <span className="text-xs text-slate-400">{task.dueDate}</span>
               </li>
@@ -192,11 +192,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onOpenModal, eventInfo, tasks, sc
              {tasks.filter(t => t.status !== TaskStatus.Done).length === 0 && <p className="text-slate-400">Nenhuma tarefa pendente!</p>}
           </ul>
         </div>
-        <div className="bg-slate-800 p-6 rounded-lg shadow-md">
+        <div className="bg-slate-900 p-6 rounded-lg shadow-md border-t border-sky-400">
           <h3 className="text-xl font-semibold mb-4 text-sky-400">Próximos Itens do Cronograma</h3>
           <ul className="space-y-3">
             {sortedSchedule.slice(0, 4).map(item => (
-              <li key={item.id} className="bg-slate-700 p-3 rounded-md">
+              <li key={item.id} className="bg-slate-800 p-3 rounded-md">
                 <div className="flex justify-between items-center">
                   <span className="font-semibold text-slate-200">{item.time} - {item.title}</span>
                   <span className="text-xs text-slate-400">Resp: {item.responsible}</span>
@@ -206,14 +206,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onOpenModal, eventInfo, tasks, sc
              {schedule.length === 0 && <p className="text-slate-400">O cronograma está vazio.</p>}
           </ul>
         </div>
-        <div className="bg-slate-800 p-6 rounded-lg shadow-md lg:col-span-2">
+        <div className="bg-slate-900 p-6 rounded-lg shadow-md lg:col-span-2 border-t border-lime-400">
             <h3 className="text-xl font-semibold mb-4 text-lime-400">Equipe do Evento</h3>
             <div className="flex items-center -space-x-2">
                 {members.map(member => (
                     <button
                         key={member.id}
                         onClick={() => onOpenModal('avatar_viewer', member)}
-                        className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-blue-500 rounded-full transition-transform transform hover:scale-110"
+                        className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-blue-500 rounded-full transition-transform transform hover:scale-110"
                         title={`Ver perfil de ${member.name}`}
                     >
                         <img 

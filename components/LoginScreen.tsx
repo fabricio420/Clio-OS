@@ -4,6 +4,7 @@ import { ClioAppIcon, MailIcon, LockIcon, UserIcon } from './icons';
 interface LoginScreenProps {
   onLogin: (email: string, password: string) => boolean;
   onSignUp: (name: string, email: string, password: string) => { success: boolean, message: string };
+  onGuestLogin: () => void;
   loginWallpaper: string | null;
 }
 
@@ -19,7 +20,7 @@ const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement> & {icon: 
     </div>
 );
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, loginWallpaper }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLogin, loginWallpaper }) => {
   const [view, setView] = useState<'login' | 'signup'>('login');
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -101,7 +102,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, loginWallp
         <div className="bg-black/20 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-white/20">
             <div className={`transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
                 {view === 'login' ? (
-                    <form onSubmit={handleLoginSubmit} className="space-y-6">
+                    <form onSubmit={handleLoginSubmit} className="space-y-4">
                         <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@coletivo.com" />
                         <InputField icon={<LockIcon className="h-5 w-5 text-slate-400"/>} name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
                         
@@ -112,18 +113,30 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, loginWallp
                         
                         {error && <p className="text-red-400 text-sm text-center bg-red-900/50 p-2 rounded-md">{error}</p>}
 
-                        <div>
-                        <button type="submit" className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-sky-500/30 transform hover:scale-105">
-                            Iniciar Sessão
-                        </button>
+                        <div className="space-y-4 pt-2">
+                            <button type="submit" className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-sky-500/30 transform hover:scale-105">
+                                Iniciar Sessão
+                            </button>
+                            <div className="relative flex items-center">
+                                <div className="flex-grow border-t border-slate-600"></div>
+                                <span className="flex-shrink mx-4 text-xs text-slate-400">OU</span>
+                                <div className="flex-grow border-t border-slate-600"></div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={onGuestLogin}
+                                className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-all shadow-lg"
+                            >
+                                Entrar como Visitante (Dev)
+                            </button>
                         </div>
-                        <p className="text-center text-sm text-slate-400">
+                        <p className="text-center text-sm text-slate-400 pt-2">
                             Não tem uma conta?{' '}
                             <button type="button" onClick={() => switchView('signup')} className="font-semibold text-lime-400 hover:text-lime-300">Crie uma agora</button>
                         </p>
                     </form>
                 ) : (
-                    <form onSubmit={handleSignUpSubmit} className="space-y-6">
+                    <form onSubmit={handleSignUpSubmit} className="space-y-4">
                         <h2 className="text-xl font-bold text-center text-white">Criar Nova Conta</h2>
                         <InputField icon={<UserIcon className="h-5 w-5 text-slate-400"/>} name="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Maria da Silva" />
                         <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email-signup" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maria@coletivo.com" />
@@ -136,7 +149,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, loginWallp
                                 Cadastrar
                             </button>
                         </div>
-                        <p className="text-center text-sm text-slate-400">
+                        <p className="text-center text-sm text-slate-400 pt-2">
                             Já tem uma conta?{' '}
                             <button type="button" onClick={() => switchView('login')} className="font-semibold text-lime-400 hover:text-lime-300">Faça o login</button>
                         </p>

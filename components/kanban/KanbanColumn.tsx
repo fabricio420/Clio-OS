@@ -44,13 +44,13 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, members, rece
   
   return (
     <div 
-      className={`bg-slate-800 rounded-lg p-4 w-full border-t-4 ${getBorderColor()} transition-colors ${isOver ? 'bg-slate-700' : ''}`}
+      className={`bg-slate-900 rounded-lg p-4 w-full border-t-4 ${getBorderColor()} transition-colors ${isOver ? 'bg-slate-800' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       <h3 className="text-lg font-semibold text-white mb-4">{title} ({tasks.length})</h3>
-      <div className="space-y-4 h-[calc(100vh-250px)] overflow-y-auto pr-2">
+      <div className="space-y-4 h-auto md:h-[calc(100vh-250px)] overflow-y-auto pr-2">
         {tasks.map(task => (
           <TaskCard 
             key={task.id} 

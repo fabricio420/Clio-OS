@@ -19,7 +19,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDelete, onDragStart
 
   return (
     <div 
-      className={`bg-slate-700 p-4 rounded-lg shadow-md mb-4 border-l-4 border-blue-500 cursor-grab active:cursor-grabbing transition-all duration-500 ${isUpdated ? 'shadow-yellow-400/50 ring-2 ring-yellow-400' : ''}`}
+      className={`bg-slate-800 p-4 rounded-lg shadow-md mb-4 border-l-4 border-blue-500 cursor-grab active:cursor-grabbing transition-all duration-500 ${isUpdated ? 'shadow-yellow-400/50 ring-2 ring-yellow-400' : ''}`}
       draggable
       onDragStart={(e) => onDragStart(e, task.id)}
     >
@@ -30,7 +30,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDelete, onDragStart
             <MoreVerticalIcon className="h-5 w-5" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-32 bg-slate-800 border border-slate-600 rounded-md shadow-lg z-10">
+            <div className="absolute right-0 mt-2 w-32 bg-slate-900 border border-slate-600 rounded-md shadow-lg z-10">
               <button onClick={() => { onEdit(task); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Editar</button>
               <button onClick={() => { onDelete(task.id); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-700">Excluir</button>
             </div>

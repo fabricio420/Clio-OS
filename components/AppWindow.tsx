@@ -93,7 +93,7 @@ const AppWindow: React.FC<AppWindowProps> = ({ title, isOpen, onClose, onMinimiz
                 <div className="w-16"></div>
             </div>
 
-            <div className="flex-grow bg-slate-900 relative overflow-y-auto">
+            <div className="flex-grow bg-slate-800 relative overflow-y-auto">
                  {children}
             </div>
         </div>

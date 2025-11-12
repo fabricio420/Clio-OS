@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { CollectiveDocument, ModalView, Member, MeetingMinute, VotingTopic, VoteOption } from '../types';
 import { PlusIcon, FileTextIcon, DownloadIcon, XIcon, MoreVerticalIcon, ClipboardListIcon, VoteIcon, UsersIcon, ChevronRightIcon } from './icons';
+import Header from './Header';
 
 interface CollabClioAppProps {
     onOpenModal: (view: ModalView, data?: any) => void;
@@ -43,7 +44,7 @@ const DocumentRow: React.FC<{ doc: CollectiveDocument; uploaderName: string; onD
     };
 
     return (
-        <div className="flex items-center justify-between p-3 bg-slate-800 rounded-md hover:bg-slate-700/50 group">
+        <div className="flex items-center justify-between p-3 bg-slate-900 rounded-md hover:bg-slate-800/50 group border-t border-slate-700">
             <div className="flex items-center space-x-4 flex-1 min-w-0">
                 <FileTextIcon className="w-6 h-6 text-sky-400 flex-shrink-0" />
                 <div className="min-w-0">
@@ -72,8 +73,8 @@ const MinuteCard: React.FC<{ minute: MeetingMinute; members: Member[]; onEdit: (
     const attendees = members.filter(m => minute.attendeeIds.includes(m.id));
 
     return (
-        <div className="bg-slate-800 rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-700/50" onClick={() => setIsOpen(!isOpen)}>
+        <div className="bg-slate-900 rounded-lg overflow-hidden border-t border-lime-400">
+            <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-800/50" onClick={() => setIsOpen(!isOpen)}>
                 <div className="flex items-center space-x-3">
                     <ClipboardListIcon className="w-6 h-6 text-sky-400" />
                     <div>
@@ -87,9 +88,9 @@ const MinuteCard: React.FC<{ minute: MeetingMinute; members: Member[]; onEdit: (
                             <MoreVerticalIcon className="w-5 h-5"/>
                         </button>
                         {menuOpen && (
-                             <div className="absolute right-0 mt-2 w-32 bg-slate-900 border border-slate-700 rounded-md shadow-lg z-10">
-                                <button onClick={(e) => { e.stopPropagation(); onEdit(); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Editar</button>
-                                <button onClick={(e) => { e.stopPropagation(); onDelete(); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-700">Excluir</button>
+                             <div className="absolute right-0 mt-2 w-32 bg-slate-950 border border-slate-700 rounded-md shadow-lg z-10">
+                                <button onClick={(e) => { e.stopPropagation(); onEdit(); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">Editar</button>
+                                <button onClick={(e) => { e.stopPropagation(); onDelete(); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-800">Excluir</button>
                             </div>
                         )}
                     </div>
@@ -97,7 +98,7 @@ const MinuteCard: React.FC<{ minute: MeetingMinute; members: Member[]; onEdit: (
                 </div>
             </div>
             {isOpen && (
-                <div className="p-4 border-t border-slate-700 bg-slate-800/50 text-slate-300 text-sm space-y-4">
+                <div className="p-4 border-t border-slate-700 bg-slate-900/50 text-slate-300 text-sm space-y-4">
                     <div>
                         <h5 className="font-semibold text-lime-400 mb-2">Participantes:</h5>
                         <div className="flex flex-wrap gap-2">
@@ -106,11 +107,11 @@ const MinuteCard: React.FC<{ minute: MeetingMinute; members: Member[]; onEdit: (
                     </div>
                      <div>
                         <h5 className="font-semibold text-lime-400 mb-2">Pautas:</h5>
-                        <p className="whitespace-pre-wrap p-2 bg-slate-700/50 rounded-md">{minute.agenda}</p>
+                        <p className="whitespace-pre-wrap p-2 bg-slate-800/50 rounded-md">{minute.agenda}</p>
                     </div>
                      <div>
                         <h5 className="font-semibold text-lime-400 mb-2">Decisões:</h5>
-                        <p className="whitespace-pre-wrap p-2 bg-slate-700/50 rounded-md">{minute.decisions}</p>
+                        <p className="whitespace-pre-wrap p-2 bg-slate-800/50 rounded-md">{minute.decisions}</p>
                     </div>
                 </div>
             )}
@@ -125,7 +126,7 @@ const VotingCard: React.FC<{ topic: VotingTopic; currentUser: Member; members: M
     const userVote = topic.options.find(opt => opt.voterIds.includes(currentUser.id));
 
     return (
-         <div className={`bg-slate-800 rounded-lg p-6 shadow-md ${topic.status === 'closed' ? 'opacity-60' : ''}`}>
+         <div className={`bg-slate-900 rounded-lg p-6 shadow-md border-t border-lime-400 ${topic.status === 'closed' ? 'opacity-60' : ''}`}>
              <div className="flex justify-between items-start">
                  <div>
                     <h4 className="text-lg font-bold text-white">{topic.title}</h4>
@@ -187,21 +188,21 @@ const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser,
     const currentTab = TABS.find(t => t.id === activeTab);
 
     return (
-        <div className="p-4 md:p-8 h-full flex flex-col">
-            <header className="flex-shrink-0">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-2">
-                    <div>
-                        <h2 className="text-3xl font-bold text-white">Collab Clio</h2>
-                        <p className="text-slate-400 mt-1">Governança e acervo intelectual do coletivo.</p>
-                    </div>
-                     <button
+        <div className="h-full flex flex-col">
+            <Header
+                title="Collab Clio"
+                subtitle="Governança e acervo intelectual do coletivo."
+                action={
+                    <button
                         onClick={() => onOpenModal(currentTab!.modal)}
-                        className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition self-start sm:self-center"
+                        className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition"
                     >
                         <PlusIcon className="h-5 w-5" />
                         <span>{currentTab?.buttonLabel}</span>
                     </button>
-                </div>
+                }
+            />
+            <div className="px-4 md:px-8 flex-shrink-0">
                 <div className="border-b border-slate-700 flex items-center">
                     {TABS.map(tab => (
                         <TabButton
@@ -213,9 +214,9 @@ const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser,
                         />
                     ))}
                 </div>
-            </header>
+            </div>
 
-            <main className="flex-1 overflow-y-auto mt-6 pr-2">
+            <main className="flex-1 overflow-y-auto px-4 md:px-8 pt-6 pb-8">
                 {activeTab === 'documents' && (
                      sortedDocs.length > 0 ? (
                         <div className="space-y-3">
@@ -225,7 +226,7 @@ const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser,
                             })}
                         </div>
                      ) : (
-                        <div className="text-center py-16 bg-slate-800 rounded-lg"><p className="text-slate-400 text-lg">Nenhum documento encontrado.</p><p className="text-sm mt-2">Adicione atas, editais e outros arquivos importantes.</p></div>
+                        <div className="text-center py-16 bg-slate-900 rounded-lg border-t border-slate-700"><p className="text-slate-400 text-lg">Nenhum documento encontrado.</p><p className="text-sm mt-2">Adicione atas, editais e outros arquivos importantes.</p></div>
                      )
                 )}
 
@@ -237,7 +238,7 @@ const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser,
                             ))}
                         </div>
                     ) : (
-                         <div className="text-center py-16 bg-slate-800 rounded-lg"><p className="text-slate-400 text-lg">Nenhuma ata de reunião registrada.</p><p className="text-sm mt-2">Use o botão "Nova Ata" para criar a primeira.</p></div>
+                         <div className="text-center py-16 bg-slate-900 rounded-lg border-t border-slate-700"><p className="text-slate-400 text-lg">Nenhuma ata de reunião registrada.</p><p className="text-sm mt-2">Use o botão "Nova Ata" para criar a primeira.</p></div>
                     )
                 )}
 
@@ -250,7 +251,7 @@ const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser,
                                     {openVotingTopics.map(topic => <VotingCard key={topic.id} topic={topic} currentUser={currentUser} members={members} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} />)}
                                 </div>
                             ) : (
-                                <p className="text-slate-400 text-center py-6 bg-slate-800/50 rounded-lg">Nenhuma votação em andamento.</p>
+                                <p className="text-slate-400 text-center py-6 bg-slate-900/50 rounded-lg">Nenhuma votação em andamento.</p>
                             )}
                         </div>
                          <div>
@@ -260,7 +261,7 @@ const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser,
                                     {closedVotingTopics.map(topic => <VotingCard key={topic.id} topic={topic} currentUser={currentUser} members={members} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} />)}
                                 </div>
                             ) : (
-                                <p className="text-slate-400 text-center py-6 bg-slate-800/50 rounded-lg">Nenhuma votação encerrada ainda.</p>
+                                <p className="text-slate-400 text-center py-6 bg-slate-900/50 rounded-lg">Nenhuma votação encerrada ainda.</p>
                             )}
                         </div>
                     </div>

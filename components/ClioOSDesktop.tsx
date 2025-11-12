@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     PowerIcon, WalletIcon, ArchiveIcon, BrushIcon, BookMarkedIcon, ExternalLinkIcon, HomeIcon,
     CheckSquareIcon, ClockIcon, MicIcon, InfoIcon, ImageIcon, BookOpenIcon, BoxIcon, UsersIcon, FileTextIcon, LifeBuoyIcon, DockAppIcon,
-    MusicIcon, GlobeIcon, BriefcaseIcon, UserIcon
+    MusicIcon, GlobeIcon, BriefcaseIcon, UserIcon, RadioIcon
 } from './icons';
 import type { Member } from '../types';
 import type { AppName, AppStates } from '../App';
@@ -83,6 +83,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({ onAppClick, user, onLogou
         { type: 'separator' },
         { id: 'finances', label: 'Finanças', icon: <DockAppIcon bgColorClasses="bg-emerald-600"><WalletIcon /></DockAppIcon> },
         { id: 'notebooks', label: 'Cadernos', icon: <DockAppIcon bgColorClasses="bg-amber-600"><BookMarkedIcon /></DockAppIcon> },
+        { id: 'radio_sarau', label: 'Rádio Sarau', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon> },
         { id: 'collab_clio', label: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon> },
         { id: 'browser', label: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon> },
         { type: 'separator' },

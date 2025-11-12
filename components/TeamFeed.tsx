@@ -24,7 +24,7 @@ const TeamFeed: React.FC<TeamFeedProps> = ({ posts, currentUser, onAddPost, isRe
   return (
     <>
       {!isReadOnly && currentUser && onAddPost && (
-        <div className="bg-slate-800 rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-slate-900 rounded-lg shadow-md p-6 mb-8 border-t border-lime-400">
           <form onSubmit={handleSubmit} className="flex items-start space-x-4">
             <img src={currentUser.avatar} alt={currentUser.name} className="w-12 h-12 rounded-full" />
             <div className="flex-grow">
@@ -32,7 +32,7 @@ const TeamFeed: React.FC<TeamFeedProps> = ({ posts, currentUser, onAddPost, isRe
                 value={newPostContent}
                 onChange={(e) => setNewPostContent(e.target.value)}
                 placeholder="Compartilhe uma atualização com a equipe..."
-                className="w-full bg-slate-700 text-white p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full bg-slate-800 text-white p-3 rounded-md border border-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 rows={3}
               ></textarea>
               <button type="submit" className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition">
@@ -45,7 +45,7 @@ const TeamFeed: React.FC<TeamFeedProps> = ({ posts, currentUser, onAddPost, isRe
 
       <div className="space-y-6">
         {sortedPosts.map(post => (
-          <div key={post.id} className="bg-slate-800 rounded-lg shadow-md p-6 flex items-start space-x-4">
+          <div key={post.id} className="bg-slate-900 rounded-lg shadow-md p-6 flex items-start space-x-4 border-t border-slate-700">
             <img src={post.author.avatar} alt={post.author.name} className="w-12 h-12 rounded-full" />
             <div className="flex-grow">
               <div className="flex items-baseline space-x-2">

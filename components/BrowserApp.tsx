@@ -37,8 +37,8 @@ const BrowserApp: React.FC = () => {
     };
 
     return (
-        <div className="h-full flex flex-col bg-slate-900 text-white">
-            <header className="flex-shrink-0 bg-slate-800 p-2 border-b border-slate-700 flex items-center gap-2">
+        <div className="h-full flex flex-col bg-slate-800 text-white">
+            <header className="flex-shrink-0 bg-slate-900 p-2 border-b border-slate-700 flex items-center gap-2">
                 <button title="Voltar (indisponível)" className="p-2 rounded-md hover:bg-slate-700 disabled:opacity-50 disabled:hover:bg-transparent" disabled><ChevronLeftIcon className="w-5 h-5"/></button>
                 <button title="Avançar (indisponível)" className="p-2 rounded-md hover:bg-slate-700 disabled:opacity-50 disabled:hover:bg-transparent" disabled><ChevronRightIcon className="w-5 h-5"/></button>
                 <button onClick={handleReload} title="Recarregar" className="p-2 rounded-md hover:bg-slate-700"><RefreshCwIcon className="w-5 h-5"/></button>

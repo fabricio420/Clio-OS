@@ -4,6 +4,7 @@ import { PlusIcon, ChevronLeftIcon, MoreVerticalIcon, DownloadIcon, BarChartIcon
 import Modal from './Modal';
 import { FinancialProjectForm } from './forms/FinancialProjectForm';
 import { TransactionForm } from './forms/TransactionForm';
+import Header from './Header';
 
 interface FinanceAppProps {
     financialProjects: FinancialProject[];
@@ -28,7 +29,7 @@ const ProjectCard: React.FC<{ project: FinancialProject; onSelect: () => void; }
     const balanceColor = balance >= 0 ? 'text-lime-400' : 'text-red-400';
 
     return (
-        <button onClick={onSelect} className="bg-slate-800 rounded-lg shadow-md p-6 text-left w-full hover:bg-slate-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-blue-500">
+        <button onClick={onSelect} className="bg-slate-900 rounded-lg shadow-md p-6 text-left w-full hover:bg-slate-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-blue-500 border-t border-lime-400">
             <h3 className="text-xl font-bold text-white truncate">{project.name}</h3>
             <p className="text-sm text-slate-400 mb-4 h-10 overflow-hidden">{project.description}</p>
             <div className="border-t border-slate-700 pt-4 grid grid-cols-3 gap-2 text-center">
@@ -56,7 +57,7 @@ const TransactionRow: React.FC<{ transaction: Transaction; onEdit: () => void; o
     const sign = isIncome ? '+' : '-';
 
     return (
-        <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-md hover:bg-slate-700/50 group">
+        <div className="flex items-center justify-between p-3 bg-slate-900/50 rounded-md hover:bg-slate-800/50 group">
             <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-100 truncate">{transaction.description}</p>
                 <p className="text-xs text-slate-400">{transaction.category} - {transaction.date}</p>
@@ -68,9 +69,9 @@ const TransactionRow: React.FC<{ transaction: Transaction; onEdit: () => void; o
                         <MoreVerticalIcon className="w-5 h-5"/>
                     </button>
                     {menuOpen && (
-                        <div className="absolute right-0 mt-2 w-32 bg-slate-900 border border-slate-700 rounded-md shadow-lg z-10">
-                            <button onClick={() => { onEdit(); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700">Editar</button>
-                            <button onClick={() => { onDelete(); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-700">Excluir</button>
+                        <div className="absolute right-0 mt-2 w-32 bg-slate-950 border border-slate-700 rounded-md shadow-lg z-10">
+                            <button onClick={() => { onEdit(); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">Editar</button>
+                            <button onClick={() => { onDelete(); setMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-800">Excluir</button>
                         </div>
                     )}
                 </div>
@@ -133,8 +134,8 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, handleSaveFi
     
     if (selectedProject) {
         return (
-             <div className="p-4 md:p-8 h-full flex flex-col">
-                <header className="flex-shrink-0">
+             <div className="h-full flex flex-col">
+                <header className="flex-shrink-0 px-4 md:px-8 pt-6">
                     <button onClick={() => setSelectedProjectId(null)} className="flex items-center space-x-2 text-sm text-sky-400 hover:text-sky-300 mb-2">
                         <ChevronLeftIcon className="h-4 w-4" />
                         <span>Voltar para todos os projetos</span>
@@ -150,13 +151,13 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, handleSaveFi
                         </div>
                     </div>
                      <div className="grid grid-cols-3 gap-4 mb-4 text-center">
-                         <div className="bg-slate-800 p-4 rounded-lg"><p className="text-xs text-slate-400">Receitas</p><p className="font-semibold text-lime-400 text-xl">R$ {totalIncome.toFixed(2)}</p></div>
-                        <div className="bg-slate-800 p-4 rounded-lg"><p className="text-xs text-slate-400">Despesas</p><p className="font-semibold text-red-400 text-xl">R$ {totalExpenses.toFixed(2)}</p></div>
-                        <div className="bg-slate-800 p-4 rounded-lg"><p className="text-xs text-slate-400">Saldo</p><p className={`font-bold text-2xl ${balance >= 0 ? 'text-lime-400' : 'text-red-400'}`}>R$ {balance.toFixed(2)}</p></div>
+                         <div className="bg-slate-900 p-4 rounded-lg"><p className="text-xs text-slate-400">Receitas</p><p className="font-semibold text-lime-400 text-xl">R$ {totalIncome.toFixed(2)}</p></div>
+                        <div className="bg-slate-900 p-4 rounded-lg"><p className="text-xs text-slate-400">Despesas</p><p className="font-semibold text-red-400 text-xl">R$ {totalExpenses.toFixed(2)}</p></div>
+                        <div className="bg-slate-900 p-4 rounded-lg"><p className="text-xs text-slate-400">Saldo</p><p className={`font-bold text-2xl ${balance >= 0 ? 'text-lime-400' : 'text-red-400'}`}>R$ {balance.toFixed(2)}</p></div>
                     </div>
                 </header>
 
-                 <main className="flex-1 overflow-y-auto mt-2 pr-2">
+                 <main className="flex-1 overflow-y-auto px-4 md:px-8 pb-8 mt-2">
                     {filteredTransactions.length > 0 ? (
                         <div className="space-y-2">
                             {filteredTransactions
@@ -171,37 +172,41 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, handleSaveFi
                             ))}
                         </div>
                     ) : (
-                         <div className="text-center py-16 bg-slate-800 rounded-lg"><p className="text-slate-400">Nenhuma transação registrada.</p></div>
+                         <div className="text-center py-16 bg-slate-900 rounded-lg border-t border-slate-700"><p className="text-slate-400">Nenhuma transação registrada.</p></div>
                     )}
                 </main>
-
+                <Modal isOpen={!!modalView} onClose={closeModal} title={modalView === 'financial_project' ? 'Projeto Financeiro' : 'Transação'}>
+                    {modalView === 'financial_project' && <FinancialProjectForm onSubmit={handleSaveAndClose(handleSaveFinancialProject)} project={editingItem} />}
+                    {modalView === 'transaction' && <TransactionForm onSubmit={handleSaveAndClose((data, id) => handleSaveTransaction(selectedProjectId!, {...data, type: transactionType }, id))} transaction={editingItem} type={transactionType} />}
+                </Modal>
              </div>
         );
     }
 
     return (
-        <div className="p-4 md:p-8">
-            <header className="flex justify-between items-center mb-6">
-                 <div>
-                    <h2 className="text-3xl font-bold text-white">Finanças</h2>
-                    <p className="text-slate-400 mt-1">Gerencie os projetos financeiros e o fluxo de caixa do coletivo.</p>
-                </div>
-                 <button onClick={() => openModal('financial_project')} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition">
-                    <PlusIcon className="h-5 w-5" />
-                    <span>Novo Projeto</span>
-                </button>
-            </header>
-            
-            {financialProjects.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {financialProjects.map(project => (
-                        <ProjectCard key={project.id} project={project} onSelect={() => setSelectedProjectId(project.id)} />
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-16 bg-slate-800 rounded-lg"><p className="text-slate-400">Nenhum projeto financeiro criado.</p></div>
-            )}
-             <Modal isOpen={!!modalView} onClose={closeModal} title={modalView === 'financial_project' ? 'Projeto Financeiro' : 'Transação'}>
+        <div className="h-full flex flex-col">
+            <Header
+                title="Finanças"
+                subtitle="Gerencie os projetos financeiros e o fluxo de caixa do coletivo."
+                action={
+                    <button onClick={() => openModal('financial_project')} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition">
+                        <PlusIcon className="h-5 w-5" />
+                        <span>Novo Projeto</span>
+                    </button>
+                }
+            />
+            <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
+                {financialProjects.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {financialProjects.map(project => (
+                            <ProjectCard key={project.id} project={project} onSelect={() => setSelectedProjectId(project.id)} />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-16 bg-slate-900 rounded-lg border-t border-slate-700"><p className="text-slate-400">Nenhum projeto financeiro criado.</p></div>
+                )}
+            </div>
+            <Modal isOpen={!!modalView} onClose={closeModal} title={modalView === 'financial_project' ? 'Projeto Financeiro' : 'Transação'}>
                 {modalView === 'financial_project' && <FinancialProjectForm onSubmit={handleSaveAndClose(handleSaveFinancialProject)} project={editingItem} />}
                 {modalView === 'transaction' && <TransactionForm onSubmit={handleSaveAndClose((data, id) => handleSaveTransaction(selectedProjectId!, {...data, type: transactionType }, id))} transaction={editingItem} type={transactionType} />}
             </Modal>
@@ -209,5 +214,4 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, handleSaveFi
     )
 }
 
-// FIX: Added a default export for the FinanceApp component.
 export default FinanceApp;

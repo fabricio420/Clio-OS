@@ -1,6 +1,7 @@
 import React, { useState, memo } from 'react';
 import type { ScheduleItem } from '../types';
 import { ClockIcon, PlusIcon, MoreVerticalIcon } from './icons';
+import Header from './Header';
 
 interface ScheduleProps {
   onOpenModal: (view: 'schedule', data?: ScheduleItem) => void;
@@ -48,28 +49,33 @@ const Schedule: React.FC<ScheduleProps> = ({ onOpenModal, schedule, handleDelete
   const sortedItems = [...schedule].sort((a, b) => a.time.localeCompare(b.time));
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-white">Cronograma do Sarau</h2>
-        <button 
-          onClick={() => onOpenModal('schedule')}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition"
-        >
-          <PlusIcon className="h-5 w-5" />
-          <span>Novo Item</span>
-        </button>
-      </div>
-      <div className="bg-slate-800 rounded-lg shadow-md p-6">
-        <div className="relative border-l-2 border-blue-500 ml-4">
-          {sortedItems.map((item) => (
-            <ScheduleItemComponent 
-              key={item.id} 
-              item={item}
-              onEdit={(itemToEdit) => onOpenModal('schedule', itemToEdit)}
-              onDelete={handleDeleteScheduleItem}
-            />
-          ))}
-           {sortedItems.length === 0 && <p className="text-slate-400 pl-8">Nenhum item no cronograma.</p>}
+    <div className="h-full flex flex-col">
+      <Header
+        title="Cronograma do Sarau"
+        subtitle="Uma linha do tempo de tudo o que acontecerá durante o evento."
+        action={
+          <button
+            onClick={() => onOpenModal('schedule')}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition"
+          >
+            <PlusIcon className="h-5 w-5" />
+            <span>Novo Item</span>
+          </button>
+        }
+      />
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
+        <div className="bg-slate-900 rounded-lg shadow-md p-6 border-t border-lime-400">
+          <div className="relative border-l-2 border-blue-500 ml-4">
+            {sortedItems.map((item) => (
+              <ScheduleItemComponent
+                key={item.id}
+                item={item}
+                onEdit={(itemToEdit) => onOpenModal('schedule', itemToEdit)}
+                onDelete={handleDeleteScheduleItem}
+              />
+            ))}
+            {sortedItems.length === 0 && <p className="text-slate-400 pl-8">Nenhum item no cronograma.</p>}
+          </div>
         </div>
       </div>
     </div>

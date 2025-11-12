@@ -12,6 +12,7 @@ import PhotoGalleryApp from './components/PhotoGalleryApp';
 import MusicPlayerWidget from './components/MusicPlayerWidget';
 import BrowserApp from './components/BrowserApp';
 import CollabClioApp from './components/CollabClioApp';
+import RadioSarauApp from './components/RadioSarauApp';
 import GadgetWrapper from './components/gadgets/GadgetWrapper';
 import AnalogClock from './components/gadgets/AnalogClock';
 import CountdownGadget from './components/gadgets/CountdownGadget';
@@ -43,44 +44,70 @@ import { PhotoUploadForm } from './components/forms/PhotoUploadForm';
 import { CollectiveDocumentForm } from './components/forms/CollectiveDocumentForm';
 import { MeetingMinuteForm } from './components/forms/MeetingMinuteForm';
 import { VotingTopicForm } from './components/forms/VotingTopicForm';
+import { ChevronLeftIcon, PowerIcon, HomeIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, RadioIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon } from './components/icons';
 // FIX: Import AppContext to provide context to children components.
 import { AppContext } from './contexts/AppContext';
 
+// --- RESPONSIVE HOOK ---
+const useMediaQuery = (query: string): boolean => {
+  const [matches, setMatches] = useState(window.matchMedia(query).matches);
+
+  useEffect(() => {
+    const mediaQueryList = window.matchMedia(query);
+    const listener = (event: MediaQueryListEvent) => setMatches(event.matches);
+
+    mediaQueryList.addEventListener('change', listener);
+    return () => mediaQueryList.removeEventListener('change', listener);
+  }, [query]);
+
+  return matches;
+};
+
+
 // --- MOCK DATA FOR NEW USERS ---
-const defaultDueDate = new Date();
-defaultDueDate.setDate(defaultDueDate.getDate() + 10);
-const dueDateString = defaultDueDate.toISOString().split('T')[0];
 const defaultEventDate = new Date();
 defaultEventDate.setMonth(defaultEventDate.getMonth() + 1);
 
 const MOCK_EVENT_INFO: EventInfoData = {
-    eventName: 'Sarau das Vozes Urbanas',
-    collectiveName: 'Coletivo Poiesis', isCollab: false, collabDescription: '',
-    description: 'Uma noite de celebração da palavra...',
-    venueName: 'Centro Cultural da Juventude', venueAddress: 'Av. Dep. Emílio Carlos, 3641',
+    eventName: 'Meu Novo Sarau',
+    collectiveName: 'Meu Coletivo',
+    description: 'Use o botão "Editar Informações" para descrever seu evento aqui. Conte sobre o que é, quem pode participar e o que as pessoas podem esperar!',
+    venueName: 'Local a definir',
+    venueAddress: '',
     eventDate: defaultEventDate.toISOString().slice(0, 16),
-    artistGoal: 15, artTypes: ['Poesia', 'Música', 'Performance'], hasAwards: false, awardsDescription: '',
+    artistGoal: 10,
+    artTypes: [],
+    hasAwards: false,
+    awardsDescription: '',
+    isCollab: false,
+    collabDescription: '',
 };
 
 const MOCK_INITIAL_DATA = {
-    // FIX: Added 'members' to the mock data structure to allow its state to be managed correctly.
     members: [] as Member[],
-    tasks: [{ id: 't1', title: 'Definir local e data', description: 'Pesquisar e reservar o local.', status: TaskStatusEnum.ToDo, assigneeId: '1', dueDate: dueDateString }],
-    schedule: [{ id: 's1', time: '18:00', title: 'Abertura e Recepção', description: 'Início do evento.', responsible: 'Equipe' }],
-    artists: [{ id: 'a1', name: 'Juliana Rima', performanceType: 'Poesia', contact: 'juliana.rima@email.com', notes: 'Confirmada.' }],
+    tasks: [] as Task[],
+    schedule: [] as ScheduleItem[],
+    artists: [] as Artist[],
     eventInfo: MOCK_EVENT_INFO,
-    mediaItems: [], inventoryItems: [], feedPosts: [],
-    financialProjects: [{ id: 'fp1', name: 'Orçamento Principal', description: 'Controle financeiro do evento.', transactions: [] }],
-    notebooks: [{ id: 'nb1', name: 'Ideias', notes: [{ id: 'n1', title: 'Brainstorm', content: '<p>Ideias iniciais...</p>', updatedAt: new Date().toISOString() }] }],
-    photoAlbums: [], collectiveDocuments: [], meetingMinutes: [], votingTopics: [],
-    gadgets: [], totalBudget: 2000,
+    mediaItems: [] as MediaItem[],
+    inventoryItems: [] as InventoryItem[],
+    feedPosts: [] as FeedPost[],
+    financialProjects: [] as FinancialProject[],
+    notebooks: [] as Notebook[],
+    photoAlbums: [] as PhotoAlbum[],
+    collectiveDocuments: [] as CollectiveDocument[],
+    meetingMinutes: [] as MeetingMinute[],
+    votingTopics: [] as VotingTopic[],
+    radioPlaylist: [] as Track[],
+    gadgets: [] as Gadget[],
+    totalBudget: 0,
 };
 
 // --- APP TYPES ---
 export type AppName = 
     | 'dashboard' | 'info' | 'tasks' | 'schedule' | 'artists' | 'team_hub' 
     | 'media' | 'inventory' | 'reports' | 'documentation' | 'clio_company' 
-    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile';
+    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile' | 'radio_sarau';
 
 export type AppStatus = 'open' | 'minimized' | 'closed';
 export type AppStates = Record<AppName, AppStatus>;
@@ -90,10 +117,19 @@ const initialAppStates: AppStates = {
     artists: 'closed', team_hub: 'closed', media: 'closed', inventory: 'closed',
     reports: 'closed', documentation: 'closed', clio_company: 'closed',
     personalize: 'closed', finances: 'closed', notebooks: 'closed', gallery: 'closed',
-    browser: 'closed', collab_clio: 'closed', profile: 'closed',
+    browser: 'closed', collab_clio: 'closed', profile: 'closed', radio_sarau: 'closed'
 };
 
 const DEFAULT_WALLPAPER = 'https://i.postimg.cc/bwZhCxbX/clios-canvas.png';
+
+const GUEST_USER_EMAIL = 'guest@dev.clio';
+const GUEST_USER: Member = {
+    id: 'guest-dev-id',
+    name: 'Visitante Dev',
+    email: GUEST_USER_EMAIL,
+    avatar: `https://i.pravatar.cc/150?u=${GUEST_USER_EMAIL}`,
+    role: 'Desenvolvedor'
+};
 
 // --- MAIN APP COMPONENT ---
 const App: React.FC = () => {
@@ -108,12 +144,16 @@ const App: React.FC = () => {
     const [loginWallpaper, setLoginWallpaper] = useState<string | null>(() => localStorage.getItem('clio-os-login-wallpaper'));
     const [appStates, setAppStates] = useState<AppStates>(initialAppStates);
 
+    // Mobile state
+    const isMobile = useMediaQuery('(max-width: 768px)');
+    const [activeMobileApp, setActiveMobileApp] = useState<AppName | null>(null);
+
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
     const [modalView, setModalView] = useState<ModalView | null>(null);
     const [editingItem, setEditingItem] = useState<any>(null);
 
-    // Music Player State
+    // Personal Music Player State
     const [isMusicPlayerOpen, setIsMusicPlayerOpen] = useState(false);
     const [playlist, setPlaylist] = useState<Track[]>([]);
     const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
@@ -123,6 +163,11 @@ const App: React.FC = () => {
     const [duration, setDuration] = useState(0);
     const audioRef = useRef<HTMLAudioElement>(null);
     const musicFileInputRef = useRef<HTMLInputElement>(null);
+
+    // Radio Sarau Player State
+    const [currentRadioTrackIndex, setCurrentRadioTrackIndex] = useState(0);
+    const [isRadioPlaying, setIsRadioPlaying] = useState(false);
+    const radioAudioRef = useRef<HTMLAudioElement>(null);
     
     // --- USER & DATA MANAGEMENT ---
     useEffect(() => {
@@ -179,10 +224,25 @@ const App: React.FC = () => {
         return { success: true, message: 'Cadastro realizado!' };
     };
 
+    const handleGuestLogin = () => {
+        const guestDataString = localStorage.getItem(`collab-clio-data-${GUEST_USER_EMAIL}`);
+        if (guestDataString) {
+            // Guest user data exists, load it
+            setUserState(JSON.parse(guestDataString));
+        } else {
+            // First time guest login, create mock data
+            const guestData = { ...MOCK_INITIAL_DATA, members: [GUEST_USER] };
+            localStorage.setItem(`collab-clio-data-${GUEST_USER_EMAIL}`, JSON.stringify(guestData));
+            setUserState(guestData);
+        }
+        setLoggedInUser(GUEST_USER);
+    };
+
     const handleLogout = () => {
         setLoggedInUser(null);
         setUserState(null);
         setAppStates(initialAppStates);
+        setActiveMobileApp(null);
     };
 
     // --- GENERIC STATE UPDATE HANDLER ---
@@ -479,12 +539,65 @@ const App: React.FC = () => {
     };
     const triggerMusicFileInput = () => musicFileInputRef.current?.click();
 
+    // --- Radio Sarau Handlers ---
+    const handleAddToRadioPlaylist = (track: Omit<Track, 'id'>) => {
+        updateUserState('radioPlaylist', [...userState.radioPlaylist, track]);
+    };
+    const handleRemoveFromRadioPlaylist = (trackIndex: number) => {
+        updateUserState('radioPlaylist', userState.radioPlaylist.filter((_: any, index: number) => index !== trackIndex));
+        if (trackIndex < currentRadioTrackIndex) {
+            setCurrentRadioTrackIndex(prev => prev - 1);
+        } else if (trackIndex === currentRadioTrackIndex && isRadioPlaying) {
+            // If deleting the current song, stop playback and reset to the start of the new list
+            if (radioAudioRef.current) {
+                radioAudioRef.current.pause();
+            }
+            setIsRadioPlaying(false);
+            setCurrentRadioTrackIndex(0);
+        }
+    };
+
+    useEffect(() => {
+        const audio = radioAudioRef.current;
+        if (!audio) return;
+        const handleRadioEnd = () => handleRadioNext();
+        audio.addEventListener('ended', handleRadioEnd);
+        return () => {
+            audio.removeEventListener('ended', handleRadioEnd);
+        };
+    }, [userState?.radioPlaylist, currentRadioTrackIndex]);
+
+    useEffect(() => {
+        if (radioAudioRef.current) {
+            isRadioPlaying ? radioAudioRef.current.play().catch(console.error) : radioAudioRef.current.pause();
+        }
+    }, [isRadioPlaying, currentRadioTrackIndex]);
+
+    const handleRadioPlayPause = () => {
+        if (userState?.radioPlaylist?.length > 0) {
+            setIsRadioPlaying(!isRadioPlaying);
+        }
+    };
+    const handleRadioNext = () => {
+        if (userState?.radioPlaylist) {
+             setCurrentRadioTrackIndex(p => (p + 1) % userState.radioPlaylist.length);
+             setIsRadioPlaying(true);
+        }
+    };
+    const handleRadioPrev = () => {
+        if (userState?.radioPlaylist) {
+            setCurrentRadioTrackIndex(p => (p - 1 + userState.radioPlaylist.length) % userState.radioPlaylist.length);
+            setIsRadioPlaying(true);
+        }
+    };
+
+
     // --- RENDER LOGIC ---
     if (!loggedInUser || !userState) {
-        return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUp} loginWallpaper={loginWallpaper} />;
+        return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUp} onGuestLogin={handleGuestLogin} loginWallpaper={loginWallpaper} />;
     }
 
-    const { members, artists, tasks, schedule, financialProjects, totalBudget, feedPosts, eventInfo, mediaItems, inventoryItems, gadgets, notebooks, photoAlbums, collectiveDocuments, meetingMinutes, votingTopics } = userState;
+    const { members, artists, tasks, schedule, financialProjects, totalBudget, feedPosts, eventInfo, mediaItems, inventoryItems, gadgets, notebooks, photoAlbums, collectiveDocuments, meetingMinutes, votingTopics, radioPlaylist } = userState;
     const recentlyUpdatedTaskId = null; // This feature can be re-implemented if needed
 
     const renderModalContent = () => {
@@ -533,25 +646,28 @@ const App: React.FC = () => {
         }
     }
     
-    const appWindows: { name: AppName, title: string, component: React.ReactNode }[] = [
-        { name: 'dashboard', title: 'Dashboard', component: <Dashboard onOpenModal={openModal} {...userState} /> },
-        { name: 'info', title: 'Informações do Evento', component: <EventInfo onOpenModal={openModal} {...userState} /> },
-        { name: 'tasks', title: 'Quadro de Tarefas', component: <KanbanBoard onOpenModal={openModal} tasks={tasks} members={members} recentlyUpdatedTaskId={recentlyUpdatedTaskId} handleDeleteTask={handleDeleteTask} handleUpdateTaskStatus={handleUpdateTaskStatus} /> },
-        { name: 'schedule', title: 'Cronograma', component: <Schedule onOpenModal={openModal} schedule={schedule} handleDeleteScheduleItem={handleDeleteScheduleItem} /> },
-        { name: 'artists', title: 'Artistas', component: <Artists onOpenModal={openModal} artists={artists} handleDeleteArtist={handleDeleteArtist} /> },
-        { name: 'team_hub', title: 'Hub da Equipe', component: <TeamHub onOpenModal={openModal} currentUser={loggedInUser} members={members} feedPosts={feedPosts} handleAddPost={handleAddPost} /> },
-        { name: 'media', title: 'Hub de Mídia', component: <MediaHub onOpenModal={() => openModal('media')} mediaItems={mediaItems} artists={artists} handleDeleteMediaItem={handleDeleteMediaItem} /> },
-        { name: 'inventory', title: 'Inventário', component: <Inventory onOpenModal={openModal} inventoryItems={inventoryItems} members={members} handleDeleteInventoryItem={handleDeleteInventoryItem} /> },
-        { name: 'reports', title: 'Relatórios', component: <Reports {...userState} /> },
-        { name: 'documentation', title: 'Documentação', component: <Documentation /> },
-        { name: 'profile', title: 'Meu Perfil', component: <ProfileApp currentUser={loggedInUser} onSaveProfile={handleSaveProfile} onChangePassword={handleChangePassword} /> },
-        { name: 'personalize', title: 'Personalizar', component: <PersonalizeApp currentWallpaper={wallpaperImage || DEFAULT_WALLPAPER} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} loginWallpaper={loginWallpaper} onSetLoginWallpaper={handleSetLoginWallpaper} onResetLoginWallpaper={handleResetLoginWallpaper} /> },
-        { name: 'finances', title: 'Finanças', component: <FinanceApp financialProjects={financialProjects} handleSaveFinancialProject={handleSaveFinancialProject} handleDeleteFinancialProject={handleDeleteFinancialProject} handleSaveTransaction={handleSaveTransaction} handleDeleteTransaction={handleDeleteTransaction} /> },
-        { name: 'notebooks', title: 'Cadernos', component: <NotebooksApp notebooks={notebooks} handleSaveNotebook={handleSaveNotebook} handleDeleteNotebook={handleDeleteNotebook} handleSaveNote={handleSaveNote} handleDeleteNote={handleDeleteNote} /> },
-        { name: 'gallery', title: 'Galeria', component: <PhotoGalleryApp onOpenModal={openModal} photoAlbums={photoAlbums} handleDeletePhoto={handleDeletePhoto} /> },
-        { name: 'browser', title: 'Navegador', component: <BrowserApp /> },
-        { name: 'collab_clio', title: 'Collab Clio', component: <CollabClioApp onOpenModal={openModal} currentUser={loggedInUser} {...userState} handleDeleteCollectiveDocument={handleDeleteCollectiveDocument} handleDeleteMeetingMinute={handleDeleteMeetingMinute} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} /> },
+    const appConfig: { name: AppName, title: string, icon: React.ReactNode, component: React.ReactNode }[] = [
+        { name: 'dashboard', title: 'Dashboard', icon: <DockAppIcon bgColorClasses="bg-blue-600"><HomeIcon /></DockAppIcon>, component: <Dashboard onOpenModal={openModal} {...userState} /> },
+        { name: 'tasks', title: 'Tarefas', icon: <DockAppIcon bgColorClasses="bg-green-600"><CheckSquareIcon /></DockAppIcon>, component: <KanbanBoard onOpenModal={openModal} tasks={tasks} members={members} recentlyUpdatedTaskId={recentlyUpdatedTaskId} handleDeleteTask={handleDeleteTask} handleUpdateTaskStatus={handleUpdateTaskStatus} /> },
+        { name: 'schedule', title: 'Cronograma', icon: <DockAppIcon bgColorClasses="bg-orange-600"><ClockIcon /></DockAppIcon>, component: <Schedule onOpenModal={openModal} schedule={schedule} handleDeleteScheduleItem={handleDeleteScheduleItem} /> },
+        { name: 'artists', title: 'Artistas', icon: <DockAppIcon bgColorClasses="bg-purple-600"><MicIcon /></DockAppIcon>, component: <Artists onOpenModal={openModal} artists={artists} handleDeleteArtist={handleDeleteArtist} /> },
+        { name: 'team_hub', title: 'Hub da Equipe', icon: <DockAppIcon bgColorClasses="bg-teal-500"><UsersIcon /></DockAppIcon>, component: <TeamHub onOpenModal={openModal} currentUser={loggedInUser} members={members} feedPosts={feedPosts} handleAddPost={handleAddPost} /> },
+        { name: 'inventory', title: 'Inventário', icon: <DockAppIcon bgColorClasses="bg-slate-600"><BoxIcon /></DockAppIcon>, component: <Inventory onOpenModal={openModal} inventoryItems={inventoryItems} members={members} handleDeleteInventoryItem={handleDeleteInventoryItem} /> },
+        { name: 'info', title: 'Informações', icon: <DockAppIcon bgColorClasses="bg-indigo-600"><InfoIcon /></DockAppIcon>, component: <EventInfo onOpenModal={openModal} {...userState} /> },
+        { name: 'media', title: 'Mídia', icon: <DockAppIcon bgColorClasses="bg-red-600"><ImageIcon /></DockAppIcon>, component: <MediaHub onOpenModal={() => openModal('media')} mediaItems={mediaItems} artists={artists} handleDeleteMediaItem={handleDeleteMediaItem} /> },
+        { name: 'gallery', title: 'Galeria', icon: <DockAppIcon bgColorClasses="bg-pink-500"><ImageIcon /></DockAppIcon>, component: <PhotoGalleryApp onOpenModal={openModal} /> },
+        { name: 'reports', title: 'Relatórios', icon: <DockAppIcon bgColorClasses="bg-gray-700"><FileTextIcon /></DockAppIcon>, component: <Reports {...userState} /> },
+        { name: 'documentation', title: 'Documentação', icon: <DockAppIcon bgColorClasses="bg-indigo-700"><BookOpenIcon /></DockAppIcon>, component: <Documentation /> },
+        { name: 'finances', title: 'Finanças', icon: <DockAppIcon bgColorClasses="bg-emerald-600"><WalletIcon /></DockAppIcon>, component: <FinanceApp financialProjects={financialProjects} handleSaveFinancialProject={handleSaveFinancialProject} handleDeleteFinancialProject={handleDeleteFinancialProject} handleSaveTransaction={handleSaveTransaction} handleDeleteTransaction={handleDeleteTransaction} /> },
+        { name: 'notebooks', title: 'Cadernos', icon: <DockAppIcon bgColorClasses="bg-amber-600"><BookMarkedIcon /></DockAppIcon>, component: <NotebooksApp notebooks={notebooks} handleSaveNotebook={handleSaveNotebook} handleDeleteNotebook={handleDeleteNotebook} handleSaveNote={handleSaveNote} handleDeleteNote={handleDeleteNote} /> },
+        { name: 'radio_sarau', title: 'Rádio Sarau', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon>, component: <RadioSarauApp playlist={radioPlaylist} currentTrackIndex={currentRadioTrackIndex} isPlaying={isRadioPlaying} onPlayPause={handleRadioPlayPause} onNext={handleRadioNext} onPrev={handleRadioPrev} onAddTrack={handleAddToRadioPlaylist} onRemoveTrack={handleRemoveFromRadioPlaylist} /> },
+        { name: 'collab_clio', title: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon>, component: <CollabClioApp onOpenModal={openModal} currentUser={loggedInUser} {...userState} handleDeleteCollectiveDocument={handleDeleteCollectiveDocument} handleDeleteMeetingMinute={handleDeleteMeetingMinute} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} /> },
+        { name: 'browser', title: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon>, component: <BrowserApp /> },
+        { name: 'profile', title: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon>, component: <ProfileApp currentUser={loggedInUser} onSaveProfile={handleSaveProfile} onChangePassword={handleChangePassword} /> },
+        { name: 'personalize', title: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon>, component: <PersonalizeApp currentWallpaper={wallpaperImage || DEFAULT_WALLPAPER} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} loginWallpaper={loginWallpaper} onSetLoginWallpaper={handleSetLoginWallpaper} onResetLoginWallpaper={handleResetLoginWallpaper} /> },
     ];
+    
+    const appComponents = appConfig.reduce((acc, app) => ({ ...acc, [app.name]: app.component }), {} as Record<AppName, React.ReactNode>);
 
     // FIX: Create context value to be passed to the provider.
     const contextValue = {
@@ -575,44 +691,91 @@ const App: React.FC = () => {
                 className="h-screen w-screen font-sans bg-cover bg-center"
                 style={{ backgroundImage: `url(${wallpaperImage || DEFAULT_WALLPAPER})` }}
             >
-                <audio ref={audioRef} src={playlist[currentTrackIndex]?.url} />
-                <input type="file" ref={musicFileInputRef} onChange={handleMusicFileChange} accept=".mp3" className="hidden" />
+                 <div className="absolute inset-0 bg-slate-900/30"></div>
+                {isMobile ? (
+                    <div className="h-full w-full overflow-hidden flex flex-col relative">
+                        {activeMobileApp ? (
+                             <>
+                                <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-14 flex items-center justify-between px-4 z-10 border-b border-white/10">
+                                    <button onClick={() => setActiveMobileApp(null)} className="flex items-center gap-1 text-sm text-sky-400 hover:text-sky-300">
+                                        <ChevronLeftIcon className="w-5 h-5" />
+                                        <span>Início</span>
+                                    </button>
+                                    <h1 className="font-bold text-md text-white">{appConfig.find(a => a.name === activeMobileApp)?.title}</h1>
+                                    <div className="w-16"></div> {/* Spacer */}
+                                </header>
+                                <main className="flex-1 overflow-y-auto bg-slate-800/70 backdrop-blur-lg">
+                                    {appComponents[activeMobileApp]}
+                                </main>
+                            </>
+                        ) : (
+                            <>
+                                <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-14 flex items-center justify-between px-4 border-b border-white/10">
+                                    <div className="flex items-center gap-2">
+                                        <img src={loggedInUser.avatar} alt={loggedInUser.name} className="w-8 h-8 rounded-full" />
+                                        <span className="font-semibold text-white">{loggedInUser.name}</span>
+                                    </div>
+                                    <button onClick={handleLogout} className="p-2 text-slate-300 hover:text-white" aria-label="Sair">
+                                        <PowerIcon className="w-5 h-5 text-red-400"/>
+                                    </button>
+                                </header>
+                                <main className="flex-1 overflow-y-auto p-4">
+                                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                                         {appConfig.map(({ name, title, icon }) => (
+                                            <button key={name} onClick={() => setActiveMobileApp(name)} className="flex flex-col items-center justify-start p-2 space-y-2 rounded-lg hover:bg-black/20 transition-colors">
+                                                 <div className="w-16 h-16">
+                                                     {icon}
+                                                 </div>
+                                                 <span className="text-xs text-center text-slate-200">{title}</span>
+                                             </button>
+                                         ))}
+                                    </div>
+                                </main>
+                            </>
+                        )}
+                    </div>
+                ) : (
+                    <>
+                        <audio ref={audioRef} src={playlist[currentTrackIndex]?.url} />
+                        <audio ref={radioAudioRef} src={radioPlaylist?.[currentRadioTrackIndex]?.url} />
+                        <input type="file" ref={musicFileInputRef} onChange={handleMusicFileChange} accept=".mp3" className="hidden" />
 
-                <ClioOSDesktop 
-                    onAppClick={handleAppClick} 
-                    user={loggedInUser} 
-                    onLogout={handleLogout}
-                    appStates={appStates}
-                    isMusicPlayerOpen={isMusicPlayerOpen}
-                    onToggleMusicPlayer={() => setIsMusicPlayerOpen(!isMusicPlayerOpen)}
-                />
+                        <ClioOSDesktop 
+                            onAppClick={handleAppClick} 
+                            user={loggedInUser} 
+                            onLogout={handleLogout}
+                            appStates={appStates}
+                            isMusicPlayerOpen={isMusicPlayerOpen}
+                            onToggleMusicPlayer={() => setIsMusicPlayerOpen(!isMusicPlayerOpen)}
+                        />
 
-                {gadgets.map((gadget: Gadget) => (
-                    <GadgetWrapper key={gadget.id} gadget={gadget} onClose={handleRemoveGadget} onPositionChange={handleUpdateGadgetPosition} >
-                        {gadget.type === 'analog_clock' && <AnalogClock />}
-                        {gadget.type === 'countdown' && <CountdownGadget />}
-                        {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
-                        {gadget.type === 'media_uploader' && <MediaUploaderGadget />}
-                        {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
-                    </GadgetWrapper>
-                ))}
+                        {gadgets.map((gadget: Gadget) => (
+                            <GadgetWrapper key={gadget.id} gadget={gadget} onClose={handleRemoveGadget} onPositionChange={handleUpdateGadgetPosition} >
+                                {gadget.type === 'analog_clock' && <AnalogClock />}
+                                {gadget.type === 'countdown' && <CountdownGadget />}
+                                {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
+                                {gadget.type === 'media_uploader' && <MediaUploaderGadget />}
+                                {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
+                            </GadgetWrapper>
+                        ))}
 
-                <MusicPlayerWidget isOpen={isMusicPlayerOpen} onClose={() => setIsMusicPlayerOpen(false)} playlist={playlist} currentTrackIndex={currentTrackIndex} isPlaying={isPlaying} volume={volume} progress={progress} duration={duration} onPlayPause={handlePlayPause} onNext={handleNextTrack} onPrev={handlePrevTrack} onSelectTrack={handleSelectTrack} onSeek={handleSeek} onVolumeChange={handleVolumeChange} onLoadFile={triggerMusicFileInput} />
+                        <MusicPlayerWidget isOpen={isMusicPlayerOpen} onClose={() => setIsMusicPlayerOpen(false)} playlist={playlist} currentTrackIndex={currentTrackIndex} isPlaying={isPlaying} volume={volume} progress={progress} duration={duration} onPlayPause={handlePlayPause} onNext={handleNextTrack} onPrev={handlePrevTrack} onSelectTrack={handleSelectTrack} onSeek={handleSeek} onVolumeChange={handleVolumeChange} onLoadFile={triggerMusicFileInput} />
+                        
+                        {appConfig.map(({ name, title, component }) => (
+                            appStates[name] === 'open' && (
+                                <AppWindow key={name} title={title} isOpen={appStates[name] === 'open'} onClose={() => handleAppClose(name)} onMinimize={() => handleAppMinimize(name)} >
+                                    {component}
+                                </AppWindow>
+                            )
+                        ))}
 
-                {appWindows.map(({ name, title, component }) => (
-                    appStates[name] === 'open' && (
-                        <AppWindow key={name} title={title} isOpen={appStates[name] === 'open'} onClose={() => handleAppClose(name)} onMinimize={() => handleAppMinimize(name)} >
-                            {component}
-                        </AppWindow>
-                    )
-                ))}
-
-                {appStates.clio_company === 'open' && (
-                    <AppWindow title="Clio Company" isOpen={appStates.clio_company === 'open'} onClose={() => handleAppClose('clio_company')} onMinimize={() => handleAppMinimize('clio_company')} >
-                        <iframe src="https://edu-cliocompany.odoo.com" title="Clio Company" className="w-full h-full border-none" />
-                    </AppWindow>
+                        {appStates.clio_company === 'open' && (
+                            <AppWindow title="Clio Company" isOpen={appStates.clio_company === 'open'} onClose={() => handleAppClose('clio_company')} onMinimize={() => handleAppMinimize('clio_company')} >
+                                <iframe src="https://edu-cliocompany.odoo.com" title="Clio Company" className="w-full h-full border-none" />
+                            </AppWindow>
+                        )}
+                    </>
                 )}
-
                 <Modal isOpen={modalOpen} onClose={closeModal} title={getModalTitle()}>{renderModalContent()}</Modal>
             </div>
         </AppContext.Provider>

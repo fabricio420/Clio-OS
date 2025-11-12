@@ -4,6 +4,7 @@ import html2canvas from 'html2canvas';
 import { TaskStatus } from '../types';
 import type { EventInfoData, Task, ScheduleItem, FinancialProject, Artist, Member } from '../types';
 import { PrintIcon, DownloadIcon, CheckSquareIcon, CalendarIcon, DollarSignIcon, MicIcon, UsersIcon } from './icons';
+import Header from './Header';
 
 interface ReportsProps {
     eventInfo: EventInfoData;
@@ -16,7 +17,7 @@ interface ReportsProps {
 }
 
 const ReportSection: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className }) => (
-    <section className={`bg-slate-800 p-6 rounded-lg shadow-md mb-6 break-inside-avoid ${className}`}>
+    <section className={`bg-slate-900 p-6 rounded-lg shadow-md mb-6 break-inside-avoid border-t border-lime-400 ${className}`}>
         <h3 className="text-xl font-bold text-lime-400 border-b-2 border-slate-700 pb-2 mb-4">{title}</h3>
         <div className="space-y-4 text-slate-300">{children}</div>
     </section>
@@ -74,7 +75,7 @@ const Reports: React.FC<ReportsProps> = ({ eventInfo, tasks, schedule, financial
         try {
             const canvas = await html2canvas(reportRef.current, { 
                 scale: 2,
-                backgroundColor: '#0f172a', // bg-slate-900
+                backgroundColor: '#1e293b', // bg-slate-800
                 useCORS: true
             });
             const imgData = canvas.toDataURL('image/png');
@@ -152,7 +153,7 @@ const Reports: React.FC<ReportsProps> = ({ eventInfo, tasks, schedule, financial
                         top: 0;
                         width: 100%;
                         color: #cbd5e1 !important; /* text-slate-300 */
-                        background-color: #0f172a !important; /* bg-slate-900 */
+                        background-color: #1e293b !important; /* bg-slate-800 */
                     }
                      #print-area h1, #print-area h2, #print-area h3, #print-area h4 {
                         color: white !important;
@@ -166,30 +167,32 @@ const Reports: React.FC<ReportsProps> = ({ eventInfo, tasks, schedule, financial
                 }
                 `}
             </style>
-            <div className="p-4 md:p-8">
-                <header className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 no-print">
-                    <div>
-                        <h2 className="text-3xl font-bold text-white">Relatório do Evento</h2>
-                        <p className="text-slate-400">Visão consolidada de todas as informações.</p>
-                    </div>
-                    <div className="flex items-center space-x-2 mt-4 sm:mt-0">
-                        <button onClick={handlePrint} className="flex items-center space-x-2 bg-slate-600 hover:bg-slate-700 text-white font-semibold py-2 px-4 rounded-md transition">
-                            <PrintIcon className="h-5 w-5" />
-                            <span>Imprimir</span>
-                        </button>
-                        <button 
-                            onClick={handleDownloadPdf} 
-                            disabled={isGenerating}
-                            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition disabled:bg-blue-800 disabled:cursor-not-allowed"
-                        >
-                            <DownloadIcon className="h-5 w-5" />
-                            <span>{isGenerating ? 'Gerando...' : 'Baixar PDF'}</span>
-                        </button>
-                    </div>
-                </header>
+            <div className="h-full flex flex-col">
+                <div className="no-print">
+                    <Header
+                        title="Relatório do Evento"
+                        subtitle="Visão consolidada de todas as informações para impressão ou PDF."
+                        action={
+                            <div className="flex items-center space-x-2">
+                                <button onClick={handlePrint} className="flex items-center space-x-2 bg-slate-600 hover:bg-slate-700 text-white font-semibold py-2 px-4 rounded-md transition">
+                                    <PrintIcon className="h-5 w-5" />
+                                    <span>Imprimir</span>
+                                </button>
+                                <button
+                                    onClick={handleDownloadPdf}
+                                    disabled={isGenerating}
+                                    className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition disabled:bg-blue-800 disabled:cursor-not-allowed"
+                                >
+                                    <DownloadIcon className="h-5 w-5" />
+                                    <span>{isGenerating ? 'Gerando...' : 'Baixar PDF'}</span>
+                                </button>
+                            </div>
+                        }
+                    />
+                </div>
 
-                <div id="print-area">
-                     <div ref={reportRef} className="bg-slate-900 p-8">
+                <div id="print-area" className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
+                     <div ref={reportRef} className="bg-slate-800 md:p-8">
                         <div className="text-center mb-8 break-inside-avoid">
                            <h1 className="text-4xl font-bold text-white">{eventInfo.eventName}</h1>
                            <p className="text-slate-400 mt-1">Organizado por <span className="font-semibold text-lime-400">{eventInfo.collectiveName}</span></p>
