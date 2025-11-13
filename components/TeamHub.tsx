@@ -1,7 +1,8 @@
-import React, { memo } from 'react';
-import type { Member, FeedPost } from '../types';
+import React, { memo, useState, useEffect } from 'react';
+import type { Member, FeedPost, TeamStatus } from '../types';
 import TeamFeed from './TeamFeed';
 import Header from './Header';
+import { RefreshCwIcon } from './icons';
 
 interface TeamHubProps {
     currentUser: Member;
@@ -9,6 +10,8 @@ interface TeamHubProps {
     members: Member[];
     feedPosts: FeedPost[];
     handleAddPost: (content: string, author: Member) => void;
+    teamStatuses: TeamStatus[];
+    handleUpdateTeamStatus: (statusText: string) => void;
 }
 
 const MemberProfileCard: React.FC<{ member: Member; onEdit: () => void }> = memo(({ member, onEdit }) => (
@@ -27,7 +30,23 @@ const MemberProfileCard: React.FC<{ member: Member; onEdit: () => void }> = memo
 ));
 
 
-const TeamHub: React.FC<TeamHubProps> = ({ currentUser, onOpenModal, members, feedPosts, handleAddPost }) => {
+const TeamHub: React.FC<TeamHubProps> = ({ currentUser, onOpenModal, members, feedPosts, handleAddPost, teamStatuses, handleUpdateTeamStatus }) => {
+    const [myStatusText, setMyStatusText] = useState('');
+    const [statusMessage, setStatusMessage] = useState('');
+
+    useEffect(() => {
+        if (currentUser && teamStatuses) {
+            const currentStatus = teamStatuses.find(s => s.memberId === currentUser.id)?.status || '';
+            setMyStatusText(currentStatus);
+        }
+    }, [currentUser, teamStatuses]);
+
+    const handleUpdateClick = () => {
+        handleUpdateTeamStatus(myStatusText);
+        setStatusMessage('Status atualizado!');
+        setTimeout(() => setStatusMessage(''), 2000); // Clear message after 2 seconds
+    };
+
     return (
         <div className="h-full flex flex-col">
             <Header
@@ -35,6 +54,37 @@ const TeamHub: React.FC<TeamHubProps> = ({ currentUser, onOpenModal, members, fe
                 subtitle="Central de comunicação e perfis da equipe de organização."
             />
             <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8 space-y-8">
+                <section>
+                    <h3 className="text-xl font-semibold text-lime-400 mb-4 pb-2 border-b border-slate-700">Meu Status</h3>
+                    <div className="bg-slate-900 rounded-lg shadow-md p-6 border-t border-lime-400 max-w-4xl mx-auto">
+                        <div className="flex items-start space-x-4">
+                            <img src={currentUser.avatar} alt={currentUser.name} className="w-12 h-12 rounded-full" />
+                            <div className="flex-grow">
+                                <label htmlFor="status-input" className="block text-sm font-medium text-slate-300 mb-1">
+                                    O que você está fazendo agora?
+                                </label>
+                                <textarea
+                                    id="status-input"
+                                    value={myStatusText}
+                                    onChange={(e) => setMyStatusText(e.target.value)}
+                                    placeholder="Ex: Focando nos flyers, disponível para ajudar..."
+                                    className="w-full bg-slate-800 text-white p-3 rounded-md border border-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                    rows={2}
+                                />
+                                <div className="flex items-center justify-between mt-2">
+                                    <button 
+                                        onClick={handleUpdateClick}
+                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition flex items-center space-x-2"
+                                    >
+                                        <RefreshCwIcon className="w-4 h-4" />
+                                        <span>Atualizar Status</span>
+                                    </button>
+                                    {statusMessage && <p className="text-sm text-lime-400 animate-pulse">{statusMessage}</p>}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
                 <section>
                     <h3 className="text-xl font-semibold text-lime-400 mb-4 pb-2 border-b border-slate-700">Perfis da Equipe</h3>
                     <p className="text-sm text-slate-400 mb-4 -mt-2">Clique em um perfil para editar nome, função ou foto.</p>

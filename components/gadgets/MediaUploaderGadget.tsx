@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useAppContext } from '../../contexts/AppContext';
 import type { Artist } from '../../types';
 import { UploadCloudIcon, XIcon } from '../icons';
@@ -22,14 +22,21 @@ const MediaUploaderGadget: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    useEffect(() => {
+        const currentUrl = previewUrl;
+        // Cleanup object URL if it's a blob and the component unmounts or the url changes
+        return () => {
+            if (currentUrl) {
+                URL.revokeObjectURL(currentUrl);
+            }
+        };
+    }, [previewUrl]);
+
     const resetState = () => {
         setTitle('');
         setCategory('general');
         setArtistId('');
         setFile(null);
-        if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-        }
         setPreviewUrl(null);
         setStatus('idle');
         setError(null);

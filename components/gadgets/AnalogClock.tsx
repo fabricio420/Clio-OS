@@ -8,15 +8,24 @@ const AnalogClock: React.FC = () => {
         return () => clearInterval(timerId);
     }, []);
 
-    const seconds = time.getSeconds();
-    const minutes = time.getMinutes();
-    const hours = time.getHours();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Sao_Paulo',
+        hour12: false,
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric'
+    });
+    
+    const parts = formatter.formatToParts(time);
+    const seconds = parseInt(parts.find(p => p.type === 'second')?.value ?? '0');
+    const minutes = parseInt(parts.find(p => p.type === 'minute')?.value ?? '0');
+    const hours = parseInt(parts.find(p => p.type === 'hour')?.value ?? '0');
 
     // Calculate rotation degrees for each hand
     const secondHandRotation = (seconds / 60) * 360;
     const minuteHandRotation = ((minutes * 60 + seconds) / 3600) * 360;
-    // The formula correctly handles 24-hour format for a 12-hour clock face
-    const hourHandRotation = ((hours * 3600 + minutes * 60 + seconds) / 43200) * 360;
+    // Use hours % 12 to convert 24h format to 12h for the clock face calculation
+    const hourHandRotation = (((hours % 12) * 3600 + minutes * 60 + seconds) / 43200) * 360;
 
     return (
         <div className="w-40 h-40 rounded-full bg-slate-700/50 border-4 border-slate-600 relative flex items-center justify-center select-none">

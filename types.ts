@@ -132,9 +132,15 @@ export interface Track {
   name: string;
   artist: string;
   url: string;
+  artwork: string;
 }
 
-export type GadgetType = 'analog_clock' | 'countdown' | 'quick_note' | 'media_uploader' | 'financial_summary';
+export interface TeamStatus {
+  memberId: string;
+  status: string;
+}
+
+export type GadgetType = 'analog_clock' | 'countdown' | 'quick_note' | 'media_uploader' | 'financial_summary' | 'team_status';
 
 export interface GadgetData {
     content?: string;

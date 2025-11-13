@@ -24,6 +24,16 @@ export const MemberForm: React.FC<{ onSubmit: (data: Member) => void, member: Me
         }
     }, [member]);
 
+    useEffect(() => {
+        const currentUrl = previewUrl;
+        // Cleanup object URL if it's a blob and the component unmounts or the url changes
+        return () => {
+            if (currentUrl && currentUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(currentUrl);
+            }
+        };
+    }, [previewUrl]);
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 // FIX: Added FeedPost to the type imports.
-import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Track, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost } from './types';
+import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Track, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus } from './types';
 import { TaskStatus as TaskStatusEnum, InventoryStatus } from './types';
 import LoginScreen from './components/LoginScreen';
 import ClioOSDesktop from './components/ClioOSDesktop';
@@ -12,13 +12,14 @@ import PhotoGalleryApp from './components/PhotoGalleryApp';
 import MusicPlayerWidget from './components/MusicPlayerWidget';
 import BrowserApp from './components/BrowserApp';
 import CollabClioApp from './components/CollabClioApp';
-import RadioSarauApp from './components/RadioSarauApp';
+import RadioClioApp from './components/RadioSarauApp';
 import GadgetWrapper from './components/gadgets/GadgetWrapper';
 import AnalogClock from './components/gadgets/AnalogClock';
 import CountdownGadget from './components/gadgets/CountdownGadget';
 import QuickNoteGadget from './components/gadgets/QuickNoteGadget';
 import MediaUploaderGadget from './components/gadgets/MediaUploaderGadget';
 import FinancialSummaryGadget from './components/gadgets/FinancialSummaryGadget';
+import TeamStatusGadget from './components/gadgets/TeamStatusGadget';
 import Dashboard from './components/Dashboard';
 import KanbanBoard from './components/kanban/KanbanBoard';
 import Schedule from './components/Schedule';
@@ -31,6 +32,7 @@ import TeamHub from './components/TeamHub';
 import Inventory from './components/Inventory';
 import Reports from './components/Reports';
 import AvatarViewer from './components/AvatarViewer';
+import ControlCenter from './components/ControlCenter';
 import { ProfileApp } from './components/ProfileApp';
 import { TaskForm } from './components/forms/TaskForm';
 import { ScheduleForm } from './components/forms/ScheduleForm';
@@ -44,7 +46,7 @@ import { PhotoUploadForm } from './components/forms/PhotoUploadForm';
 import { CollectiveDocumentForm } from './components/forms/CollectiveDocumentForm';
 import { MeetingMinuteForm } from './components/forms/MeetingMinuteForm';
 import { VotingTopicForm } from './components/forms/VotingTopicForm';
-import { ChevronLeftIcon, PowerIcon, HomeIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, RadioIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon } from './components/icons';
+import { ChevronLeftIcon, PowerIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, RadioIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon } from './components/icons';
 // FIX: Import AppContext to provide context to children components.
 import { AppContext } from './contexts/AppContext';
 
@@ -98,16 +100,41 @@ const MOCK_INITIAL_DATA = {
     collectiveDocuments: [] as CollectiveDocument[],
     meetingMinutes: [] as MeetingMinute[],
     votingTopics: [] as VotingTopic[],
-    radioPlaylist: [] as Track[],
+    teamStatuses: [] as TeamStatus[],
     gadgets: [] as Gadget[],
     totalBudget: 0,
 };
+
+const CURATED_RADIO_PLAYLIST: Track[] = [
+    {
+        name: 'Super Hero',
+        artist: 'Ébanos Black',
+        url: 'https://files.catbox.moe/49tch7.mp3',
+        artwork: 'https://i.postimg.cc/8PqFhf7p/ebanosblacksuperhero.png',
+    },
+    {
+        name: 'A milhão',
+        artist: 'Ébanos Black',
+        url: 'https://files.catbox.moe/08cne1.mp3',
+        artwork: 'https://i.postimg.cc/jSthz1wd/ebanosblackamilhao.png',
+    }
+];
+
+const wallpapers = [
+    { name: 'Clio Rebelde 1', url: 'https://i.postimg.cc/0NYRtj9R/clio-rebelde-editada-0-6.jpg' },
+    { name: 'Clio Rebelde 2', url: 'https://i.postimg.cc/76HcmNBn/clio-rebelde-editada-0-5.jpg' },
+    { name: 'Clio Rebelde 3', url: 'https://i.postimg.cc/QNP4Tsrv/clio-rebelde-editada-0-2.jpg' },
+    { name: 'Clio Rebelde 4', url: 'https://i.postimg.cc/2Sd2MZL7/clio-rebelde-editada-0-1.jpg' },
+    { name: 'Clio Rebelde 5', url: 'https://i.postimg.cc/4dyPY22N/clio-rebelde-1920x1080.jpg' },
+    { name: 'Clio Rebelde 6', url: 'https://i.postimg.cc/tRZ0fBq3/clio-rebelde-1920x1080-1.jpg' }
+];
+
 
 // --- APP TYPES ---
 export type AppName = 
     | 'dashboard' | 'info' | 'tasks' | 'schedule' | 'artists' | 'team_hub' 
     | 'media' | 'inventory' | 'reports' | 'documentation' | 'clio_company' 
-    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile' | 'radio_sarau';
+    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile' | 'radio_clio';
 
 export type AppStatus = 'open' | 'minimized' | 'closed';
 export type AppStates = Record<AppName, AppStatus>;
@@ -117,10 +144,10 @@ const initialAppStates: AppStates = {
     artists: 'closed', team_hub: 'closed', media: 'closed', inventory: 'closed',
     reports: 'closed', documentation: 'closed', clio_company: 'closed',
     personalize: 'closed', finances: 'closed', notebooks: 'closed', gallery: 'closed',
-    browser: 'closed', collab_clio: 'closed', profile: 'closed', radio_sarau: 'closed'
+    browser: 'closed', collab_clio: 'closed', profile: 'closed', radio_clio: 'closed'
 };
 
-const DEFAULT_WALLPAPER = 'https://i.postimg.cc/bwZhCxbX/clios-canvas.png';
+const DEFAULT_WALLPAPER = 'https://i.postimg.cc/0NYRtj9R/clio-rebelde-editada-0-6.jpg';
 
 const GUEST_USER_EMAIL = 'guest@dev.clio';
 const GUEST_USER: Member = {
@@ -141,12 +168,16 @@ const App: React.FC = () => {
     const [userState, setUserState] = useState<any>(null);
 
     const [wallpaperImage, setWallpaperImage] = useState<string | null>(null);
-    const [loginWallpaper, setLoginWallpaper] = useState<string | null>(() => localStorage.getItem('clio-os-login-wallpaper'));
     const [appStates, setAppStates] = useState<AppStates>(initialAppStates);
 
     // Mobile state
     const isMobile = useMediaQuery('(max-width: 768px)');
     const [activeMobileApp, setActiveMobileApp] = useState<AppName | null>(null);
+    const [isMobileControlCenterOpen, setIsMobileControlCenterOpen] = useState(false);
+    const [mobilePageIndex, setMobilePageIndex] = useState(0);
+    const touchStartX = useRef(0);
+    const touchStartY = useRef(0);
+
 
     // Modal State
     const [modalOpen, setModalOpen] = useState(false);
@@ -156,6 +187,8 @@ const App: React.FC = () => {
     // Personal Music Player State
     const [isMusicPlayerOpen, setIsMusicPlayerOpen] = useState(false);
     const [playlist, setPlaylist] = useState<Track[]>([]);
+    const playlistRef = useRef(playlist);
+    playlistRef.current = playlist;
     const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [volume, setVolume] = useState(0.75);
@@ -167,6 +200,9 @@ const App: React.FC = () => {
     // Radio Sarau Player State
     const [currentRadioTrackIndex, setCurrentRadioTrackIndex] = useState(0);
     const [isRadioPlaying, setIsRadioPlaying] = useState(false);
+    const [radioProgress, setRadioProgress] = useState(0);
+    const [radioDuration, setRadioDuration] = useState(0);
+    const [radioVolume, setRadioVolume] = useState(0.75);
     const radioAudioRef = useRef<HTMLAudioElement>(null);
     
     // --- USER & DATA MANAGEMENT ---
@@ -174,6 +210,18 @@ const App: React.FC = () => {
         // Persist users list whenever it changes
         localStorage.setItem('clio-os-users', JSON.stringify(users));
     }, [users]);
+    
+    useEffect(() => {
+        // This effect will run only once, on mount, and its cleanup will run on unmount.
+        return () => {
+            // Revoke any blob URLs from the music player playlist to prevent memory leaks
+            playlistRef.current.forEach(track => {
+                if (track.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(track.url);
+                }
+            });
+        };
+    }, []);
 
     const loadUserData = (email: string) => {
         const userDataString = localStorage.getItem(`collab-clio-data-${email}`);
@@ -244,6 +292,12 @@ const App: React.FC = () => {
         setAppStates(initialAppStates);
         setActiveMobileApp(null);
     };
+
+    const randomLoginWallpaper = useMemo(() => {
+        if (loggedInUser) return null; // Don't calculate if logged in
+        const randomIndex = Math.floor(Math.random() * wallpapers.length);
+        return wallpapers[randomIndex].url;
+    }, [loggedInUser]);
 
     // --- GENERIC STATE UPDATE HANDLER ---
     const updateUserState = (key: keyof typeof MOCK_INITIAL_DATA, value: any) => {
@@ -448,6 +502,23 @@ const App: React.FC = () => {
         );
         updateUserState('votingTopics', newTopics);
     };
+    const handleUpdateTeamStatus = (statusText: string) => {
+        if (!loggedInUser) return;
+
+        const existingStatusIndex = userState.teamStatuses.findIndex((s: TeamStatus) => s.memberId === loggedInUser.id);
+        let newStatuses;
+        if (existingStatusIndex > -1) {
+            // Update existing status
+            newStatuses = [...userState.teamStatuses];
+            newStatuses[existingStatusIndex] = { ...newStatuses[existingStatusIndex], status: statusText };
+        } else {
+            // Add new status
+            const newStatus: TeamStatus = { memberId: loggedInUser.id, status: statusText };
+            newStatuses = [...userState.teamStatuses, newStatus];
+        }
+        updateUserState('teamStatuses', newStatuses);
+    };
+
      const handleAddGadget = (type: GadgetType) => {
         const newGadget: Gadget = {
             id: crypto.randomUUID(), type,
@@ -477,15 +548,6 @@ const App: React.FC = () => {
             setWallpaperImage(null);
         }
     };
-    const handleSetLoginWallpaper = (imageUrl: string) => {
-        localStorage.setItem('clio-os-login-wallpaper', imageUrl);
-        setLoginWallpaper(imageUrl);
-    };
-
-    const handleResetLoginWallpaper = () => {
-        localStorage.removeItem('clio-os-login-wallpaper');
-        setLoginWallpaper(null);
-    };
 
 
     // --- App Window Handlers ---
@@ -505,7 +567,15 @@ const App: React.FC = () => {
         setEditingItem(null);
     };
 
-    // --- Music Player Handlers --- (unchanged, can be collapsed for brevity)
+    // --- Music Player Handlers ---
+    const handlePlayPause = useCallback(() => { if (playlist.length > 0) setIsPlaying(!isPlaying); }, [playlist.length, isPlaying]);
+    const handleNextTrack = useCallback(() => {
+        if (playlist.length > 0) {
+            setCurrentTrackIndex(p => (p + 1) % playlist.length);
+            setIsPlaying(true);
+        }
+    }, [playlist.length]);
+
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio) return;
@@ -520,84 +590,140 @@ const App: React.FC = () => {
             audio.removeEventListener('timeupdate', setAudioTime);
             audio.removeEventListener('ended', handleAudioEnd);
         };
-    }, [playlist, currentTrackIndex]);
+    }, [playlist, currentTrackIndex, handleNextTrack]);
     useEffect(() => { if (audioRef.current) { isPlaying ? audioRef.current.play().catch(console.error) : audioRef.current.pause(); } }, [isPlaying, currentTrackIndex]);
     useEffect(() => { if (audioRef.current) { audioRef.current.volume = volume; } }, [volume]);
-    const handlePlayPause = () => { if (playlist.length > 0) setIsPlaying(!isPlaying); };
-    const handleNextTrack = () => { setCurrentTrackIndex(p => (p + 1) % playlist.length); setIsPlaying(true); };
-    const handlePrevTrack = () => { setCurrentTrackIndex(p => (p - 1 + playlist.length) % playlist.length); setIsPlaying(true); };
-    const handleSelectTrack = (index: number) => { setCurrentTrackIndex(index); setIsPlaying(true); };
+
+    const handlePrevTrack = useCallback(() => { 
+        if(playlist.length > 0) {
+            setCurrentTrackIndex(p => (p - 1 + playlist.length) % playlist.length); 
+            setIsPlaying(true); 
+        }
+    }, [playlist.length]);
+
+    const handleSelectTrack = useCallback((index: number) => { 
+        setCurrentTrackIndex(index); 
+        setIsPlaying(true); 
+    }, []);
+
     const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value); };
     const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => setVolume(Number(e.target.value));
     const handleMusicFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            const track: Track = { name: file.name.replace('.mp3', ''), artist: 'Desconhecido', url: URL.createObjectURL(file) };
+            const track: Track = { name: file.name.replace('.mp3', ''), artist: 'Desconhecido', url: URL.createObjectURL(file), artwork: '' };
             setPlaylist(p => [...p, track]);
             if (!isPlaying) { setCurrentTrackIndex(playlist.length); setIsPlaying(true); }
         }
     };
     const triggerMusicFileInput = () => musicFileInputRef.current?.click();
 
-    // --- Radio Sarau Handlers ---
-    const handleAddToRadioPlaylist = (track: Omit<Track, 'id'>) => {
-        updateUserState('radioPlaylist', [...userState.radioPlaylist, track]);
-    };
-    const handleRemoveFromRadioPlaylist = (trackIndex: number) => {
-        updateUserState('radioPlaylist', userState.radioPlaylist.filter((_: any, index: number) => index !== trackIndex));
-        if (trackIndex < currentRadioTrackIndex) {
-            setCurrentRadioTrackIndex(prev => prev - 1);
-        } else if (trackIndex === currentRadioTrackIndex && isRadioPlaying) {
-            // If deleting the current song, stop playback and reset to the start of the new list
-            if (radioAudioRef.current) {
-                radioAudioRef.current.pause();
-            }
-            setIsRadioPlaying(false);
-            setCurrentRadioTrackIndex(0);
+    // --- Radio Clio Handlers ---
+    const handleRadioNext = useCallback(() => {
+        if (CURATED_RADIO_PLAYLIST) {
+             setCurrentRadioTrackIndex(p => (p + 1) % CURATED_RADIO_PLAYLIST.length);
+             setIsRadioPlaying(true);
         }
-    };
+    }, []);
 
     useEffect(() => {
         const audio = radioAudioRef.current;
         if (!audio) return;
+        
+        const setAudioData = () => setRadioDuration(audio.duration);
+        const setAudioTime = () => setRadioProgress(audio.currentTime);
         const handleRadioEnd = () => handleRadioNext();
+
+        audio.addEventListener('loadeddata', setAudioData);
+        audio.addEventListener('timeupdate', setAudioTime);
         audio.addEventListener('ended', handleRadioEnd);
+        
+        if (audio.volume !== radioVolume) {
+            audio.volume = radioVolume;
+        }
+        
+        if (isRadioPlaying) {
+            audio.play().catch(console.error);
+        } else {
+            audio.pause();
+        }
+
         return () => {
+            audio.removeEventListener('loadeddata', setAudioData);
+            audio.removeEventListener('timeupdate', setAudioTime);
             audio.removeEventListener('ended', handleRadioEnd);
         };
-    }, [userState?.radioPlaylist, currentRadioTrackIndex]);
+    }, [isRadioPlaying, currentRadioTrackIndex, radioVolume, handleRadioNext]);
 
-    useEffect(() => {
-        if (radioAudioRef.current) {
-            isRadioPlaying ? radioAudioRef.current.play().catch(console.error) : radioAudioRef.current.pause();
-        }
-    }, [isRadioPlaying, currentRadioTrackIndex]);
 
     const handleRadioPlayPause = () => {
-        if (userState?.radioPlaylist?.length > 0) {
+        if (CURATED_RADIO_PLAYLIST.length > 0) {
             setIsRadioPlaying(!isRadioPlaying);
         }
     };
-    const handleRadioNext = () => {
-        if (userState?.radioPlaylist) {
-             setCurrentRadioTrackIndex(p => (p + 1) % userState.radioPlaylist.length);
-             setIsRadioPlaying(true);
+    
+    const handleRadioPrev = () => {
+        if (CURATED_RADIO_PLAYLIST) {
+            setCurrentRadioTrackIndex(p => (p - 1 + CURATED_RADIO_PLAYLIST.length) % CURATED_RADIO_PLAYLIST.length);
+            setIsRadioPlaying(true);
         }
     };
-    const handleRadioPrev = () => {
-        if (userState?.radioPlaylist) {
-            setCurrentRadioTrackIndex(p => (p - 1 + userState.radioPlaylist.length) % userState.radioPlaylist.length);
-            setIsRadioPlaying(true);
+    
+    const handleRadioSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (radioAudioRef.current) {
+            const newTime = Number(e.target.value);
+            radioAudioRef.current.currentTime = newTime;
+            setRadioProgress(newTime);
+        }
+    };
+
+    const handleRadioVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setRadioVolume(Number(e.target.value));
+    };
+
+    
+    // --- Mobile Gesture Handler ---
+    const handleMobileTouchStart = (e: React.TouchEvent) => {
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+    };
+
+    const handleMobileTouchEnd = (e: React.TouchEvent) => {
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        
+        const deltaX = touchEndX - touchStartX.current;
+        const deltaY = touchEndY - touchStartY.current;
+
+        // Prioritize vertical swipe for Control Center
+        const verticalSwipeThreshold = 75;
+        if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > verticalSwipeThreshold && touchStartY.current < 150) {
+            setIsMobileControlCenterOpen(true);
+            return;
+        }
+
+        // If not a clear vertical swipe, and no app is open, check for horizontal page swipe
+        const horizontalSwipeThreshold = 50;
+        if (!activeMobileApp && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > horizontalSwipeThreshold) {
+            if (mobilePageIndex === 0) {
+                // On App screen, only swipe left works to go to page 1
+                if (deltaX < 0) {
+                    setMobilePageIndex(1);
+                }
+            } else { // mobilePageIndex === 1
+                // On empty screen, any horizontal swipe goes back to page 0
+                setMobilePageIndex(0);
+            }
         }
     };
 
 
     // --- RENDER LOGIC ---
     if (!loggedInUser || !userState) {
-        return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUp} onGuestLogin={handleGuestLogin} loginWallpaper={loginWallpaper} />;
+        return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUp} onGuestLogin={handleGuestLogin} loginWallpaper={randomLoginWallpaper} />;
     }
 
-    const { members, artists, tasks, schedule, financialProjects, totalBudget, feedPosts, eventInfo, mediaItems, inventoryItems, gadgets, notebooks, photoAlbums, collectiveDocuments, meetingMinutes, votingTopics, radioPlaylist } = userState;
+    const { members, artists, tasks, schedule, financialProjects, totalBudget, feedPosts, eventInfo, mediaItems, inventoryItems, gadgets, notebooks, photoAlbums, collectiveDocuments, meetingMinutes, votingTopics, teamStatuses } = userState;
     const recentlyUpdatedTaskId = null; // This feature can be re-implemented if needed
 
     const renderModalContent = () => {
@@ -650,8 +776,8 @@ const App: React.FC = () => {
         { name: 'dashboard', title: 'Dashboard', icon: <DockAppIcon bgColorClasses="bg-blue-600"><HomeIcon /></DockAppIcon>, component: <Dashboard onOpenModal={openModal} {...userState} /> },
         { name: 'tasks', title: 'Tarefas', icon: <DockAppIcon bgColorClasses="bg-green-600"><CheckSquareIcon /></DockAppIcon>, component: <KanbanBoard onOpenModal={openModal} tasks={tasks} members={members} recentlyUpdatedTaskId={recentlyUpdatedTaskId} handleDeleteTask={handleDeleteTask} handleUpdateTaskStatus={handleUpdateTaskStatus} /> },
         { name: 'schedule', title: 'Cronograma', icon: <DockAppIcon bgColorClasses="bg-orange-600"><ClockIcon /></DockAppIcon>, component: <Schedule onOpenModal={openModal} schedule={schedule} handleDeleteScheduleItem={handleDeleteScheduleItem} /> },
-        { name: 'artists', title: 'Artistas', icon: <DockAppIcon bgColorClasses="bg-purple-600"><MicIcon /></DockAppIcon>, component: <Artists onOpenModal={openModal} artists={artists} handleDeleteArtist={handleDeleteArtist} /> },
-        { name: 'team_hub', title: 'Hub da Equipe', icon: <DockAppIcon bgColorClasses="bg-teal-500"><UsersIcon /></DockAppIcon>, component: <TeamHub onOpenModal={openModal} currentUser={loggedInUser} members={members} feedPosts={feedPosts} handleAddPost={handleAddPost} /> },
+        { name: 'artists', title: 'Artistas', icon: <DockAppIcon bgColorClasses="bg-purple-600"><BrushIcon /></DockAppIcon>, component: <Artists onOpenModal={openModal} artists={artists} handleDeleteArtist={handleDeleteArtist} /> },
+        { name: 'team_hub', title: 'Hub da Equipe', icon: <DockAppIcon bgColorClasses="bg-teal-500"><UsersIcon /></DockAppIcon>, component: <TeamHub onOpenModal={openModal} currentUser={loggedInUser} members={members} feedPosts={feedPosts} handleAddPost={handleAddPost} teamStatuses={teamStatuses} handleUpdateTeamStatus={handleUpdateTeamStatus} /> },
         { name: 'inventory', title: 'Inventário', icon: <DockAppIcon bgColorClasses="bg-slate-600"><BoxIcon /></DockAppIcon>, component: <Inventory onOpenModal={openModal} inventoryItems={inventoryItems} members={members} handleDeleteInventoryItem={handleDeleteInventoryItem} /> },
         { name: 'info', title: 'Informações', icon: <DockAppIcon bgColorClasses="bg-indigo-600"><InfoIcon /></DockAppIcon>, component: <EventInfo onOpenModal={openModal} {...userState} /> },
         { name: 'media', title: 'Mídia', icon: <DockAppIcon bgColorClasses="bg-red-600"><ImageIcon /></DockAppIcon>, component: <MediaHub onOpenModal={() => openModal('media')} mediaItems={mediaItems} artists={artists} handleDeleteMediaItem={handleDeleteMediaItem} /> },
@@ -660,11 +786,11 @@ const App: React.FC = () => {
         { name: 'documentation', title: 'Documentação', icon: <DockAppIcon bgColorClasses="bg-indigo-700"><BookOpenIcon /></DockAppIcon>, component: <Documentation /> },
         { name: 'finances', title: 'Finanças', icon: <DockAppIcon bgColorClasses="bg-emerald-600"><WalletIcon /></DockAppIcon>, component: <FinanceApp financialProjects={financialProjects} handleSaveFinancialProject={handleSaveFinancialProject} handleDeleteFinancialProject={handleDeleteFinancialProject} handleSaveTransaction={handleSaveTransaction} handleDeleteTransaction={handleDeleteTransaction} /> },
         { name: 'notebooks', title: 'Cadernos', icon: <DockAppIcon bgColorClasses="bg-amber-600"><BookMarkedIcon /></DockAppIcon>, component: <NotebooksApp notebooks={notebooks} handleSaveNotebook={handleSaveNotebook} handleDeleteNotebook={handleDeleteNotebook} handleSaveNote={handleSaveNote} handleDeleteNote={handleDeleteNote} /> },
-        { name: 'radio_sarau', title: 'Rádio Sarau', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon>, component: <RadioSarauApp playlist={radioPlaylist} currentTrackIndex={currentRadioTrackIndex} isPlaying={isRadioPlaying} onPlayPause={handleRadioPlayPause} onNext={handleRadioNext} onPrev={handleRadioPrev} onAddTrack={handleAddToRadioPlaylist} onRemoveTrack={handleRemoveFromRadioPlaylist} /> },
+        { name: 'radio_clio', title: 'Rádio Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon>, component: <RadioClioApp playlist={CURATED_RADIO_PLAYLIST} currentTrackIndex={currentRadioTrackIndex} isPlaying={isRadioPlaying} onPlayPause={handleRadioPlayPause} onNext={handleRadioNext} onPrev={handleRadioPrev} progress={radioProgress} duration={radioDuration} volume={radioVolume} onSeek={handleRadioSeek} onVolumeChange={handleRadioVolumeChange} /> },
         { name: 'collab_clio', title: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon>, component: <CollabClioApp onOpenModal={openModal} currentUser={loggedInUser} {...userState} handleDeleteCollectiveDocument={handleDeleteCollectiveDocument} handleDeleteMeetingMinute={handleDeleteMeetingMinute} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} /> },
         { name: 'browser', title: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon>, component: <BrowserApp /> },
         { name: 'profile', title: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon>, component: <ProfileApp currentUser={loggedInUser} onSaveProfile={handleSaveProfile} onChangePassword={handleChangePassword} /> },
-        { name: 'personalize', title: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon>, component: <PersonalizeApp currentWallpaper={wallpaperImage || DEFAULT_WALLPAPER} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} loginWallpaper={loginWallpaper} onSetLoginWallpaper={handleSetLoginWallpaper} onResetLoginWallpaper={handleResetLoginWallpaper} /> },
+        { name: 'personalize', title: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon>, component: <PersonalizeApp currentWallpaper={wallpaperImage || DEFAULT_WALLPAPER} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} wallpapers={wallpapers} /> },
     ];
     
     const appComponents = appConfig.reduce((acc, app) => ({ ...acc, [app.name]: app.component }), {} as Record<AppName, React.ReactNode>);
@@ -683,6 +809,9 @@ const App: React.FC = () => {
         photoAlbums,
         handleDeletePhoto,
         members,
+        currentUser: loggedInUser,
+        teamStatuses,
+        handleUpdateTeamStatus,
     };
 
     return (
@@ -693,7 +822,11 @@ const App: React.FC = () => {
             >
                  <div className="absolute inset-0 bg-slate-900/30"></div>
                 {isMobile ? (
-                    <div className="h-full w-full overflow-hidden flex flex-col relative">
+                    <div 
+                        className="h-full w-full overflow-hidden flex flex-col relative"
+                        onTouchStart={handleMobileTouchStart}
+                        onTouchEnd={handleMobileTouchEnd}
+                    >
                         {activeMobileApp ? (
                              <>
                                 <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-14 flex items-center justify-between px-4 z-10 border-b border-white/10">
@@ -710,34 +843,65 @@ const App: React.FC = () => {
                             </>
                         ) : (
                             <>
-                                <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-14 flex items-center justify-between px-4 border-b border-white/10">
-                                    <div className="flex items-center gap-2">
-                                        <img src={loggedInUser.avatar} alt={loggedInUser.name} className="w-8 h-8 rounded-full" />
-                                        <span className="font-semibold text-white">{loggedInUser.name}</span>
+                                <div className="h-full w-full overflow-hidden">
+                                    <div 
+                                        className="h-full w-[200%] flex transition-transform duration-300 ease-out"
+                                        style={{ transform: `translateX(-${mobilePageIndex * 50}%)` }}
+                                    >
+                                        {/* Page 1: App Grid */}
+                                        <div className="w-1/2 h-full flex-shrink-0 flex flex-col overflow-hidden">
+                                            <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-14 flex items-center justify-between px-4 border-b border-white/10">
+                                                <div className="flex items-center gap-2">
+                                                    <img src={loggedInUser.avatar} alt={loggedInUser.name} className="w-8 h-8 rounded-full" />
+                                                    <span className="font-semibold text-white">{loggedInUser.name}</span>
+                                                </div>
+                                                <button onClick={handleLogout} className="p-2 text-slate-300 hover:text-white" aria-label="Sair">
+                                                    <PowerIcon className="w-5 h-5 text-red-400"/>
+                                                </button>
+                                            </header>
+                                            <main className="flex-1 overflow-y-auto p-4">
+                                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                                                    {appConfig.map(({ name, title, icon }) => (
+                                                        <button key={name} onClick={() => setActiveMobileApp(name)} className="flex flex-col items-center justify-start p-2 space-y-2 rounded-lg hover:bg-black/20 transition-colors">
+                                                            <div className="w-16 h-16">
+                                                                {icon}
+                                                            </div>
+                                                            <span className="text-xs text-center text-slate-200">{title}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </main>
+                                        </div>
+                                        {/* Page 2: Empty Screen */}
+                                        <div className="w-1/2 h-full flex-shrink-0">
+                                            {/* This page is intentionally empty */}
+                                        </div>
                                     </div>
-                                    <button onClick={handleLogout} className="p-2 text-slate-300 hover:text-white" aria-label="Sair">
-                                        <PowerIcon className="w-5 h-5 text-red-400"/>
-                                    </button>
-                                </header>
-                                <main className="flex-1 overflow-y-auto p-4">
-                                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-                                         {appConfig.map(({ name, title, icon }) => (
-                                            <button key={name} onClick={() => setActiveMobileApp(name)} className="flex flex-col items-center justify-start p-2 space-y-2 rounded-lg hover:bg-black/20 transition-colors">
-                                                 <div className="w-16 h-16">
-                                                     {icon}
-                                                 </div>
-                                                 <span className="text-xs text-center text-slate-200">{title}</span>
-                                             </button>
-                                         ))}
-                                    </div>
-                                </main>
+                                </div>
+                                {/* Page indicators */}
+                                <div className="absolute bottom-2 left-0 right-0 flex justify-center items-center space-x-2 pointer-events-none">
+                                    <div className={`w-2 h-2 rounded-full transition-colors ${mobilePageIndex === 0 ? 'bg-white' : 'bg-white/50'}`}></div>
+                                    <div className={`w-2 h-2 rounded-full transition-colors ${mobilePageIndex === 1 ? 'bg-white' : 'bg-white/50'}`}></div>
+                                </div>
                             </>
                         )}
+                        <ControlCenter 
+                            isOpen={isMobileControlCenterOpen} 
+                            onClose={() => setIsMobileControlCenterOpen(false)}
+                            eventInfo={eventInfo}
+                            schedule={schedule}
+                            playlist={CURATED_RADIO_PLAYLIST}
+                            currentTrackIndex={currentRadioTrackIndex}
+                            isPlaying={isRadioPlaying}
+                            onPlayPause={handleRadioPlayPause}
+                            onNext={handleRadioNext}
+                            onPrev={handleRadioPrev}
+                        />
                     </div>
                 ) : (
                     <>
                         <audio ref={audioRef} src={playlist[currentTrackIndex]?.url} />
-                        <audio ref={radioAudioRef} src={radioPlaylist?.[currentRadioTrackIndex]?.url} />
+                        <audio ref={radioAudioRef} src={CURATED_RADIO_PLAYLIST?.[currentRadioTrackIndex]?.url} />
                         <input type="file" ref={musicFileInputRef} onChange={handleMusicFileChange} accept=".mp3" className="hidden" />
 
                         <ClioOSDesktop 
@@ -747,6 +911,14 @@ const App: React.FC = () => {
                             appStates={appStates}
                             isMusicPlayerOpen={isMusicPlayerOpen}
                             onToggleMusicPlayer={() => setIsMusicPlayerOpen(!isMusicPlayerOpen)}
+                            eventInfo={eventInfo}
+                            schedule={schedule}
+                            radioPlaylist={CURATED_RADIO_PLAYLIST}
+                            currentRadioTrackIndex={currentRadioTrackIndex}
+                            isRadioPlaying={isRadioPlaying}
+                            handleRadioPlayPause={handleRadioPlayPause}
+                            handleRadioNext={handleRadioNext}
+                            handleRadioPrev={handleRadioPrev}
                         />
 
                         {gadgets.map((gadget: Gadget) => (
@@ -756,6 +928,7 @@ const App: React.FC = () => {
                                 {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
                                 {gadget.type === 'media_uploader' && <MediaUploaderGadget />}
                                 {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
+                                {gadget.type === 'team_status' && <TeamStatusGadget />}
                             </GadgetWrapper>
                         ))}
 

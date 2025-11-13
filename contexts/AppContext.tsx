@@ -7,7 +7,8 @@ import type {
     Member,
     Note,
     Notebook,
-    PhotoAlbum
+    PhotoAlbum,
+    TeamStatus
 } from '../types';
 
 export interface AppContextType {
@@ -23,6 +24,9 @@ export interface AppContextType {
     photoAlbums: PhotoAlbum[];
     handleDeletePhoto: (albumId: string, photoId: string) => void;
     members: Member[];
+    currentUser: Member | null;
+    teamStatuses: TeamStatus[];
+    handleUpdateTeamStatus: (statusText: string) => void;
 }
 
 export const AppContext = createContext<AppContextType | null>(null);

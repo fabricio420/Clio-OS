@@ -226,17 +226,17 @@ const sections = [
     )
   },
   {
-    id: 'radio_sarau',
-    title: 'Rádio Sarau',
+    id: 'radio_clio',
+    title: 'Rádio Clio',
     icon: <RadioIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'rádio, música, playlist, som, colaborativa, mp3, trilha sonora',
+    keywords: 'rádio, música, playlist, som, curadoria, mp3, trilha sonora',
     content: (
       <>
-        <p>A Rádio Sarau é a playlist colaborativa do coletivo. Um espaço para que todos possam adicionar músicas e criar a trilha sonora perfeita para os encontros, reuniões de planejamento ou para o próprio evento.</p>
+        <p>A Rádio Clio é a trilha sonora oficial do coletivo, um player de música para inspirar a criatividade e embalar os encontros, com um visual que destaca a arte de cada música.</p>
         <ul>
-          <li><strong>Playlist Compartilhada:</strong> Todos os membros da equipe veem e ouvem a mesma playlist.</li>
-          <li><strong>Adicionar por URL:</strong> Adicione novas músicas à fila de reprodução fornecendo um link direto para um arquivo MP3.</li>
-          <li><strong>Controles de Reprodução:</strong> Controles simples para tocar, pausar, pular para a próxima música ou voltar para a anterior, sincronizados para todos.</li>
+            <li><strong>Playlist do Coletivo:</strong> O player toca as músicas definidas para o evento, criando uma atmosfera única.</li>
+            <li><strong>Visual Integrado:</strong> O player exibe a capa do álbum ou uma foto do artista da faixa que está tocando.</li>
+            <li><strong>Controles Simples:</strong> Controles intuitivos para tocar, pausar e navegar pela playlist, sincronizados para toda a equipe.</li>
         </ul>
       </>
     )

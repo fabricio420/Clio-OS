@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
     PowerIcon, WalletIcon, ArchiveIcon, BrushIcon, BookMarkedIcon, ExternalLinkIcon, HomeIcon,
-    CheckSquareIcon, ClockIcon, MicIcon, InfoIcon, ImageIcon, BookOpenIcon, BoxIcon, UsersIcon, FileTextIcon, LifeBuoyIcon, DockAppIcon,
+    CheckSquareIcon, ClockIcon, InfoIcon, ImageIcon, BookOpenIcon, BoxIcon, UsersIcon, FileTextIcon, LifeBuoyIcon, DockAppIcon,
     MusicIcon, GlobeIcon, BriefcaseIcon, UserIcon, RadioIcon
 } from './icons';
-import type { Member } from '../types';
+import type { Member, EventInfoData, ScheduleItem, Track } from '../types';
 import type { AppName, AppStates } from '../App';
 import ControlCenter from './ControlCenter';
 
@@ -39,9 +39,21 @@ interface ClioOSDesktopProps {
     appStates: AppStates;
     isMusicPlayerOpen: boolean;
     onToggleMusicPlayer: () => void;
+    eventInfo: EventInfoData;
+    schedule: ScheduleItem[];
+    radioPlaylist: Track[];
+    currentRadioTrackIndex: number;
+    isRadioPlaying: boolean;
+    handleRadioPlayPause: () => void;
+    handleRadioNext: () => void;
+    handleRadioPrev: () => void;
 }
 
-const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({ onAppClick, user, onLogout, appStates, isMusicPlayerOpen, onToggleMusicPlayer }) => {
+const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({ 
+    onAppClick, user, onLogout, appStates, isMusicPlayerOpen, onToggleMusicPlayer,
+    eventInfo, schedule, radioPlaylist, currentRadioTrackIndex, isRadioPlaying, 
+    handleRadioPlayPause, handleRadioNext, handleRadioPrev 
+}) => {
     const [time, setTime] = useState(new Date());
     const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -65,13 +77,13 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({ onAppClick, user, onLogou
         };
     }, [userMenuRef]);
 
-    const formattedTime = time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const formattedTime = time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 
     const dockApps: ({ id: AppName, label: string; icon: React.ReactNode, disabled?: boolean } | { type: 'separator' })[] = [
         { id: 'dashboard', label: 'Dashboard', icon: <DockAppIcon bgColorClasses="bg-blue-600"><HomeIcon /></DockAppIcon> },
         { id: 'tasks', label: 'Tarefas', icon: <DockAppIcon bgColorClasses="bg-green-600"><CheckSquareIcon /></DockAppIcon> },
         { id: 'schedule', label: 'Cronograma', icon: <DockAppIcon bgColorClasses="bg-orange-600"><ClockIcon /></DockAppIcon> },
-        { id: 'artists', label: 'Artistas', icon: <DockAppIcon bgColorClasses="bg-purple-600"><MicIcon /></DockAppIcon> },
+        { id: 'artists', label: 'Artistas', icon: <DockAppIcon bgColorClasses="bg-purple-600"><BrushIcon /></DockAppIcon> },
         { id: 'team_hub', label: 'Hub da Equipe', icon: <DockAppIcon bgColorClasses="bg-teal-500"><UsersIcon /></DockAppIcon> },
         { id: 'inventory', label: 'Inventário', icon: <DockAppIcon bgColorClasses="bg-slate-600"><BoxIcon /></DockAppIcon> },
         { type: 'separator' },
@@ -83,7 +95,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({ onAppClick, user, onLogou
         { type: 'separator' },
         { id: 'finances', label: 'Finanças', icon: <DockAppIcon bgColorClasses="bg-emerald-600"><WalletIcon /></DockAppIcon> },
         { id: 'notebooks', label: 'Cadernos', icon: <DockAppIcon bgColorClasses="bg-amber-600"><BookMarkedIcon /></DockAppIcon> },
-        { id: 'radio_sarau', label: 'Rádio Sarau', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon> },
+        { id: 'radio_clio', label: 'Rádio Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon> },
         { id: 'collab_clio', label: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon> },
         { id: 'browser', label: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon> },
         { type: 'separator' },
@@ -148,7 +160,18 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({ onAppClick, user, onLogou
                 </div>
             </header>
             
-            <ControlCenter isOpen={isControlCenterOpen} onClose={() => setIsControlCenterOpen(false)} />
+            <ControlCenter 
+                isOpen={isControlCenterOpen} 
+                onClose={() => setIsControlCenterOpen(false)}
+                eventInfo={eventInfo}
+                schedule={schedule}
+                radioPlaylist={radioPlaylist}
+                currentRadioTrackIndex={currentRadioTrackIndex}
+                isRadioPlaying={isRadioPlaying}
+                onPlayPause={handleRadioPlayPause}
+                onNext={handleRadioNext}
+                onPrev={handleRadioPrev}
+            />
 
             {/* Empty Desktop Area */}
             <main className="flex-1"></main>

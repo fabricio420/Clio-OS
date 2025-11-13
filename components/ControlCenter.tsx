@@ -1,10 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { EventInfoData, ScheduleItem } from '../types';
-import { ChevronLeftIcon, ChevronRightIcon, MoonIcon, BellIcon, ClockIcon } from './icons';
+import type { EventInfoData, ScheduleItem, Track } from '../types';
+import { ChevronLeftIcon, ChevronRightIcon, MoonIcon, BellIcon, ClockIcon, PlayIcon, PauseIcon, SkipBackIcon, SkipForwardIcon } from './icons';
 
 interface ControlCenterProps {
     isOpen: boolean;
     onClose: () => void;
+    eventInfo?: EventInfoData;
+    schedule?: ScheduleItem[];
+    playlist?: Track[];
+    currentTrackIndex?: number;
+    isPlaying?: boolean;
+    onPlayPause?: () => void;
+    onNext?: () => void;
+    onPrev?: () => void;
 }
 
 const isSameDay = (d1: Date, d2: Date) =>
@@ -26,13 +34,20 @@ const ControlButton: React.FC<{ icon: React.ReactNode; label: string; active: bo
     </div>
 );
 
-const ControlCenter: React.FC<ControlCenterProps> = ({ isOpen, onClose }) => {
-    // FIX: Removed eventInfo and schedule props as they are no longer passed.
-    // Initializing with empty/default values to prevent runtime errors.
-    const eventInfo: EventInfoData | null = null;
-    const schedule: ScheduleItem[] = [];
-    
+const ControlCenter: React.FC<ControlCenterProps> = ({ 
+    isOpen, 
+    onClose, 
+    eventInfo, 
+    schedule = [],
+    playlist = [],
+    currentTrackIndex = 0,
+    isPlaying,
+    onPlayPause,
+    onNext,
+    onPrev
+}) => {
     const eventDateObj = useMemo(() => eventInfo?.eventDate ? new Date(eventInfo.eventDate) : null, [eventInfo?.eventDate]);
+    const currentTrack = playlist[currentTrackIndex];
 
     const [currentDate, setCurrentDate] = useState(eventDateObj || new Date());
     const [selectedDate, setSelectedDate] = useState(eventDateObj || new Date());
@@ -106,6 +121,25 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ isOpen, onClose }) => {
                     <ControlButton icon={<MoonIcon className="w-6 h-6"/>} label="Não Perturbar" active={doNotDisturb} onClick={() => setDoNotDisturb(p => !p)} />
                     <ControlButton icon={<BellIcon className="w-6 h-6"/>} label="Notificações" active={notificationsActive} onClick={() => setNotificationsActive(p => !p)} />
                 </div>
+
+                {playlist.length > 0 && onPlayPause && (
+                    <div className="p-4 border-b border-slate-700/50">
+                        <h4 className="font-semibold text-xs text-slate-400 uppercase mb-2">Rádio Clio</h4>
+                        <div className="bg-slate-700/50 rounded-lg p-3 flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                                <p className="font-bold text-white truncate">{currentTrack?.name || '...'}</p>
+                                <p className="text-sm text-lime-300 truncate">{currentTrack?.artist || '...'}</p>
+                            </div>
+                            <div className="flex items-center space-x-2 ml-2">
+                                <button onClick={onPrev} className="p-1"><SkipBackIcon className="w-5 h-5"/></button>
+                                <button onClick={onPlayPause} className="w-10 h-10 bg-lime-500 rounded-full flex items-center justify-center text-slate-900">
+                                {isPlaying ? <PauseIcon className="w-6 h-6"/> : <PlayIcon className="w-6 h-6"/>}
+                                </button>
+                                <button onClick={onNext} className="p-1"><SkipForwardIcon className="w-5 h-5"/></button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 
                 <div className="p-4">
                     <div className="flex justify-between items-center mb-4">
@@ -122,7 +156,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ isOpen, onClose }) => {
                 </div>
                 
                 <div className="border-t border-slate-700/50 p-4 max-h-52 overflow-y-auto">
-                    <h4 className="font-semibold mb-3">
+                    <h4 className="font-semibold mb-3 text-white">
                         Agenda para {selectedDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}
                     </h4>
                     {selectedDaySchedule.length > 0 ? (

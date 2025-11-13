@@ -24,6 +24,12 @@ export const PhotoUploadForm: React.FC<PhotoUploadFormProps> = ({ onSubmit, albu
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    React.useEffect(() => {
+        return () => {
+            previews.forEach(url => URL.revokeObjectURL(url));
+        };
+    }, [previews]);
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             // FIX: Explicitly type selectedFiles as File[] to fix type inference issues in reduce and map.

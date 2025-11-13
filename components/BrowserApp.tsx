@@ -2,8 +2,8 @@ import React, { useState, useRef } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, RefreshCwIcon, InfoIcon } from './icons';
 
 const BrowserApp: React.FC = () => {
-    const [urlInput, setUrlInput] = useState<string>('https://wikipedia.org');
-    const [iframeSrc, setIframeSrc] = useState<string>('https://wikipedia.org');
+    const [urlInput, setUrlInput] = useState<string>('https://edu-cliocompany.odoo.com');
+    const [iframeSrc, setIframeSrc] = useState<string>('https://edu-cliocompany.odoo.com');
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
     const sanitizeUrl = (url: string): string => {
