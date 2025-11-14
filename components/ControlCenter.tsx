@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { EventInfoData, ScheduleItem, Track } from '../types';
-import { ChevronLeftIcon, ChevronRightIcon, MoonIcon, BellIcon, ClockIcon, PlayIcon, PauseIcon, SkipBackIcon, SkipForwardIcon } from './icons';
+import { ChevronLeftIcon, ChevronRightIcon, MoonIcon, BellIcon, ClockIcon, Volume2Icon, VolumeXIcon } from './icons';
 
 interface ControlCenterProps {
     isOpen: boolean;
@@ -9,10 +9,8 @@ interface ControlCenterProps {
     schedule?: ScheduleItem[];
     playlist?: Track[];
     currentTrackIndex?: number;
-    isPlaying?: boolean;
-    onPlayPause?: () => void;
-    onNext?: () => void;
-    onPrev?: () => void;
+    isMuted?: boolean;
+    onMuteToggle?: () => void;
 }
 
 const isSameDay = (d1: Date, d2: Date) =>
@@ -41,10 +39,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     schedule = [],
     playlist = [],
     currentTrackIndex = 0,
-    isPlaying,
-    onPlayPause,
-    onNext,
-    onPrev
+    isMuted,
+    onMuteToggle
 }) => {
     const eventDateObj = useMemo(() => eventInfo?.eventDate ? new Date(eventInfo.eventDate) : null, [eventInfo?.eventDate]);
     const currentTrack = playlist[currentTrackIndex];
@@ -122,7 +118,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                     <ControlButton icon={<BellIcon className="w-6 h-6"/>} label="Notificações" active={notificationsActive} onClick={() => setNotificationsActive(p => !p)} />
                 </div>
 
-                {playlist.length > 0 && onPlayPause && (
+                {playlist.length > 0 && typeof isMuted !== 'undefined' && onMuteToggle && (
                     <div className="p-4 border-b border-slate-700/50">
                         <h4 className="font-semibold text-xs text-slate-400 uppercase mb-2">Rádio Clio</h4>
                         <div className="bg-slate-700/50 rounded-lg p-3 flex items-center justify-between">
@@ -131,11 +127,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                                 <p className="text-sm text-lime-300 truncate">{currentTrack?.artist || '...'}</p>
                             </div>
                             <div className="flex items-center space-x-2 ml-2">
-                                <button onClick={onPrev} className="p-1"><SkipBackIcon className="w-5 h-5"/></button>
-                                <button onClick={onPlayPause} className="w-10 h-10 bg-lime-500 rounded-full flex items-center justify-center text-slate-900">
-                                {isPlaying ? <PauseIcon className="w-6 h-6"/> : <PlayIcon className="w-6 h-6"/>}
+                                <button onClick={onMuteToggle} className="w-10 h-10 bg-lime-500 rounded-full flex items-center justify-center text-slate-900">
+                                {isMuted ? <VolumeXIcon className="w-6 h-6"/> : <Volume2Icon className="w-6 h-6"/>}
                                 </button>
-                                <button onClick={onNext} className="p-1"><SkipForwardIcon className="w-5 h-5"/></button>
                             </div>
                         </div>
                     </div>

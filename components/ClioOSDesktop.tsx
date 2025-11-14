@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     PowerIcon, WalletIcon, ArchiveIcon, BrushIcon, BookMarkedIcon, ExternalLinkIcon, HomeIcon,
     CheckSquareIcon, ClockIcon, InfoIcon, ImageIcon, BookOpenIcon, BoxIcon, UsersIcon, FileTextIcon, LifeBuoyIcon, DockAppIcon,
-    MusicIcon, GlobeIcon, BriefcaseIcon, UserIcon, RadioIcon
+    MusicIcon, GlobeIcon, BriefcaseIcon, UserIcon, RadioIcon, WhatsappIcon
 } from './icons';
 import type { Member, EventInfoData, ScheduleItem, Track } from '../types';
 import type { AppName, AppStates } from '../App';
@@ -43,16 +43,14 @@ interface ClioOSDesktopProps {
     schedule: ScheduleItem[];
     radioPlaylist: Track[];
     currentRadioTrackIndex: number;
-    isRadioPlaying: boolean;
-    handleRadioPlayPause: () => void;
-    handleRadioNext: () => void;
-    handleRadioPrev: () => void;
+    isRadioMuted: boolean;
+    handleRadioMuteToggle: () => void;
 }
 
 const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({ 
     onAppClick, user, onLogout, appStates, isMusicPlayerOpen, onToggleMusicPlayer,
-    eventInfo, schedule, radioPlaylist, currentRadioTrackIndex, isRadioPlaying, 
-    handleRadioPlayPause, handleRadioNext, handleRadioPrev 
+    eventInfo, schedule, radioPlaylist, currentRadioTrackIndex, isRadioMuted, 
+    handleRadioMuteToggle
 }) => {
     const [time, setTime] = useState(new Date());
     const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
@@ -98,6 +96,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
         { id: 'radio_clio', label: 'Rádio Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon> },
         { id: 'collab_clio', label: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon> },
         { id: 'browser', label: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon> },
+        { id: 'whatsapp', label: 'WhatsApp', icon: <DockAppIcon bgColorClasses="bg-green-500"><WhatsappIcon /></DockAppIcon> },
         { type: 'separator' },
         { id: 'profile', label: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon> },
         { id: 'personalize', label: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon> },
@@ -165,12 +164,10 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
                 onClose={() => setIsControlCenterOpen(false)}
                 eventInfo={eventInfo}
                 schedule={schedule}
-                radioPlaylist={radioPlaylist}
-                currentRadioTrackIndex={currentRadioTrackIndex}
-                isRadioPlaying={isRadioPlaying}
-                onPlayPause={handleRadioPlayPause}
-                onNext={handleRadioNext}
-                onPrev={handleRadioPrev}
+                playlist={radioPlaylist}
+                currentTrackIndex={currentRadioTrackIndex}
+                isMuted={isRadioMuted}
+                onMuteToggle={handleRadioMuteToggle}
             />
 
             {/* Empty Desktop Area */}

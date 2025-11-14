@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ImageIcon, StickyNoteIcon, UploadCloudIcon, BarChartIcon, UsersIcon } from './icons';
+import { ImageIcon, StickyNoteIcon, UploadCloudIcon, BarChartIcon, UsersIcon, RadioIcon } from './icons';
 import type { GadgetType } from '../types';
 
 interface PersonalizeAppProps {
@@ -185,12 +185,6 @@ const PersonalizeApp: React.FC<PersonalizeAppProps> = ({ currentWallpaper, onSet
                                     <p className="text-xs text-slate-400">Sua nota aqui...</p>
                                 </div>
                             </GadgetPreviewCard>
-                            <GadgetPreviewCard title="Uploader de Mídia" onAdd={() => handleAddGadget('media_uploader')}>
-                                <div className="p-4 bg-blue-500/20 w-full h-full flex flex-col items-center justify-center">
-                                    <UploadCloudIcon className="w-10 h-10 text-blue-400 mb-2"/>
-                                    <p className="text-xs text-slate-400">Envie mídias rapidamente.</p>
-                                </div>
-                            </GadgetPreviewCard>
                              <GadgetPreviewCard title="Resumo Financeiro" onAdd={() => handleAddGadget('financial_summary')}>
                                 <div className="p-4 bg-emerald-500/20 w-full h-full flex flex-col items-center justify-center">
                                     <BarChartIcon className="w-10 h-10 text-emerald-400 mb-2"/>
@@ -201,6 +195,12 @@ const PersonalizeApp: React.FC<PersonalizeAppProps> = ({ currentWallpaper, onSet
                                 <div className="p-4 bg-teal-500/20 w-full h-full flex flex-col items-center justify-center">
                                     <UsersIcon className="w-10 h-10 text-teal-400 mb-2"/>
                                     <p className="text-xs text-slate-400 text-center">Veja o que a equipe está fazendo.</p>
+                                </div>
+                            </GadgetPreviewCard>
+                            <GadgetPreviewCard title="Rádio Clio" onAdd={() => handleAddGadget('radio_clio')}>
+                                <div className="p-4 bg-rose-500/20 w-full h-full flex flex-col items-center justify-center">
+                                    <RadioIcon className="w-10 h-10 text-rose-400 mb-2"/>
+                                    <p className="text-xs text-slate-400 text-center">Player de música do coletivo.</p>
                                 </div>
                             </GadgetPreviewCard>
                         </div>

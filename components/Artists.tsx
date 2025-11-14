@@ -1,6 +1,6 @@
 import React, { useState, memo } from 'react';
 import type { Artist } from '../types';
-import { MicIcon, PlusIcon, MoreVerticalIcon, WhatsappIcon, InstagramIcon } from './icons';
+import { MicIcon, PlusIcon, MoreVerticalIcon, WhatsappIcon, InstagramIcon, FileTextIcon } from './icons';
 import Header from './Header';
 
 interface ArtistsProps {
@@ -43,7 +43,17 @@ const ArtistCard: React.FC<{
         <div>
           <strong>Email:</strong> {artist.contact}
         </div>
-        <div className="flex items-center justify-between">
+        {artist.cpf && (<div><strong>CPF:</strong> {artist.cpf}</div>)}
+        {artist.rg && (<div><strong>RG:</strong> {artist.rg}</div>)}
+        
+        {artist.documentImage && (
+            <a href={artist.documentImage} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1 hover:text-lime-400 font-semibold">
+                <FileTextIcon className="h-4 w-4" />
+                <span>Ver Documento Anexado</span>
+            </a>
+        )}
+
+        <div className="flex items-center justify-between pt-2">
             {artist.whatsapp && (
                 <a href={`https://wa.me/${artist.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1 hover:text-lime-400">
                     <WhatsappIcon className="h-4 w-4" />

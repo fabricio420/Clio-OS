@@ -1,7 +1,14 @@
 import React from 'react';
 
+// FIX: Combined attribute types for input, textarea, and select elements to support shared and unique props like 'rows'. Also unified the onChange event type.
+type AllFormElementAttributes = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> &
+                                Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'onChange'> &
+                                Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> & {
+                                  onChange?: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>;
+                                };
+
 // Generic Form Input Component
-export const FormInput = (props: React.InputHTMLAttributes<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> & { label: string, as?: 'textarea' | 'select' }) => {
+export const FormInput = (props: AllFormElementAttributes & { label: string, as?: 'input' | 'textarea' | 'select' }) => {
     const { label, as = 'input', ...rest } = props;
     const InputComponent = as;
     return (

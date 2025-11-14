@@ -17,9 +17,9 @@ import GadgetWrapper from './components/gadgets/GadgetWrapper';
 import AnalogClock from './components/gadgets/AnalogClock';
 import CountdownGadget from './components/gadgets/CountdownGadget';
 import QuickNoteGadget from './components/gadgets/QuickNoteGadget';
-import MediaUploaderGadget from './components/gadgets/MediaUploaderGadget';
 import FinancialSummaryGadget from './components/gadgets/FinancialSummaryGadget';
 import TeamStatusGadget from './components/gadgets/TeamStatusGadget';
+import RadioClioGadget from './components/gadgets/RadioClioGadget';
 import Dashboard from './components/Dashboard';
 import KanbanBoard from './components/kanban/KanbanBoard';
 import Schedule from './components/Schedule';
@@ -46,7 +46,7 @@ import { PhotoUploadForm } from './components/forms/PhotoUploadForm';
 import { CollectiveDocumentForm } from './components/forms/CollectiveDocumentForm';
 import { MeetingMinuteForm } from './components/forms/MeetingMinuteForm';
 import { VotingTopicForm } from './components/forms/VotingTopicForm';
-import { ChevronLeftIcon, PowerIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, RadioIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon } from './components/icons';
+import { ChevronLeftIcon, PowerIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, RadioIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, WhatsappIcon } from './components/icons';
 // FIX: Import AppContext to provide context to children components.
 import { AppContext } from './contexts/AppContext';
 
@@ -111,12 +111,28 @@ const CURATED_RADIO_PLAYLIST: Track[] = [
         artist: 'Ébanos Black',
         url: 'https://files.catbox.moe/49tch7.mp3',
         artwork: 'https://i.postimg.cc/8PqFhf7p/ebanosblacksuperhero.png',
+        duration: 202,
     },
     {
         name: 'A milhão',
         artist: 'Ébanos Black',
         url: 'https://files.catbox.moe/08cne1.mp3',
         artwork: 'https://i.postimg.cc/jSthz1wd/ebanosblackamilhao.png',
+        duration: 184,
+    },
+    {
+        name: 'Abraços Cronometrados',
+        artist: 'Molotov das Ruas',
+        url: 'https://files.catbox.moe/srxd8a.mp3',
+        artwork: 'https://i.postimg.cc/xCChGWSb/molotovdasruasabracos.png',
+        duration: 192,
+    },
+    {
+        name: 'Flores desabrocharão',
+        artist: 'Molotov das Ruas',
+        url: 'https://files.catbox.moe/kkfycl.mp3',
+        artwork: 'https://i.postimg.cc/L5hqp6FK/molotovdasruasflores.png',
+        duration: 218,
     }
 ];
 
@@ -134,7 +150,7 @@ const wallpapers = [
 export type AppName = 
     | 'dashboard' | 'info' | 'tasks' | 'schedule' | 'artists' | 'team_hub' 
     | 'media' | 'inventory' | 'reports' | 'documentation' | 'clio_company' 
-    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile' | 'radio_clio';
+    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile' | 'radio_clio' | 'whatsapp';
 
 export type AppStatus = 'open' | 'minimized' | 'closed';
 export type AppStates = Record<AppName, AppStatus>;
@@ -144,7 +160,8 @@ const initialAppStates: AppStates = {
     artists: 'closed', team_hub: 'closed', media: 'closed', inventory: 'closed',
     reports: 'closed', documentation: 'closed', clio_company: 'closed',
     personalize: 'closed', finances: 'closed', notebooks: 'closed', gallery: 'closed',
-    browser: 'closed', collab_clio: 'closed', profile: 'closed', radio_clio: 'closed'
+    browser: 'closed', collab_clio: 'closed', profile: 'closed', radio_clio: 'closed',
+    whatsapp: 'closed'
 };
 
 const DEFAULT_WALLPAPER = 'https://i.postimg.cc/0NYRtj9R/clio-rebelde-editada-0-6.jpg';
@@ -157,6 +174,41 @@ const GUEST_USER: Member = {
     avatar: `https://i.pravatar.cc/150?u=${GUEST_USER_EMAIL}`,
     role: 'Desenvolvedor'
 };
+
+const RADIO_EPOCH = new Date('2024-01-01T00:00:00Z').getTime();
+
+const smartShuffle = (tracks: Track[]): Track[] => {
+    const remaining = [...tracks];
+    const result: Track[] = [];
+    let lastArtist: string | null = null;
+
+    for (let i = remaining.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+    }
+    
+    while (remaining.length > 0) {
+        let foundIndex = -1;
+        
+        for (let i = 0; i < remaining.length; i++) {
+            if (remaining[i].artist !== lastArtist) {
+                foundIndex = i;
+                break;
+            }
+        }
+
+        if (foundIndex === -1) {
+            foundIndex = 0;
+        }
+        
+        const [track] = remaining.splice(foundIndex, 1);
+        result.push(track);
+        lastArtist = track.artist;
+    }
+
+    return result;
+};
+
 
 // --- MAIN APP COMPONENT ---
 const App: React.FC = () => {
@@ -198,8 +250,9 @@ const App: React.FC = () => {
     const musicFileInputRef = useRef<HTMLInputElement>(null);
 
     // Radio Sarau Player State
+    const [radioPlaylist, setRadioPlaylist] = useState<Track[]>(() => smartShuffle(CURATED_RADIO_PLAYLIST));
     const [currentRadioTrackIndex, setCurrentRadioTrackIndex] = useState(0);
-    const [isRadioPlaying, setIsRadioPlaying] = useState(false);
+    const [isRadioMuted, setIsRadioMuted] = useState(true); // User-controlled mute
     const [radioProgress, setRadioProgress] = useState(0);
     const [radioDuration, setRadioDuration] = useState(0);
     const [radioVolume, setRadioVolume] = useState(0.75);
@@ -222,6 +275,56 @@ const App: React.FC = () => {
             });
         };
     }, []);
+
+    // Radio Sync Effect
+    useEffect(() => {
+        if (!loggedInUser || radioPlaylist.length === 0 || !radioAudioRef.current) return;
+
+        const audioEl = radioAudioRef.current;
+        const trackDurations = radioPlaylist.map(t => t.duration);
+        const totalPlaylistDuration = trackDurations.reduce((acc, dur) => acc + dur, 0);
+
+        const now = Date.now();
+        const elapsedMilliseconds = now - RADIO_EPOCH;
+        const elapsedSeconds = elapsedMilliseconds / 1000;
+        const currentPlaylistTime = elapsedSeconds % totalPlaylistDuration;
+
+        let cumulativeDuration = 0;
+        let targetTrackIndex = 0;
+        let targetCurrentTime = 0;
+
+        for (let i = 0; i < radioPlaylist.length; i++) {
+            const trackDuration = trackDurations[i];
+            if (cumulativeDuration + trackDuration > currentPlaylistTime) {
+                targetTrackIndex = i;
+                targetCurrentTime = currentPlaylistTime - cumulativeDuration;
+                break;
+            }
+            cumulativeDuration += trackDuration;
+        }
+
+        setCurrentRadioTrackIndex(targetTrackIndex);
+        
+        const setAudioTime = () => {
+            if (audioEl.readyState >= 1) { // HAVE_METADATA
+                audioEl.currentTime = targetCurrentTime;
+                setRadioProgress(targetCurrentTime);
+            }
+        };
+
+        if(audioEl.src === radioPlaylist[targetTrackIndex]?.url && audioEl.readyState >= 1) {
+            setAudioTime();
+        } else {
+            audioEl.addEventListener('loadedmetadata', setAudioTime, { once: true });
+        }
+       
+        const fallbackTimeout = setTimeout(setAudioTime, 1500);
+
+        return () => {
+            clearTimeout(fallbackTimeout);
+            audioEl.removeEventListener('loadedmetadata', setAudioTime);
+        };
+    }, [loggedInUser, radioPlaylist]);
 
     const loadUserData = (email: string) => {
         const userDataString = localStorage.getItem(`collab-clio-data-${email}`);
@@ -611,24 +714,30 @@ const App: React.FC = () => {
     const handleMusicFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            const track: Track = { name: file.name.replace('.mp3', ''), artist: 'Desconhecido', url: URL.createObjectURL(file), artwork: '' };
-            setPlaylist(p => [...p, track]);
-            if (!isPlaying) { setCurrentTrackIndex(playlist.length); setIsPlaying(true); }
+            const track: Omit<Track, 'duration'> & { duration?: number } = { name: file.name.replace('.mp3', ''), artist: 'Desconhecido', url: URL.createObjectURL(file), artwork: '' };
+            const audioForDuration = new Audio(track.url);
+            audioForDuration.onloadedmetadata = () => {
+                const fullTrack: Track = {...track, duration: audioForDuration.duration };
+                setPlaylist(p => [...p, fullTrack]);
+                if (!isPlaying) { setCurrentTrackIndex(playlist.length); setIsPlaying(true); }
+            };
         }
     };
     const triggerMusicFileInput = () => musicFileInputRef.current?.click();
 
     // --- Radio Clio Handlers ---
     const handleRadioNext = useCallback(() => {
-        if (CURATED_RADIO_PLAYLIST) {
-             setCurrentRadioTrackIndex(p => (p + 1) % CURATED_RADIO_PLAYLIST.length);
-             setIsRadioPlaying(true);
+        if (radioPlaylist.length > 0) {
+             setCurrentRadioTrackIndex(p => (p + 1) % radioPlaylist.length);
         }
-    }, []);
+    }, [radioPlaylist]);
 
     useEffect(() => {
         const audio = radioAudioRef.current;
         if (!audio) return;
+        
+        audio.muted = isRadioMuted;
+        audio.volume = radioVolume;
         
         const setAudioData = () => setRadioDuration(audio.duration);
         const setAudioTime = () => setRadioProgress(audio.currentTime);
@@ -637,46 +746,22 @@ const App: React.FC = () => {
         audio.addEventListener('loadeddata', setAudioData);
         audio.addEventListener('timeupdate', setAudioTime);
         audio.addEventListener('ended', handleRadioEnd);
-        
-        if (audio.volume !== radioVolume) {
-            audio.volume = radioVolume;
-        }
-        
-        if (isRadioPlaying) {
-            audio.play().catch(console.error);
-        } else {
-            audio.pause();
-        }
 
         return () => {
             audio.removeEventListener('loadeddata', setAudioData);
             audio.removeEventListener('timeupdate', setAudioTime);
             audio.removeEventListener('ended', handleRadioEnd);
         };
-    }, [isRadioPlaying, currentRadioTrackIndex, radioVolume, handleRadioNext]);
+    }, [isRadioMuted, radioVolume, handleRadioNext]);
 
 
-    const handleRadioPlayPause = () => {
-        if (CURATED_RADIO_PLAYLIST.length > 0) {
-            setIsRadioPlaying(!isRadioPlaying);
+    const handleRadioMuteToggle = () => {
+        setIsRadioMuted(prev => !prev);
+        if (radioAudioRef.current?.paused) {
+            radioAudioRef.current?.play().catch(e => console.error("Could not play radio after interaction:", e));
         }
     };
     
-    const handleRadioPrev = () => {
-        if (CURATED_RADIO_PLAYLIST) {
-            setCurrentRadioTrackIndex(p => (p - 1 + CURATED_RADIO_PLAYLIST.length) % CURATED_RADIO_PLAYLIST.length);
-            setIsRadioPlaying(true);
-        }
-    };
-    
-    const handleRadioSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (radioAudioRef.current) {
-            const newTime = Number(e.target.value);
-            radioAudioRef.current.currentTime = newTime;
-            setRadioProgress(newTime);
-        }
-    };
-
     const handleRadioVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setRadioVolume(Number(e.target.value));
     };
@@ -744,7 +829,7 @@ const App: React.FC = () => {
             case 'photo_album': return <AlbumForm onSubmit={handleAndClose(handleSavePhotoAlbum)} album={editingItem} />;
             case 'photo': return <PhotoUploadForm onSubmit={handleAndClose(handleAddPhotosToAlbum)} albumId={editingItem?.albumId} />;
             case 'collective_document': return <CollectiveDocumentForm onSubmit={handleAndClose(handleSaveDocWithUploader)} />;
-            case 'meeting_minute': return <MeetingMinuteForm onSubmit={handleAndClose(handleSaveMeetingMinute)} minute={editingItem} members={members} />;
+            case 'meeting_minute': return <MeetingMinuteForm onSubmit={handleAndClose(handleSaveMeetingMinute)} minute={editingItem} />;
             case 'voting_topic': return <VotingTopicForm onSubmit={handleAndClose(handleSaveVoteWithCreator)} />;
             default: return null;
         }
@@ -786,9 +871,27 @@ const App: React.FC = () => {
         { name: 'documentation', title: 'Documentação', icon: <DockAppIcon bgColorClasses="bg-indigo-700"><BookOpenIcon /></DockAppIcon>, component: <Documentation /> },
         { name: 'finances', title: 'Finanças', icon: <DockAppIcon bgColorClasses="bg-emerald-600"><WalletIcon /></DockAppIcon>, component: <FinanceApp financialProjects={financialProjects} handleSaveFinancialProject={handleSaveFinancialProject} handleDeleteFinancialProject={handleDeleteFinancialProject} handleSaveTransaction={handleSaveTransaction} handleDeleteTransaction={handleDeleteTransaction} /> },
         { name: 'notebooks', title: 'Cadernos', icon: <DockAppIcon bgColorClasses="bg-amber-600"><BookMarkedIcon /></DockAppIcon>, component: <NotebooksApp notebooks={notebooks} handleSaveNotebook={handleSaveNotebook} handleDeleteNotebook={handleDeleteNotebook} handleSaveNote={handleSaveNote} handleDeleteNote={handleDeleteNote} /> },
-        { name: 'radio_clio', title: 'Rádio Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon>, component: <RadioClioApp playlist={CURATED_RADIO_PLAYLIST} currentTrackIndex={currentRadioTrackIndex} isPlaying={isRadioPlaying} onPlayPause={handleRadioPlayPause} onNext={handleRadioNext} onPrev={handleRadioPrev} progress={radioProgress} duration={radioDuration} volume={radioVolume} onSeek={handleRadioSeek} onVolumeChange={handleRadioVolumeChange} /> },
+        { name: 'radio_clio', title: 'Rádio Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon>, component: <RadioClioApp playlist={radioPlaylist} currentTrackIndex={currentRadioTrackIndex} isMuted={isRadioMuted} onMuteToggle={handleRadioMuteToggle} progress={radioProgress} duration={radioDuration} volume={radioVolume} onVolumeChange={handleRadioVolumeChange} /> },
         { name: 'collab_clio', title: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon>, component: <CollabClioApp onOpenModal={openModal} currentUser={loggedInUser} {...userState} handleDeleteCollectiveDocument={handleDeleteCollectiveDocument} handleDeleteMeetingMinute={handleDeleteMeetingMinute} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} /> },
         { name: 'browser', title: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon>, component: <BrowserApp /> },
+        {
+            name: 'whatsapp',
+            title: 'WhatsApp',
+            icon: <DockAppIcon bgColorClasses="bg-green-500"><WhatsappIcon /></DockAppIcon>,
+            component: (
+                <div className="w-full h-full bg-slate-900 flex flex-col">
+                    <div className="p-2 bg-yellow-900/50 text-yellow-300 text-xs text-center flex-shrink-0">
+                        Nota: O WhatsApp pode não carregar corretamente devido a restrições de segurança.
+                    </div>
+                    <iframe
+                        src="https://web.whatsapp.com/"
+                        title="WhatsApp Web"
+                        className="w-full h-full border-none flex-grow"
+                        sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
+                    />
+                </div>
+            )
+        },
         { name: 'profile', title: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon>, component: <ProfileApp currentUser={loggedInUser} onSaveProfile={handleSaveProfile} onChangePassword={handleChangePassword} /> },
         { name: 'personalize', title: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon>, component: <PersonalizeApp currentWallpaper={wallpaperImage || DEFAULT_WALLPAPER} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} wallpapers={wallpapers} /> },
     ];
@@ -890,18 +993,16 @@ const App: React.FC = () => {
                             onClose={() => setIsMobileControlCenterOpen(false)}
                             eventInfo={eventInfo}
                             schedule={schedule}
-                            playlist={CURATED_RADIO_PLAYLIST}
+                            playlist={radioPlaylist}
                             currentTrackIndex={currentRadioTrackIndex}
-                            isPlaying={isRadioPlaying}
-                            onPlayPause={handleRadioPlayPause}
-                            onNext={handleRadioNext}
-                            onPrev={handleRadioPrev}
+                            isMuted={isRadioMuted}
+                            onMuteToggle={handleRadioMuteToggle}
                         />
                     </div>
                 ) : (
                     <>
                         <audio ref={audioRef} src={playlist[currentTrackIndex]?.url} />
-                        <audio ref={radioAudioRef} src={CURATED_RADIO_PLAYLIST?.[currentRadioTrackIndex]?.url} />
+                        <audio ref={radioAudioRef} src={radioPlaylist?.[currentRadioTrackIndex]?.url} muted autoPlay loop={false} />
                         <input type="file" ref={musicFileInputRef} onChange={handleMusicFileChange} accept=".mp3" className="hidden" />
 
                         <ClioOSDesktop 
@@ -913,12 +1014,10 @@ const App: React.FC = () => {
                             onToggleMusicPlayer={() => setIsMusicPlayerOpen(!isMusicPlayerOpen)}
                             eventInfo={eventInfo}
                             schedule={schedule}
-                            radioPlaylist={CURATED_RADIO_PLAYLIST}
+                            radioPlaylist={radioPlaylist}
                             currentRadioTrackIndex={currentRadioTrackIndex}
-                            isRadioPlaying={isRadioPlaying}
-                            handleRadioPlayPause={handleRadioPlayPause}
-                            handleRadioNext={handleRadioNext}
-                            handleRadioPrev={handleRadioPrev}
+                            isRadioMuted={isRadioMuted}
+                            handleRadioMuteToggle={handleRadioMuteToggle}
                         />
 
                         {gadgets.map((gadget: Gadget) => (
@@ -926,9 +1025,16 @@ const App: React.FC = () => {
                                 {gadget.type === 'analog_clock' && <AnalogClock />}
                                 {gadget.type === 'countdown' && <CountdownGadget />}
                                 {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
-                                {gadget.type === 'media_uploader' && <MediaUploaderGadget />}
                                 {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
                                 {gadget.type === 'team_status' && <TeamStatusGadget />}
+                                {gadget.type === 'radio_clio' && (
+                                    <RadioClioGadget
+                                        playlist={radioPlaylist}
+                                        currentTrackIndex={currentRadioTrackIndex}
+                                        isMuted={isRadioMuted}
+                                        onMuteToggle={handleRadioMuteToggle}
+                                    />
+                                )}
                             </GadgetWrapper>
                         ))}
 

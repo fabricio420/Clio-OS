@@ -4,7 +4,8 @@ import React from 'react';
 
 export const DockAppIcon: React.FC<{ children: React.ReactNode, bgColorClasses: string }> = ({ children, bgColorClasses }) => (
     <div className={`w-full h-full rounded-[18px] flex items-center justify-center text-white shadow-lg ${bgColorClasses}`}>
-        {React.cloneElement(children as React.ReactElement, { className: "w-9 h-9" })}
+        {/* FIX: Cast children to a ReactElement that accepts a className prop to resolve typing issue. */}
+        {React.cloneElement(children as React.ReactElement<{ className?: string }>, { className: "w-9 h-9" })}
     </div>
 );
 

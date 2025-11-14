@@ -40,6 +40,9 @@ export interface Artist {
   notes: string;
   instagram?: string;
   whatsapp?: string;
+  cpf?: string;
+  rg?: string;
+  documentImage?: string;
 }
 
 export interface FeedPost {
@@ -133,6 +136,7 @@ export interface Track {
   artist: string;
   url: string;
   artwork: string;
+  duration: number;
 }
 
 export interface TeamStatus {
@@ -140,7 +144,7 @@ export interface TeamStatus {
   status: string;
 }
 
-export type GadgetType = 'analog_clock' | 'countdown' | 'quick_note' | 'media_uploader' | 'financial_summary' | 'team_status';
+export type GadgetType = 'analog_clock' | 'countdown' | 'quick_note' | 'financial_summary' | 'team_status' | 'radio_clio';
 
 export interface GadgetData {
     content?: string;

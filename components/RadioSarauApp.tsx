@@ -1,18 +1,15 @@
 import React from 'react';
 import type { Track } from '../types';
-import { PlayIcon, PauseIcon, SkipBackIcon, SkipForwardIcon, MusicIcon, Volume2Icon, VolumeXIcon } from './icons';
+import { MusicIcon, Volume2Icon, VolumeXIcon } from './icons';
 
 interface RadioClioAppProps {
     playlist: Track[];
     currentTrackIndex: number;
-    isPlaying: boolean;
-    onPlayPause: () => void;
-    onNext: () => void;
-    onPrev: () => void;
+    isMuted: boolean;
+    onMuteToggle: () => void;
     progress: number;
     duration: number;
     volume: number;
-    onSeek: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onVolumeChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
@@ -26,14 +23,11 @@ const formatTime = (seconds: number) => {
 const RadioClioApp: React.FC<RadioClioAppProps> = ({
     playlist = [],
     currentTrackIndex,
-    isPlaying,
-    onPlayPause,
-    onNext,
-    onPrev,
+    isMuted,
+    onMuteToggle,
     progress,
     duration,
     volume,
-    onSeek,
     onVolumeChange,
 }) => {
     const currentTrack = playlist[currentTrackIndex];
@@ -69,10 +63,9 @@ const RadioClioApp: React.FC<RadioClioAppProps> = ({
                             type="range"
                             min="0"
                             max={duration || 0}
-                            value={progress}
-                            onChange={onSeek}
-                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
-                            disabled={!currentTrack}
+                            value={progress} // Display progress
+                            readOnly // Make it read-only
+                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-default [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
                             aria-label="Barra de progresso da música"
                         />
                         <div className="flex justify-between text-xs text-slate-400 mt-1.5">
@@ -83,19 +76,13 @@ const RadioClioApp: React.FC<RadioClioAppProps> = ({
 
                     {/* Playback Controls */}
                     <div className="flex items-center justify-center space-x-8 mt-4">
-                        <button onClick={onPrev} disabled={playlist.length === 0} className="text-slate-300 hover:text-white disabled:opacity-50 transition-colors">
-                            <SkipBackIcon className="w-8 h-8"/>
-                        </button>
                         <button 
-                            onClick={onPlayPause} 
+                            onClick={onMuteToggle} 
                             disabled={playlist.length === 0} 
                             className="w-20 h-20 flex items-center justify-center bg-lime-500 hover:bg-lime-600 rounded-full text-slate-900 disabled:bg-slate-600 disabled:text-slate-400 transition-transform transform hover:scale-105 shadow-lg"
-                            aria-label={isPlaying ? 'Pausar' : 'Tocar'}
+                            aria-label={isMuted ? 'Ativar Som' : 'Desativar Som'}
                         >
-                            {isPlaying ? <PauseIcon className="w-10 h-10"/> : <PlayIcon className="w-10 h-10 ml-1"/>}
-                        </button>
-                        <button onClick={onNext} disabled={playlist.length === 0} className="text-slate-300 hover:text-white disabled:opacity-50 transition-colors">
-                            <SkipForwardIcon className="w-8 h-8"/>
+                            {isMuted ? <VolumeXIcon className="w-10 h-10"/> : <Volume2Icon className="w-10 h-10"/>}
                         </button>
                     </div>
 

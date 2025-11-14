@@ -101,11 +101,12 @@ const sections = [
     id: 'team_hub',
     title: 'Hub da Equipe',
     icon: <UsersIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'equipe membros perfis comunicação mural feed',
+    keywords: 'equipe membros perfis comunicação mural feed status',
     content: (
       <>
         <p>O Hub da Equipe é o espaço central para a comunicação e gerenciamento dos membros do coletivo. Ele fortalece a colaboração e mantém todos na mesma página.</p>
         <ul>
+          <li><strong>Atualização de Status:</strong> Permite que cada membro compartilhe no que está trabalhando, mantendo a equipe ciente das atividades em tempo real.</li>
           <li><strong>Perfis da Equipe:</strong> Visualize todos os membros da equipe de organização com suas fotos, nomes e funções. Clicar em um perfil permite editar essas informações.</li>
           <li><strong>Mural de Comunicação:</strong> Um feed de atualizações onde qualquer membro pode postar mensagens para toda a equipe, como um mini-mural de recados interno para compartilhar novidades, fazer perguntas ou celebrar conquistas.</li>
         </ul>
