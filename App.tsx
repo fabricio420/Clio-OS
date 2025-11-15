@@ -47,7 +47,7 @@ import { PhotoUploadForm } from './components/forms/PhotoUploadForm';
 import { CollectiveDocumentForm } from './components/forms/CollectiveDocumentForm';
 import { MeetingMinuteForm } from './components/forms/MeetingMinuteForm';
 import { VotingTopicForm } from './components/forms/VotingTopicForm';
-import { ChevronLeftIcon, PowerIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, RadioIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, WhatsappIcon, MusicIcon, SkipBackIcon, SkipForwardIcon, PlayIcon, PauseIcon, MenuIcon } from './components/icons';
+import { ChevronLeftIcon, PowerIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, RadioIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, WhatsappIcon, MusicIcon, SkipBackIcon, SkipForwardIcon, PlayIcon, PauseIcon, MenuIcon, ExternalLinkIcon, RefreshCwIcon, XIcon, BarChartIcon, StickyNoteIcon } from './components/icons';
 // FIX: Import AppContext to provide context to children components.
 import { AppContext } from './contexts/AppContext';
 
@@ -86,6 +86,12 @@ const MOCK_EVENT_INFO: EventInfoData = {
     collabDescription: '',
 };
 
+const DEFAULT_GADGETS: Gadget[] = [
+    { id: 'default-clock', type: 'analog_clock', position: { x: 20, y: 20 } },
+    { id: 'default-countdown', type: 'countdown', position: { x: 20, y: 200 } },
+    { id: 'default-team', type: 'team_status', position: { x: 300, y: 20 } }
+];
+
 const MOCK_INITIAL_DATA = {
     members: [] as Member[],
     tasks: [] as Task[],
@@ -102,7 +108,7 @@ const MOCK_INITIAL_DATA = {
     meetingMinutes: [] as MeetingMinute[],
     votingTopics: [] as VotingTopic[],
     teamStatuses: [] as TeamStatus[],
-    gadgets: [] as Gadget[],
+    gadgets: DEFAULT_GADGETS, // Initialize with defaults
     totalBudget: 0,
 };
 
@@ -146,12 +152,34 @@ const wallpapers = [
     { name: 'Clio Rebelde 6', url: 'https://i.postimg.cc/tRZ0fBq3/clio-rebelde-1920x1080-1.jpg' }
 ];
 
+// --- HELPER FUNCTIONS ---
+// Smart shuffle: ensures the same artist doesn't play twice in a row if possible
+const smartShuffle = (tracks: Track[]): Track[] => {
+    if (tracks.length <= 1) return tracks;
+
+    let shuffled = [...tracks].sort(() => Math.random() - 0.5);
+    
+    // Attempt to separate adjacent artists
+    for (let i = 0; i < shuffled.length - 1; i++) {
+        if (shuffled[i].artist === shuffled[i+1].artist) {
+            // Find a swap candidate forward
+            for (let j = i + 2; j < shuffled.length; j++) {
+                if (shuffled[j].artist !== shuffled[i].artist) {
+                    [shuffled[i+1], shuffled[j]] = [shuffled[j], shuffled[i+1]];
+                    break;
+                }
+            }
+        }
+    }
+    return shuffled;
+};
+
 
 // --- APP TYPES ---
 export type AppName = 
     | 'dashboard' | 'info' | 'tasks' | 'schedule' | 'artists' | 'team_hub' 
     | 'media' | 'inventory' | 'reports' | 'documentation' | 'clio_company' 
-    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile' | 'clio_player' | 'whatsapp';
+    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile' | 'clio_player';
 
 export type AppStatus = 'open' | 'minimized' | 'closed';
 export type AppStates = Record<AppName, AppStatus>;
@@ -161,19 +189,19 @@ const initialAppStates: AppStates = {
     artists: 'closed', team_hub: 'closed', media: 'closed', inventory: 'closed',
     reports: 'closed', documentation: 'closed', clio_company: 'closed',
     personalize: 'closed', finances: 'closed', notebooks: 'closed', gallery: 'closed',
-    browser: 'closed', collab_clio: 'closed', profile: 'closed', clio_player: 'closed',
-    whatsapp: 'closed'
+    browser: 'closed', collab_clio: 'closed', profile: 'closed', clio_player: 'closed'
 };
 
 const DEFAULT_WALLPAPER = 'https://i.postimg.cc/0NYRtj9R/clio-rebelde-editada-0-6.jpg';
+const DEFAULT_AVATAR = 'https://i.postimg.cc/7L8d9B1p/clio-rebelde-editada-0(17).jpg';
 
 const GUEST_USER_EMAIL = 'guest@dev.clio';
 const GUEST_USER: Member = {
     id: 'guest-dev-id',
-    name: 'Visitante Dev',
+    name: 'Deusa Clio',
     email: GUEST_USER_EMAIL,
-    avatar: `https://i.pravatar.cc/150?u=${GUEST_USER_EMAIL}`,
-    role: 'Desenvolvedor'
+    avatar: DEFAULT_AVATAR,
+    role: 'Musa Inspiradora'
 };
 
 // --- MOBILE-SPECIFIC COMPONENTS ---
@@ -258,6 +286,86 @@ const MobileAppDrawer: React.FC<{
     );
 };
 
+const MobileGadgetWrapper: React.FC<{ children: React.ReactNode, onLongPress: () => void }> = ({ children, onLongPress }) => {
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const startPress = () => {
+        timerRef.current = setTimeout(() => {
+            onLongPress();
+        }, 800); // 800ms long press
+    };
+
+    const endPress = () => {
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+    };
+
+    return (
+        <div 
+            className="relative touch-manipulation select-none"
+            onTouchStart={startPress}
+            onTouchEnd={endPress}
+            onTouchMove={endPress}
+            onMouseDown={startPress} // For mouse testing
+            onMouseUp={endPress}
+            onMouseLeave={endPress}
+        >
+            {children}
+        </div>
+    );
+};
+
+const MobileGadgetMenu: React.FC<{ isOpen: boolean, onClose: () => void, onRemove: () => void, onChange: () => void }> = ({ isOpen, onClose, onRemove, onChange }) => {
+    if (!isOpen) return null;
+    return (
+         <>
+            <div className="fixed inset-0 bg-black/60 z-50" onClick={onClose} />
+            <div className="fixed bottom-4 left-4 right-4 bg-slate-800 rounded-xl p-2 z-50 shadow-2xl border border-slate-700 animate-in slide-in-from-bottom-10">
+                <button onClick={onChange} className="w-full p-3 text-center text-blue-400 font-semibold border-b border-slate-700 active:bg-slate-700 rounded-t-lg">
+                    Trocar Gadget
+                </button>
+                <button onClick={onRemove} className="w-full p-3 text-center text-red-400 font-semibold active:bg-slate-700 rounded-b-lg">
+                    Remover Gadget
+                </button>
+            </div>
+            <button onClick={onClose} className="fixed bottom-4 left-0 right-0 mx-auto w-10 h-10 bg-white text-slate-900 rounded-full flex items-center justify-center z-50 shadow-lg font-bold text-lg mb-36">
+                <XIcon className="w-6 h-6" />
+            </button>
+        </>
+    )
+};
+
+const GadgetSelectorModal: React.FC<{ isOpen: boolean, onClose: () => void, onSelect: (type: GadgetType) => void }> = ({ isOpen, onClose, onSelect }) => {
+    if (!isOpen) return null;
+    
+    const options: { type: GadgetType, label: string, icon: React.ReactNode }[] = [
+         { type: 'analog_clock', label: 'Relógio', icon: <ClockIcon className="w-6 h-6" /> },
+         { type: 'countdown', label: 'Contagem', icon: <ClockIcon className="w-6 h-6 text-lime-400" /> },
+         { type: 'quick_note', label: 'Nota', icon: <StickyNoteIcon className="w-6 h-6 text-yellow-400" /> },
+         { type: 'financial_summary', label: 'Finanças', icon: <BarChartIcon className="w-6 h-6 text-emerald-400" /> },
+         { type: 'team_status', label: 'Equipe', icon: <UsersIcon className="w-6 h-6 text-teal-400" /> },
+         { type: 'radio_clio', label: 'Rádio', icon: <RadioIcon className="w-6 h-6 text-rose-400" /> },
+    ];
+
+    return (
+         <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-slate-800 rounded-xl w-full max-w-sm p-4 shadow-2xl border border-slate-600" onClick={e => e.stopPropagation()}>
+                <h3 className="text-lg font-bold text-white mb-4 text-center">Escolher Gadget</h3>
+                <div className="grid grid-cols-3 gap-3">
+                    {options.map(opt => (
+                        <button key={opt.type} onClick={() => onSelect(opt.type)} className="flex flex-col items-center justify-center bg-slate-700 p-3 rounded-lg hover:bg-slate-600 transition-colors space-y-2">
+                            {opt.icon}
+                            <span className="text-xs text-slate-200">{opt.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+         </div>
+    );
+}
+
 
 // --- MAIN APP COMPONENT ---
 const App: React.FC = () => {
@@ -276,40 +384,67 @@ const App: React.FC = () => {
     const [activeMobileApp, setActiveMobileApp] = useState<AppName | null>(null);
     const [isMobileControlCenterOpen, setIsMobileControlCenterOpen] = useState(false);
     const [isAppDrawerOpen, setIsAppDrawerOpen] = useState(false);
+    const [mobilePage, setMobilePage] = useState(0);
+    const [selectedGadgetId, setSelectedGadgetId] = useState<string | null>(null);
+    const [isGadgetMenuOpen, setIsGadgetMenuOpen] = useState(false);
+    const [isGadgetSelectorOpen, setIsGadgetSelectorOpen] = useState(false);
 
     // Mobile gesture handling
+    const touchStartX = useRef<number | null>(null);
     const touchStartY = useRef<number | null>(null);
     const touchEndY = useRef<number | null>(null);
+    const touchEndX = useRef<number | null>(null);
     const minSwipeDistance = 50;
 
     const handleTouchStart = (e: React.TouchEvent) => {
         touchStartY.current = e.targetTouches[0].clientY;
-        touchEndY.current = null; // reset end position on new touch
+        touchStartX.current = e.targetTouches[0].clientX;
+        touchEndY.current = null;
+        touchEndX.current = null;
     };
 
     const handleTouchMove = (e: React.TouchEvent) => {
         touchEndY.current = e.targetTouches[0].clientY;
+        touchEndX.current = e.targetTouches[0].clientX;
     };
 
     const handleTouchEnd = () => {
-        if (!touchStartY.current || !touchEndY.current) return;
+        if (!touchStartY.current || !touchEndY.current || !touchStartX.current || !touchEndX.current) return;
 
-        const distance = touchStartY.current - touchEndY.current;
-        const isSwipeUp = distance > minSwipeDistance;
-        const isSwipeDown = distance < -minSwipeDistance;
-        
+        const xDiff = touchStartX.current - touchEndX.current;
+        const yDiff = touchStartY.current - touchEndY.current;
+
+        const isHorizontal = Math.abs(xDiff) > Math.abs(yDiff);
+
         // Don't trigger if a panel is already open
-        if (isAppDrawerOpen || isMobileControlCenterOpen) return;
+        if (isAppDrawerOpen || isMobileControlCenterOpen) {
+            touchStartY.current = null; touchStartX.current = null;
+            touchEndY.current = null; touchEndX.current = null;
+            return;
+        }
 
-        if (isSwipeUp) {
-            setIsAppDrawerOpen(true);
-        } else if (isSwipeDown) {
-            setIsMobileControlCenterOpen(true);
+        if (isHorizontal) {
+             if (Math.abs(xDiff) > minSwipeDistance) {
+                 if (xDiff > 0) {
+                     // Swiped Left -> Next Page
+                     setMobilePage(prev => Math.min(prev + 1, 2)); // Max 3 pages (0, 1, 2)
+                 } else {
+                     // Swiped Right -> Prev Page
+                     setMobilePage(prev => Math.max(prev - 1, 0));
+                 }
+             }
+        } else {
+            // Vertical Swipes
+             if (yDiff > minSwipeDistance) {
+                 setIsAppDrawerOpen(true);
+             } else if (yDiff < -minSwipeDistance) {
+                 setIsMobileControlCenterOpen(true);
+             }
         }
         
         // Reset refs
-        touchStartY.current = null;
-        touchEndY.current = null;
+        touchStartY.current = null; touchStartX.current = null;
+        touchEndY.current = null; touchEndX.current = null;
     };
 
 
@@ -332,7 +467,8 @@ const App: React.FC = () => {
     const musicFileInputRef = useRef<HTMLInputElement>(null);
 
     // Clio Player State
-    const [clioPlaylist] = useState<Track[]>(CURATED_RADIO_PLAYLIST);
+    // Initialize with Smart Shuffle
+    const [clioPlaylist] = useState<Track[]>(() => smartShuffle(CURATED_RADIO_PLAYLIST));
     const [currentClioTrackIndex, setCurrentClioTrackIndex] = useState(0);
     const [isClioPlaying, setIsClioPlaying] = useState(false);
     const [clioProgress, setClioProgress] = useState(0);
@@ -362,7 +498,12 @@ const App: React.FC = () => {
     const loadUserData = (email: string) => {
         const userDataString = localStorage.getItem(`collab-clio-data-${email}`);
         if(userDataString) {
-            setUserState(JSON.parse(userDataString));
+            const parsedData = JSON.parse(userDataString);
+            // Ensure default gadgets exist if array is empty (for existing users)
+            if (!parsedData.gadgets || parsedData.gadgets.length === 0) {
+                parsedData.gadgets = DEFAULT_GADGETS;
+            }
+            setUserState(parsedData);
         }
         const userWallpaper = localStorage.getItem(`clio-os-wallpaper-${email}`);
         setWallpaperImage(userWallpaper);
@@ -397,7 +538,7 @@ const App: React.FC = () => {
             name,
             email,
             password,
-            avatar: `https://i.pravatar.cc/150?u=${email}`,
+            avatar: DEFAULT_AVATAR,
             role: 'Membro'
         };
         const newUserData = { ...MOCK_INITIAL_DATA, members: [newUser] };
@@ -412,7 +553,16 @@ const App: React.FC = () => {
         const guestDataString = localStorage.getItem(`collab-clio-data-${GUEST_USER_EMAIL}`);
         if (guestDataString) {
             // Guest user data exists, load it
-            setUserState(JSON.parse(guestDataString));
+            const guestData = JSON.parse(guestDataString);
+             // Ensure guest user profile is up to date
+            guestData.members = guestData.members.map((m: Member) => m.id === GUEST_USER.id ? GUEST_USER : m);
+            if(!guestData.members.find((m:Member) => m.id === GUEST_USER.id)) {
+                 guestData.members.push(GUEST_USER);
+            }
+            if (!guestData.gadgets || guestData.gadgets.length === 0) {
+                guestData.gadgets = DEFAULT_GADGETS;
+            }
+            setUserState(guestData);
         } else {
             // First time guest login, create mock data
             const guestData = { ...MOCK_INITIAL_DATA, members: [GUEST_USER] };
@@ -670,6 +820,11 @@ const App: React.FC = () => {
     const handleUpdateGadgetData = (gadgetId: string, data: GadgetData) => {
         updateUserState('gadgets', userState.gadgets.map((g: Gadget) => g.id === gadgetId ? { ...g, data: { ...g.data, ...data } } : g));
     };
+    const handleReplaceGadget = (gadgetId: string, newType: GadgetType) => {
+        updateUserState('gadgets', userState.gadgets.map((g: Gadget) => 
+            g.id === gadgetId ? { ...g, type: newType, data: newType === 'quick_note' ? { content: '' } : undefined } : g
+        ));
+    }
 
     // --- Wallpaper Handlers ---
     const handleSetWallpaper = (imageUrl: string) => {
@@ -818,6 +973,25 @@ const App: React.FC = () => {
         setCurrentClioTrackIndex(index);
     };
 
+    const handleOpenGadgetMenu = (gadgetId: string) => {
+        setSelectedGadgetId(gadgetId);
+        setIsGadgetMenuOpen(true);
+    };
+
+    const handleMobileRemoveGadget = () => {
+        if (selectedGadgetId) {
+            handleRemoveGadget(selectedGadgetId);
+            setIsGadgetMenuOpen(false);
+        }
+    };
+
+    const handleMobileSwapGadget = (newType: GadgetType) => {
+        if (selectedGadgetId) {
+            handleReplaceGadget(selectedGadgetId, newType);
+            setIsGadgetSelectorOpen(false);
+        }
+    };
+
     // --- RENDER LOGIC ---
     if (!loggedInUser || !userState) {
         return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUp} onGuestLogin={handleGuestLogin} loginWallpaper={randomLoginWallpaper} />;
@@ -889,24 +1063,6 @@ const App: React.FC = () => {
         { name: 'clio_player', title: 'Player Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><MusicIcon /></DockAppIcon>, component: <ClioPlayerApp playlist={clioPlaylist} currentTrackIndex={currentClioTrackIndex} isPlaying={isClioPlaying} onPlayPause={handleClioPlayPause} onNext={handleClioNext} onPrev={handleClioPrev} progress={clioProgress} duration={clioAudioRef.current?.duration || 0} onSeek={handleClioSeek} onSeekMouseDown={handleClioSeekMouseDown} onSeekMouseUp={handleClioSeekMouseUp} onSelectTrack={handleClioSelectTrack} /> },
         { name: 'collab_clio', title: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon>, component: <CollabClioApp onOpenModal={openModal} currentUser={loggedInUser} {...userState} handleDeleteCollectiveDocument={handleDeleteCollectiveDocument} handleDeleteMeetingMinute={handleDeleteMeetingMinute} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} /> },
         { name: 'browser', title: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon>, component: <BrowserApp /> },
-        {
-            name: 'whatsapp',
-            title: 'WhatsApp',
-            icon: <DockAppIcon bgColorClasses="bg-green-500"><WhatsappIcon /></DockAppIcon>,
-            component: (
-                <div className="w-full h-full bg-slate-900 flex flex-col">
-                    <div className="p-2 bg-yellow-900/50 text-yellow-300 text-xs text-center flex-shrink-0">
-                        Nota: O WhatsApp pode não carregar corretamente devido a restrições de segurança.
-                    </div>
-                    <iframe
-                        src="https://web.whatsapp.com/"
-                        title="WhatsApp Web"
-                        className="w-full h-full border-none flex-grow"
-                        sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
-                    />
-                </div>
-            )
-        },
         { name: 'profile', title: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon>, component: <ProfileApp currentUser={loggedInUser} onSaveProfile={handleSaveProfile} onChangePassword={handleChangePassword} /> },
         { name: 'personalize', title: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon>, component: <PersonalizeApp currentWallpaper={wallpaperImage || DEFAULT_WALLPAPER} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} wallpapers={wallpapers} /> },
     ];
@@ -931,6 +1087,34 @@ const App: React.FC = () => {
         teamStatuses,
         handleUpdateTeamStatus,
     };
+
+    // Mobile Gadget Rendering Logic
+    const gadgetsPerPage = 2;
+    const totalMobilePages = Math.ceil(Math.max(gadgets.length, 1) / gadgetsPerPage);
+    
+    const renderMobileGadget = (gadget: Gadget) => {
+        return (
+             <MobileGadgetWrapper key={gadget.id} onLongPress={() => handleOpenGadgetMenu(gadget.id)}>
+                 <div className="bg-black/20 backdrop-blur-lg p-4 rounded-xl border border-white/10">
+                    {gadget.type === 'analog_clock' && <div className="flex justify-center"><AnalogClock /></div>}
+                    {gadget.type === 'countdown' && <CountdownGadget />}
+                    {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
+                    {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
+                    {gadget.type === 'team_status' && <TeamStatusGadget />}
+                    {gadget.type === 'radio_clio' && (
+                        <div className="flex justify-center">
+                            <RadioClioGadget
+                                playlist={clioPlaylist}
+                                currentTrackIndex={currentClioTrackIndex}
+                                isPlaying={isClioPlaying}
+                                onPlayPause={handleClioPlayPause}
+                            />
+                        </div>
+                    )}
+                 </div>
+             </MobileGadgetWrapper>
+        )
+    }
 
     return (
         <AppContext.Provider value={contextValue}>
@@ -963,18 +1147,43 @@ const App: React.FC = () => {
                              <>
                                 <MobileTopBar user={loggedInUser} onToggleControlCenter={() => setIsMobileControlCenterOpen(true)} onOpenProfile={() => setActiveMobileApp('profile')} />
                                 <main 
-                                    className="flex-1 overflow-y-auto p-4 space-y-4 pb-32"
+                                    className="flex-1 flex flex-col relative overflow-hidden pb-28" // Added pb-28 to avoid overlap with dock
                                     onTouchStart={handleTouchStart}
                                     onTouchMove={handleTouchMove}
                                     onTouchEnd={handleTouchEnd}
                                 >
-                                    {/* Mobile Home Screen Widgets */}
-                                    <div className="bg-black/20 backdrop-blur-lg p-4 rounded-xl border border-white/10">
-                                       <CountdownGadget />
+                                    {/* Mobile Horizontal Pages */}
+                                    <div 
+                                        className="flex flex-1 transition-transform duration-300 ease-out"
+                                        style={{ transform: `translateX(-${mobilePage * 100}%)` }}
+                                    >
+                                        {Array.from({ length: totalMobilePages }).map((_, pageIndex) => (
+                                            <div key={pageIndex} className="w-full h-full flex-shrink-0 p-4 space-y-4 overflow-y-auto">
+                                                {gadgets
+                                                    .slice(pageIndex * gadgetsPerPage, (pageIndex + 1) * gadgetsPerPage)
+                                                    .map(gadget => renderMobileGadget(gadget))
+                                                }
+                                                {gadgets.length === 0 && pageIndex === 0 && (
+                                                    <div className="text-center text-slate-400 mt-10">
+                                                        <p>Nenhum gadget adicionado.</p>
+                                                        <p className="text-xs">Use o app "Personalizar" para adicionar.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {/* Empty State Page if user wipes to empty page? No, logic restricts pages */}
                                     </div>
-                                    <div className="bg-black/20 backdrop-blur-lg p-4 rounded-xl border border-white/10">
-                                       <TeamStatusGadget />
+
+                                    {/* Page Indicator */}
+                                    <div className="absolute bottom-32 left-0 right-0 flex justify-center gap-2 z-20 pointer-events-none">
+                                        {Array.from({ length: totalMobilePages }).map((_, i) => (
+                                            <div 
+                                                key={i} 
+                                                className={`w-2 h-2 rounded-full transition-colors ${i === mobilePage ? 'bg-white' : 'bg-white/30'}`}
+                                            />
+                                        ))}
                                     </div>
+
                                 </main>
                                 <footer className="absolute bottom-4 left-0 right-0 flex justify-center z-20 px-4">
                                      <div className="bg-black/40 backdrop-blur-xl p-2 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-2 md:gap-4 max-w-full overflow-x-auto no-scrollbar">
@@ -1014,6 +1223,19 @@ const App: React.FC = () => {
                             isPlaying={isClioPlaying}
                             onPlayPause={handleClioPlayPause}
                         />
+                        
+                        <MobileGadgetMenu 
+                            isOpen={isGadgetMenuOpen} 
+                            onClose={() => setIsGadgetMenuOpen(false)} 
+                            onRemove={handleMobileRemoveGadget}
+                            onChange={() => { setIsGadgetMenuOpen(false); setIsGadgetSelectorOpen(true); }}
+                        />
+
+                        <GadgetSelectorModal 
+                            isOpen={isGadgetSelectorOpen}
+                            onClose={() => setIsGadgetSelectorOpen(false)}
+                            onSelect={handleMobileSwapGadget}
+                        />
                     </div>
                 ) : (
                     <>
@@ -1023,6 +1245,7 @@ const App: React.FC = () => {
                             src={clioPlaylist?.[currentClioTrackIndex]?.url} 
                             onTimeUpdate={handleClioTimeUpdate}
                             onEnded={handleClioNext}
+                            playsInline // FIX: Added playsInline for better mobile support
                             onLoadedMetadata={() => clioAudioRef.current && setClioProgress(clioAudioRef.current.currentTime)}
                          />
                         <input type="file" ref={musicFileInputRef} onChange={handleMusicFileChange} accept=".mp3" className="hidden" />

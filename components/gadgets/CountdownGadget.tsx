@@ -7,7 +7,7 @@ const CountdownGadget: React.FC = () => {
     const countdown = useCountdown(eventInfo.eventDate);
 
     return (
-        <div className="w-64 text-center">
+        <div className="w-full md:w-64 text-center">
             <h3 className="text-sm text-slate-300 font-semibold mb-2 truncate" title={eventInfo.eventName}>
                 Contagem para {eventInfo.eventName}
             </h3>

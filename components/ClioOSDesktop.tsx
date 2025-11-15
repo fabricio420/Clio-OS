@@ -97,7 +97,6 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
         { id: 'clio_player', label: 'Player Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><MusicIcon /></DockAppIcon> },
         { id: 'collab_clio', label: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon> },
         { id: 'browser', label: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon> },
-        { id: 'whatsapp', label: 'WhatsApp', icon: <DockAppIcon bgColorClasses="bg-green-500"><WhatsappIcon /></DockAppIcon> },
         { type: 'separator' },
         { id: 'profile', label: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon> },
         { id: 'personalize', label: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon> },

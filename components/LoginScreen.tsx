@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ClioAppIcon, MailIcon, LockIcon, UserIcon } from './icons';
 
@@ -127,7 +128,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
                                 onClick={onGuestLogin}
                                 className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-all shadow-lg"
                             >
-                                Entrar como Visitante (Dev)
+                                Entrar como Deusa Clio
                             </button>
                         </div>
                         <p className="text-center text-sm text-slate-400 pt-2">
