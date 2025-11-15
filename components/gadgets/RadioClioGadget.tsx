@@ -1,19 +1,19 @@
 import React from 'react';
 import type { Track } from '../../types';
-import { MusicIcon, Volume2Icon, VolumeXIcon } from '../icons';
+import { MusicIcon, PlayIcon, PauseIcon } from '../icons';
 
 interface RadioClioGadgetProps {
     playlist: Track[];
     currentTrackIndex: number;
-    isMuted: boolean;
-    onMuteToggle: () => void;
+    isPlaying: boolean;
+    onPlayPause: () => void;
 }
 
 const RadioClioGadget: React.FC<RadioClioGadgetProps> = ({
     playlist,
     currentTrackIndex,
-    isMuted,
-    onMuteToggle,
+    isPlaying,
+    onPlayPause,
 }) => {
     const currentTrack = playlist[currentTrackIndex];
 
@@ -28,18 +28,18 @@ const RadioClioGadget: React.FC<RadioClioGadgetProps> = ({
             </div>
             <div>
                 <h3 className="font-bold text-white truncate text-sm" title={currentTrack?.name}>
-                    {currentTrack?.name || 'Rádio Clio'}
+                    {currentTrack?.name || 'Player Clio'}
                 </h3>
                 <p className="text-xs text-slate-400 truncate">{currentTrack?.artist || '...'}</p>
             </div>
             <div className="flex items-center justify-center space-x-4 mt-3">
                 <button
-                    onClick={onMuteToggle}
+                    onClick={onPlayPause}
                     disabled={playlist.length === 0}
                     className="w-10 h-10 flex items-center justify-center bg-lime-500 hover:bg-lime-600 rounded-full text-slate-900 disabled:bg-slate-600 disabled:text-slate-400 transition-transform transform hover:scale-105"
-                    aria-label={isMuted ? 'Ativar Som' : 'Desativar Som'}
+                    aria-label={isPlaying ? 'Pausar' : 'Tocar'}
                 >
-                    {isMuted ? <VolumeXIcon className="w-6 h-6"/> : <Volume2Icon className="w-6 h-6"/>}
+                    {isPlaying ? <PauseIcon className="w-6 h-6"/> : <PlayIcon className="w-6 h-6"/>}
                 </button>
             </div>
         </div>

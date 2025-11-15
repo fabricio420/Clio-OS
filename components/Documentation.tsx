@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { HomeIcon, InfoIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, RadioIcon } from './icons';
+import { HomeIcon, InfoIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, RadioIcon, MusicIcon } from './icons';
 
 const DocSection: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
   <section className="bg-slate-900 p-6 rounded-lg shadow-md mb-8 border-t border-lime-400">
@@ -227,17 +227,17 @@ const sections = [
     )
   },
   {
-    id: 'radio_clio',
-    title: 'Rádio Clio',
-    icon: <RadioIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'rádio, música, playlist, som, curadoria, mp3, trilha sonora',
+    id: 'clio_player',
+    title: 'Player de Música Clio',
+    icon: <MusicIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'player, música, playlist, som, curadoria, mp3, trilha sonora, tocar, pausar',
     content: (
       <>
-        <p>A Rádio Clio é a trilha sonora oficial do coletivo, um player de música para inspirar a criatividade e embalar os encontros, com um visual que destaca a arte de cada música.</p>
+        <p>O Player Clio é a trilha sonora oficial do coletivo, uma ferramenta para inspirar a criatividade e embalar os encontros. Diferente de uma rádio passiva, aqui você tem o controle.</p>
         <ul>
-            <li><strong>Playlist do Coletivo:</strong> O player toca as músicas definidas para o evento, criando uma atmosfera única.</li>
-            <li><strong>Visual Integrado:</strong> O player exibe a capa do álbum ou uma foto do artista da faixa que está tocando.</li>
-            <li><strong>Controles Simples:</strong> Controles intuitivos para tocar, pausar e navegar pela playlist, sincronizados para toda a equipe.</li>
+            <li><strong>Playlist do Coletivo:</strong> O player vem com uma seleção de músicas curadas para o evento, prontas para tocar.</li>
+            <li><strong>Controle Total:</strong> Você pode tocar, pausar, avançar e retroceder as faixas. Use a barra de progresso para pular para sua parte favorita da música.</li>
+            <li><strong>Seleção Interativa:</strong> Clique em qualquer música na lista de reprodução para começar a ouvi-la imediatamente.</li>
         </ul>
       </>
     )

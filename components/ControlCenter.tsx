@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { EventInfoData, ScheduleItem, Track } from '../types';
-import { ChevronLeftIcon, ChevronRightIcon, MoonIcon, BellIcon, ClockIcon, Volume2Icon, VolumeXIcon } from './icons';
+import { ChevronLeftIcon, ChevronRightIcon, MoonIcon, BellIcon, ClockIcon, PlayIcon, PauseIcon } from './icons';
 
 interface ControlCenterProps {
     isOpen: boolean;
@@ -9,8 +9,8 @@ interface ControlCenterProps {
     schedule?: ScheduleItem[];
     playlist?: Track[];
     currentTrackIndex?: number;
-    isMuted?: boolean;
-    onMuteToggle?: () => void;
+    isPlaying?: boolean;
+    onPlayPause?: () => void;
 }
 
 const isSameDay = (d1: Date, d2: Date) =>
@@ -39,8 +39,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     schedule = [],
     playlist = [],
     currentTrackIndex = 0,
-    isMuted,
-    onMuteToggle
+    isPlaying,
+    onPlayPause
 }) => {
     const eventDateObj = useMemo(() => eventInfo?.eventDate ? new Date(eventInfo.eventDate) : null, [eventInfo?.eventDate]);
     const currentTrack = playlist[currentTrackIndex];
@@ -49,6 +49,29 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     const [selectedDate, setSelectedDate] = useState(eventDateObj || new Date());
     const [doNotDisturb, setDoNotDisturb] = useState(false);
     const [notificationsActive, setNotificationsActive] = useState(true);
+
+    const touchStartY = useRef<number | null>(null);
+    const touchEndY = useRef<number | null>(null);
+    const minSwipeDistance = 50;
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartY.current = e.targetTouches[0].clientY;
+        touchEndY.current = null;
+    };
+    const handleTouchMove = (e: React.TouchEvent) => {
+        touchEndY.current = e.targetTouches[0].clientY;
+    };
+    const handleTouchEnd = () => {
+        if (!touchStartY.current || !touchEndY.current) return;
+        const distance = touchStartY.current - touchEndY.current;
+        const isSwipeUp = distance > minSwipeDistance;
+
+        if (isSwipeUp) {
+            onClose();
+        }
+        touchStartY.current = null;
+        touchEndY.current = null;
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -112,23 +135,26 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
             <div 
                  className={`relative max-w-sm w-full mx-auto bg-slate-800/80 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/10 transition-all duration-300 ease-out ${isOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}`}
                  onClick={(e) => e.stopPropagation()}
+                 onTouchStart={handleTouchStart}
+                 onTouchMove={handleTouchMove}
+                 onTouchEnd={handleTouchEnd}
             >
                 <div className="p-4 flex justify-around items-start border-b border-slate-700/50">
                     <ControlButton icon={<MoonIcon className="w-6 h-6"/>} label="Não Perturbar" active={doNotDisturb} onClick={() => setDoNotDisturb(p => !p)} />
                     <ControlButton icon={<BellIcon className="w-6 h-6"/>} label="Notificações" active={notificationsActive} onClick={() => setNotificationsActive(p => !p)} />
                 </div>
 
-                {playlist.length > 0 && typeof isMuted !== 'undefined' && onMuteToggle && (
+                {playlist.length > 0 && typeof isPlaying !== 'undefined' && onPlayPause && (
                     <div className="p-4 border-b border-slate-700/50">
-                        <h4 className="font-semibold text-xs text-slate-400 uppercase mb-2">Rádio Clio</h4>
+                        <h4 className="font-semibold text-xs text-slate-400 uppercase mb-2">Player Clio</h4>
                         <div className="bg-slate-700/50 rounded-lg p-3 flex items-center justify-between">
                             <div className="flex-1 min-w-0">
                                 <p className="font-bold text-white truncate">{currentTrack?.name || '...'}</p>
                                 <p className="text-sm text-lime-300 truncate">{currentTrack?.artist || '...'}</p>
                             </div>
                             <div className="flex items-center space-x-2 ml-2">
-                                <button onClick={onMuteToggle} className="w-10 h-10 bg-lime-500 rounded-full flex items-center justify-center text-slate-900">
-                                {isMuted ? <VolumeXIcon className="w-6 h-6"/> : <Volume2Icon className="w-6 h-6"/>}
+                                <button onClick={onPlayPause} className="w-10 h-10 bg-lime-500 rounded-full flex items-center justify-center text-slate-900">
+                                {isPlaying ? <PauseIcon className="w-6 h-6"/> : <PlayIcon className="w-6 h-6"/>}
                                 </button>
                             </div>
                         </div>

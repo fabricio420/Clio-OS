@@ -12,7 +12,7 @@ import PhotoGalleryApp from './components/PhotoGalleryApp';
 import MusicPlayerWidget from './components/MusicPlayerWidget';
 import BrowserApp from './components/BrowserApp';
 import CollabClioApp from './components/CollabClioApp';
-import RadioClioApp from './components/RadioSarauApp';
+import ClioPlayerApp from './components/ClioPlayerApp';
 import GadgetWrapper from './components/gadgets/GadgetWrapper';
 import AnalogClock from './components/gadgets/AnalogClock';
 import CountdownGadget from './components/gadgets/CountdownGadget';
@@ -46,7 +46,7 @@ import { PhotoUploadForm } from './components/forms/PhotoUploadForm';
 import { CollectiveDocumentForm } from './components/forms/CollectiveDocumentForm';
 import { MeetingMinuteForm } from './components/forms/MeetingMinuteForm';
 import { VotingTopicForm } from './components/forms/VotingTopicForm';
-import { ChevronLeftIcon, PowerIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, RadioIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, WhatsappIcon } from './components/icons';
+import { ChevronLeftIcon, PowerIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, RadioIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, WhatsappIcon, MusicIcon, SkipBackIcon, SkipForwardIcon, PlayIcon, PauseIcon, MenuIcon } from './components/icons';
 // FIX: Import AppContext to provide context to children components.
 import { AppContext } from './contexts/AppContext';
 
@@ -150,7 +150,7 @@ const wallpapers = [
 export type AppName = 
     | 'dashboard' | 'info' | 'tasks' | 'schedule' | 'artists' | 'team_hub' 
     | 'media' | 'inventory' | 'reports' | 'documentation' | 'clio_company' 
-    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile' | 'radio_clio' | 'whatsapp';
+    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile' | 'clio_player' | 'whatsapp';
 
 export type AppStatus = 'open' | 'minimized' | 'closed';
 export type AppStates = Record<AppName, AppStatus>;
@@ -160,7 +160,7 @@ const initialAppStates: AppStates = {
     artists: 'closed', team_hub: 'closed', media: 'closed', inventory: 'closed',
     reports: 'closed', documentation: 'closed', clio_company: 'closed',
     personalize: 'closed', finances: 'closed', notebooks: 'closed', gallery: 'closed',
-    browser: 'closed', collab_clio: 'closed', profile: 'closed', radio_clio: 'closed',
+    browser: 'closed', collab_clio: 'closed', profile: 'closed', clio_player: 'closed',
     whatsapp: 'closed'
 };
 
@@ -175,38 +175,86 @@ const GUEST_USER: Member = {
     role: 'Desenvolvedor'
 };
 
-const RADIO_EPOCH = new Date('2024-01-01T00:00:00Z').getTime();
+// --- MOBILE-SPECIFIC COMPONENTS ---
+const MobileTopBar: React.FC<{ user: Member, onToggleControlCenter: () => void, onOpenProfile: () => void }> = ({ user, onToggleControlCenter, onOpenProfile }) => {
+    const [time, setTime] = useState(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
 
-const smartShuffle = (tracks: Track[]): Track[] => {
-    const remaining = [...tracks];
-    const result: Track[] = [];
-    let lastArtist: string | null = null;
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setTime(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+        }, 1000 * 60);
+        return () => clearInterval(timer);
+    }, []);
 
-    for (let i = remaining.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
-    }
-    
-    while (remaining.length > 0) {
-        let foundIndex = -1;
-        
-        for (let i = 0; i < remaining.length; i++) {
-            if (remaining[i].artist !== lastArtist) {
-                foundIndex = i;
-                break;
-            }
+    return (
+        <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-10 flex items-center justify-between px-3 z-30 border-b border-white/10">
+            <button onClick={onOpenProfile} className="flex items-center gap-2">
+                <img src={user.avatar} alt={user.name} className="w-6 h-6 rounded-full" />
+            </button>
+            <span className="font-semibold text-sm text-white">{time}</span>
+            <button onClick={onToggleControlCenter} className="p-2 -mr-2">
+                <MenuIcon className="w-5 h-5 text-white" />
+            </button>
+        </header>
+    );
+};
+
+const MobileAppDrawer: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    apps: { name: AppName; title: string; icon: React.ReactNode }[];
+    onAppClick: (appName: AppName) => void;
+}> = ({ isOpen, onClose, apps, onAppClick }) => {
+    const touchStartY = useRef<number | null>(null);
+    const touchEndY = useRef<number | null>(null);
+    const minSwipeDistance = 50;
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartY.current = e.targetTouches[0].clientY;
+        touchEndY.current = null;
+    };
+    const handleTouchMove = (e: React.TouchEvent) => {
+        touchEndY.current = e.targetTouches[0].clientY;
+    };
+    const handleTouchEnd = () => {
+        if (!touchStartY.current || !touchEndY.current) return;
+        const distance = touchStartY.current - touchEndY.current;
+        const isSwipeDown = distance < -minSwipeDistance;
+
+        if (isSwipeDown) {
+            onClose();
         }
+        touchStartY.current = null;
+        touchEndY.current = null;
+    };
 
-        if (foundIndex === -1) {
-            foundIndex = 0;
-        }
-        
-        const [track] = remaining.splice(foundIndex, 1);
-        result.push(track);
-        lastArtist = track.artist;
-    }
-
-    return result;
+    return (
+    <>
+        <div 
+            className={`fixed inset-0 bg-black/50 z-40 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            onClick={onClose}
+        />
+        <div
+            className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-800/80 backdrop-blur-lg rounded-t-2xl transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
+            style={{ maxHeight: '80vh' }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
+            <div className="w-10 h-1.5 bg-slate-600 rounded-full mx-auto my-3" onClick={onClose}></div>
+            <div className="overflow-y-auto p-4" style={{ maxHeight: 'calc(80vh - 30px)' }}>
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-y-4">
+                    {apps.map(({ name, title, icon }) => (
+                        <button key={name} onClick={() => onAppClick(name)} className="flex flex-col items-center justify-start p-2 space-y-2 rounded-lg hover:bg-black/20 transition-colors">
+                            <div className="w-16 h-16">{icon}</div>
+                            <span className="text-xs text-center text-slate-200">{title}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </>
+    );
 };
 
 
@@ -226,9 +274,42 @@ const App: React.FC = () => {
     const isMobile = useMediaQuery('(max-width: 768px)');
     const [activeMobileApp, setActiveMobileApp] = useState<AppName | null>(null);
     const [isMobileControlCenterOpen, setIsMobileControlCenterOpen] = useState(false);
-    const [mobilePageIndex, setMobilePageIndex] = useState(0);
-    const touchStartX = useRef(0);
-    const touchStartY = useRef(0);
+    const [isAppDrawerOpen, setIsAppDrawerOpen] = useState(false);
+
+    // Mobile gesture handling
+    const touchStartY = useRef<number | null>(null);
+    const touchEndY = useRef<number | null>(null);
+    const minSwipeDistance = 50;
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartY.current = e.targetTouches[0].clientY;
+        touchEndY.current = null; // reset end position on new touch
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        touchEndY.current = e.targetTouches[0].clientY;
+    };
+
+    const handleTouchEnd = () => {
+        if (!touchStartY.current || !touchEndY.current) return;
+
+        const distance = touchStartY.current - touchEndY.current;
+        const isSwipeUp = distance > minSwipeDistance;
+        const isSwipeDown = distance < -minSwipeDistance;
+        
+        // Don't trigger if a panel is already open
+        if (isAppDrawerOpen || isMobileControlCenterOpen) return;
+
+        if (isSwipeUp) {
+            setIsAppDrawerOpen(true);
+        } else if (isSwipeDown) {
+            setIsMobileControlCenterOpen(true);
+        }
+        
+        // Reset refs
+        touchStartY.current = null;
+        touchEndY.current = null;
+    };
 
 
     // Modal State
@@ -249,14 +330,14 @@ const App: React.FC = () => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const musicFileInputRef = useRef<HTMLInputElement>(null);
 
-    // Radio Sarau Player State
-    const [radioPlaylist, setRadioPlaylist] = useState<Track[]>(() => smartShuffle(CURATED_RADIO_PLAYLIST));
-    const [currentRadioTrackIndex, setCurrentRadioTrackIndex] = useState(0);
-    const [isRadioMuted, setIsRadioMuted] = useState(true); // User-controlled mute
-    const [radioProgress, setRadioProgress] = useState(0);
-    const [radioDuration, setRadioDuration] = useState(0);
-    const [radioVolume, setRadioVolume] = useState(0.75);
-    const radioAudioRef = useRef<HTMLAudioElement>(null);
+    // Clio Player State
+    const [clioPlaylist] = useState<Track[]>(CURATED_RADIO_PLAYLIST);
+    const [currentClioTrackIndex, setCurrentClioTrackIndex] = useState(0);
+    const [isClioPlaying, setIsClioPlaying] = useState(false);
+    const [clioProgress, setClioProgress] = useState(0);
+    const [isClioSeeking, setIsClioSeeking] = useState(false);
+    const clioAudioRef = useRef<HTMLAudioElement>(null);
+
     
     // --- USER & DATA MANAGEMENT ---
     useEffect(() => {
@@ -276,55 +357,6 @@ const App: React.FC = () => {
         };
     }, []);
 
-    // Radio Sync Effect
-    useEffect(() => {
-        if (!loggedInUser || radioPlaylist.length === 0 || !radioAudioRef.current) return;
-
-        const audioEl = radioAudioRef.current;
-        const trackDurations = radioPlaylist.map(t => t.duration);
-        const totalPlaylistDuration = trackDurations.reduce((acc, dur) => acc + dur, 0);
-
-        const now = Date.now();
-        const elapsedMilliseconds = now - RADIO_EPOCH;
-        const elapsedSeconds = elapsedMilliseconds / 1000;
-        const currentPlaylistTime = elapsedSeconds % totalPlaylistDuration;
-
-        let cumulativeDuration = 0;
-        let targetTrackIndex = 0;
-        let targetCurrentTime = 0;
-
-        for (let i = 0; i < radioPlaylist.length; i++) {
-            const trackDuration = trackDurations[i];
-            if (cumulativeDuration + trackDuration > currentPlaylistTime) {
-                targetTrackIndex = i;
-                targetCurrentTime = currentPlaylistTime - cumulativeDuration;
-                break;
-            }
-            cumulativeDuration += trackDuration;
-        }
-
-        setCurrentRadioTrackIndex(targetTrackIndex);
-        
-        const setAudioTime = () => {
-            if (audioEl.readyState >= 1) { // HAVE_METADATA
-                audioEl.currentTime = targetCurrentTime;
-                setRadioProgress(targetCurrentTime);
-            }
-        };
-
-        if(audioEl.src === radioPlaylist[targetTrackIndex]?.url && audioEl.readyState >= 1) {
-            setAudioTime();
-        } else {
-            audioEl.addEventListener('loadedmetadata', setAudioTime, { once: true });
-        }
-       
-        const fallbackTimeout = setTimeout(setAudioTime, 1500);
-
-        return () => {
-            clearTimeout(fallbackTimeout);
-            audioEl.removeEventListener('loadedmetadata', setAudioTime);
-        };
-    }, [loggedInUser, radioPlaylist]);
 
     const loadUserData = (email: string) => {
         const userDataString = localStorage.getItem(`collab-clio-data-${email}`);
@@ -725,83 +757,65 @@ const App: React.FC = () => {
     };
     const triggerMusicFileInput = () => musicFileInputRef.current?.click();
 
-    // --- Radio Clio Handlers ---
-    const handleRadioNext = useCallback(() => {
-        if (radioPlaylist.length > 0) {
-             setCurrentRadioTrackIndex(p => (p + 1) % radioPlaylist.length);
-        }
-    }, [radioPlaylist]);
-
-    useEffect(() => {
-        const audio = radioAudioRef.current;
-        if (!audio) return;
-        
-        audio.muted = isRadioMuted;
-        audio.volume = radioVolume;
-        
-        const setAudioData = () => setRadioDuration(audio.duration);
-        const setAudioTime = () => setRadioProgress(audio.currentTime);
-        const handleRadioEnd = () => handleRadioNext();
-
-        audio.addEventListener('loadeddata', setAudioData);
-        audio.addEventListener('timeupdate', setAudioTime);
-        audio.addEventListener('ended', handleRadioEnd);
-
-        return () => {
-            audio.removeEventListener('loadeddata', setAudioData);
-            audio.removeEventListener('timeupdate', setAudioTime);
-            audio.removeEventListener('ended', handleRadioEnd);
-        };
-    }, [isRadioMuted, radioVolume, handleRadioNext]);
-
-
-    const handleRadioMuteToggle = () => {
-        setIsRadioMuted(prev => !prev);
-        if (radioAudioRef.current?.paused) {
-            radioAudioRef.current?.play().catch(e => console.error("Could not play radio after interaction:", e));
-        }
-    };
-    
-    const handleRadioVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setRadioVolume(Number(e.target.value));
-    };
-
-    
-    // --- Mobile Gesture Handler ---
-    const handleMobileTouchStart = (e: React.TouchEvent) => {
-        touchStartX.current = e.touches[0].clientX;
-        touchStartY.current = e.touches[0].clientY;
-    };
-
-    const handleMobileTouchEnd = (e: React.TouchEvent) => {
-        const touchEndX = e.changedTouches[0].clientX;
-        const touchEndY = e.changedTouches[0].clientY;
-        
-        const deltaX = touchEndX - touchStartX.current;
-        const deltaY = touchEndY - touchStartY.current;
-
-        // Prioritize vertical swipe for Control Center
-        const verticalSwipeThreshold = 75;
-        if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > verticalSwipeThreshold && touchStartY.current < 150) {
-            setIsMobileControlCenterOpen(true);
-            return;
-        }
-
-        // If not a clear vertical swipe, and no app is open, check for horizontal page swipe
-        const horizontalSwipeThreshold = 50;
-        if (!activeMobileApp && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > horizontalSwipeThreshold) {
-            if (mobilePageIndex === 0) {
-                // On App screen, only swipe left works to go to page 1
-                if (deltaX < 0) {
-                    setMobilePageIndex(1);
+    // --- Clio Player Handlers ---
+    const handleClioPlayPause = useCallback(() => {
+        if (clioPlaylist.length > 0) {
+            const audio = clioAudioRef.current;
+            if (audio) {
+                if (isClioPlaying) {
+                    audio.pause();
+                } else {
+                    audio.play().catch(e => {
+                        console.error("Audio play failed:", e);
+                        setIsClioPlaying(false); // Revert state if play fails
+                    });
                 }
-            } else { // mobilePageIndex === 1
-                // On empty screen, any horizontal swipe goes back to page 0
-                setMobilePageIndex(0);
+                setIsClioPlaying(!isClioPlaying);
             }
         }
+    }, [clioPlaylist.length, isClioPlaying]);
+
+    const handleClioNext = useCallback(() => {
+        if (clioPlaylist.length > 0) {
+            setCurrentClioTrackIndex(p => (p + 1) % clioPlaylist.length);
+        }
+    }, [clioPlaylist]);
+
+    const handleClioPrev = useCallback(() => {
+        if (clioPlaylist.length > 0) {
+            setCurrentClioTrackIndex(p => (p - 1 + clioPlaylist.length) % clioPlaylist.length);
+        }
+    }, [clioPlaylist]);
+    
+    useEffect(() => {
+        if (clioAudioRef.current) {
+             setIsClioPlaying(true);
+             clioAudioRef.current.play().catch(e => {
+                 console.log("Audio couldn't auto-play, requires user interaction.");
+                 setIsClioPlaying(false);
+             });
+        }
+    }, [currentClioTrackIndex]);
+
+    const handleClioTimeUpdate = () => {
+        if (clioAudioRef.current && !isClioSeeking) {
+            setClioProgress(clioAudioRef.current.currentTime);
+        }
     };
 
+    const handleClioSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (clioAudioRef.current) {
+            clioAudioRef.current.currentTime = Number(e.target.value);
+            setClioProgress(Number(e.target.value));
+        }
+    };
+
+    const handleClioSeekMouseDown = () => setIsClioSeeking(true);
+    const handleClioSeekMouseUp = () => setIsClioSeeking(false);
+    
+    const handleClioSelectTrack = (index: number) => {
+        setCurrentClioTrackIndex(index);
+    };
 
     // --- RENDER LOGIC ---
     if (!loggedInUser || !userState) {
@@ -871,7 +885,7 @@ const App: React.FC = () => {
         { name: 'documentation', title: 'Documentação', icon: <DockAppIcon bgColorClasses="bg-indigo-700"><BookOpenIcon /></DockAppIcon>, component: <Documentation /> },
         { name: 'finances', title: 'Finanças', icon: <DockAppIcon bgColorClasses="bg-emerald-600"><WalletIcon /></DockAppIcon>, component: <FinanceApp financialProjects={financialProjects} handleSaveFinancialProject={handleSaveFinancialProject} handleDeleteFinancialProject={handleDeleteFinancialProject} handleSaveTransaction={handleSaveTransaction} handleDeleteTransaction={handleDeleteTransaction} /> },
         { name: 'notebooks', title: 'Cadernos', icon: <DockAppIcon bgColorClasses="bg-amber-600"><BookMarkedIcon /></DockAppIcon>, component: <NotebooksApp notebooks={notebooks} handleSaveNotebook={handleSaveNotebook} handleDeleteNotebook={handleDeleteNotebook} handleSaveNote={handleSaveNote} handleDeleteNote={handleDeleteNote} /> },
-        { name: 'radio_clio', title: 'Rádio Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon>, component: <RadioClioApp playlist={radioPlaylist} currentTrackIndex={currentRadioTrackIndex} isMuted={isRadioMuted} onMuteToggle={handleRadioMuteToggle} progress={radioProgress} duration={radioDuration} volume={radioVolume} onVolumeChange={handleRadioVolumeChange} /> },
+        { name: 'clio_player', title: 'Player Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><MusicIcon /></DockAppIcon>, component: <ClioPlayerApp playlist={clioPlaylist} currentTrackIndex={currentClioTrackIndex} isPlaying={isClioPlaying} onPlayPause={handleClioPlayPause} onNext={handleClioNext} onPrev={handleClioPrev} progress={clioProgress} duration={clioAudioRef.current?.duration || 0} onSeek={handleClioSeek} onSeekMouseDown={handleClioSeekMouseDown} onSeekMouseUp={handleClioSeekMouseUp} onSelectTrack={handleClioSelectTrack} /> },
         { name: 'collab_clio', title: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon>, component: <CollabClioApp onOpenModal={openModal} currentUser={loggedInUser} {...userState} handleDeleteCollectiveDocument={handleDeleteCollectiveDocument} handleDeleteMeetingMinute={handleDeleteMeetingMinute} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} /> },
         { name: 'browser', title: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon>, component: <BrowserApp /> },
         {
@@ -925,12 +939,12 @@ const App: React.FC = () => {
             >
                  <div className="absolute inset-0 bg-slate-900/30"></div>
                 {isMobile ? (
-                    <div 
-                        className="h-full w-full overflow-hidden flex flex-col relative"
-                        onTouchStart={handleMobileTouchStart}
-                        onTouchEnd={handleMobileTouchEnd}
-                    >
-                        {activeMobileApp ? (
+                    <div className="h-full w-full overflow-hidden flex flex-col relative bg-slate-900">
+                        {/* Static Background for Mobile */}
+                        <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${wallpaperImage || DEFAULT_WALLPAPER})` }}></div>
+
+                        <div className="relative z-10 flex flex-col h-full">
+                           {activeMobileApp ? (
                              <>
                                 <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-14 flex items-center justify-between px-4 z-10 border-b border-white/10">
                                     <button onClick={() => setActiveMobileApp(null)} className="flex items-center gap-1 text-sm text-sky-400 hover:text-sky-300">
@@ -945,64 +959,70 @@ const App: React.FC = () => {
                                 </main>
                             </>
                         ) : (
-                            <>
-                                <div className="h-full w-full overflow-hidden">
-                                    <div 
-                                        className="h-full w-[200%] flex transition-transform duration-300 ease-out"
-                                        style={{ transform: `translateX(-${mobilePageIndex * 50}%)` }}
-                                    >
-                                        {/* Page 1: App Grid */}
-                                        <div className="w-1/2 h-full flex-shrink-0 flex flex-col overflow-hidden">
-                                            <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-14 flex items-center justify-between px-4 border-b border-white/10">
-                                                <div className="flex items-center gap-2">
-                                                    <img src={loggedInUser.avatar} alt={loggedInUser.name} className="w-8 h-8 rounded-full" />
-                                                    <span className="font-semibold text-white">{loggedInUser.name}</span>
-                                                </div>
-                                                <button onClick={handleLogout} className="p-2 text-slate-300 hover:text-white" aria-label="Sair">
-                                                    <PowerIcon className="w-5 h-5 text-red-400"/>
-                                                </button>
-                                            </header>
-                                            <main className="flex-1 overflow-y-auto p-4">
-                                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-                                                    {appConfig.map(({ name, title, icon }) => (
-                                                        <button key={name} onClick={() => setActiveMobileApp(name)} className="flex flex-col items-center justify-start p-2 space-y-2 rounded-lg hover:bg-black/20 transition-colors">
-                                                            <div className="w-16 h-16">
-                                                                {icon}
-                                                            </div>
-                                                            <span className="text-xs text-center text-slate-200">{title}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </main>
-                                        </div>
-                                        {/* Page 2: Empty Screen */}
-                                        <div className="w-1/2 h-full flex-shrink-0">
-                                            {/* This page is intentionally empty */}
-                                        </div>
+                             <>
+                                <MobileTopBar user={loggedInUser} onToggleControlCenter={() => setIsMobileControlCenterOpen(true)} onOpenProfile={() => setActiveMobileApp('profile')} />
+                                <main 
+                                    className="flex-1 overflow-y-auto p-4 space-y-4"
+                                    onTouchStart={handleTouchStart}
+                                    onTouchMove={handleTouchMove}
+                                    onTouchEnd={handleTouchEnd}
+                                >
+                                    {/* Mobile Home Screen Widgets */}
+                                    <div className="bg-black/20 backdrop-blur-lg p-4 rounded-xl border border-white/10">
+                                       <CountdownGadget />
                                     </div>
-                                </div>
-                                {/* Page indicators */}
-                                <div className="absolute bottom-2 left-0 right-0 flex justify-center items-center space-x-2 pointer-events-none">
-                                    <div className={`w-2 h-2 rounded-full transition-colors ${mobilePageIndex === 0 ? 'bg-white' : 'bg-white/50'}`}></div>
-                                    <div className={`w-2 h-2 rounded-full transition-colors ${mobilePageIndex === 1 ? 'bg-white' : 'bg-white/50'}`}></div>
-                                </div>
+                                    <div className="bg-black/20 backdrop-blur-lg p-4 rounded-xl border border-white/10">
+                                       <TeamStatusGadget />
+                                    </div>
+                                </main>
+                                <footer className="flex-shrink-0 p-2">
+                                     <div className="bg-black/20 backdrop-blur-xl p-2 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-around">
+                                        {['dashboard', 'tasks', 'team_hub', 'finances'].map(appName => {
+                                            const app = appConfig.find(a => a.name === appName)!;
+                                            return (
+                                                <button key={app.name} onClick={() => setActiveMobileApp(app.name)} className="flex flex-col items-center p-1 space-y-1 rounded-lg">
+                                                    <div className="w-12 h-12">{app.icon}</div>
+                                                </button>
+                                            )
+                                        })}
+                                        <button onClick={() => setIsAppDrawerOpen(true)} className="flex flex-col items-center p-1 space-y-1 rounded-lg">
+                                            <div className="w-12 h-12 rounded-[14px] flex items-center justify-center text-white bg-slate-600"><MenuIcon className="w-8 h-8"/></div>
+                                        </button>
+                                     </div>
+                                </footer>
                             </>
                         )}
+                        </div>
+                        <MobileAppDrawer 
+                           isOpen={isAppDrawerOpen} 
+                           onClose={() => setIsAppDrawerOpen(false)}
+                           apps={appConfig}
+                           onAppClick={(appName) => {
+                               setIsAppDrawerOpen(false);
+                               setActiveMobileApp(appName);
+                           }}
+                        />
                         <ControlCenter 
                             isOpen={isMobileControlCenterOpen} 
                             onClose={() => setIsMobileControlCenterOpen(false)}
                             eventInfo={eventInfo}
                             schedule={schedule}
-                            playlist={radioPlaylist}
-                            currentTrackIndex={currentRadioTrackIndex}
-                            isMuted={isRadioMuted}
-                            onMuteToggle={handleRadioMuteToggle}
+                            playlist={clioPlaylist}
+                            currentTrackIndex={currentClioTrackIndex}
+                            isPlaying={isClioPlaying}
+                            onPlayPause={handleClioPlayPause}
                         />
                     </div>
                 ) : (
                     <>
                         <audio ref={audioRef} src={playlist[currentTrackIndex]?.url} />
-                        <audio ref={radioAudioRef} src={radioPlaylist?.[currentRadioTrackIndex]?.url} muted autoPlay loop={false} />
+                        <audio 
+                            ref={clioAudioRef} 
+                            src={clioPlaylist?.[currentClioTrackIndex]?.url} 
+                            onTimeUpdate={handleClioTimeUpdate}
+                            onEnded={handleClioNext}
+                            onLoadedMetadata={() => clioAudioRef.current && setClioProgress(clioAudioRef.current.currentTime)}
+                         />
                         <input type="file" ref={musicFileInputRef} onChange={handleMusicFileChange} accept=".mp3" className="hidden" />
 
                         <ClioOSDesktop 
@@ -1014,10 +1034,10 @@ const App: React.FC = () => {
                             onToggleMusicPlayer={() => setIsMusicPlayerOpen(!isMusicPlayerOpen)}
                             eventInfo={eventInfo}
                             schedule={schedule}
-                            radioPlaylist={radioPlaylist}
-                            currentRadioTrackIndex={currentRadioTrackIndex}
-                            isRadioMuted={isRadioMuted}
-                            handleRadioMuteToggle={handleRadioMuteToggle}
+                            clioPlaylist={clioPlaylist}
+                            currentClioTrackIndex={currentClioTrackIndex}
+                            isClioPlaying={isClioPlaying}
+                            handleClioPlayPause={handleClioPlayPause}
                         />
 
                         {gadgets.map((gadget: Gadget) => (
@@ -1029,10 +1049,10 @@ const App: React.FC = () => {
                                 {gadget.type === 'team_status' && <TeamStatusGadget />}
                                 {gadget.type === 'radio_clio' && (
                                     <RadioClioGadget
-                                        playlist={radioPlaylist}
-                                        currentTrackIndex={currentRadioTrackIndex}
-                                        isMuted={isRadioMuted}
-                                        onMuteToggle={handleRadioMuteToggle}
+                                        playlist={clioPlaylist}
+                                        currentTrackIndex={currentClioTrackIndex}
+                                        isPlaying={isClioPlaying}
+                                        onPlayPause={handleClioPlayPause}
                                     />
                                 )}
                             </GadgetWrapper>

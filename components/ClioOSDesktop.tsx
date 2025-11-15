@@ -41,16 +41,16 @@ interface ClioOSDesktopProps {
     onToggleMusicPlayer: () => void;
     eventInfo: EventInfoData;
     schedule: ScheduleItem[];
-    radioPlaylist: Track[];
-    currentRadioTrackIndex: number;
-    isRadioMuted: boolean;
-    handleRadioMuteToggle: () => void;
+    clioPlaylist: Track[];
+    currentClioTrackIndex: number;
+    isClioPlaying: boolean;
+    handleClioPlayPause: () => void;
 }
 
 const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({ 
     onAppClick, user, onLogout, appStates, isMusicPlayerOpen, onToggleMusicPlayer,
-    eventInfo, schedule, radioPlaylist, currentRadioTrackIndex, isRadioMuted, 
-    handleRadioMuteToggle
+    eventInfo, schedule, clioPlaylist, currentClioTrackIndex, isClioPlaying, 
+    handleClioPlayPause
 }) => {
     const [time, setTime] = useState(new Date());
     const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
@@ -93,7 +93,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
         { type: 'separator' },
         { id: 'finances', label: 'Finanças', icon: <DockAppIcon bgColorClasses="bg-emerald-600"><WalletIcon /></DockAppIcon> },
         { id: 'notebooks', label: 'Cadernos', icon: <DockAppIcon bgColorClasses="bg-amber-600"><BookMarkedIcon /></DockAppIcon> },
-        { id: 'radio_clio', label: 'Rádio Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><RadioIcon /></DockAppIcon> },
+        { id: 'clio_player', label: 'Player Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><MusicIcon /></DockAppIcon> },
         { id: 'collab_clio', label: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon> },
         { id: 'browser', label: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon> },
         { id: 'whatsapp', label: 'WhatsApp', icon: <DockAppIcon bgColorClasses="bg-green-500"><WhatsappIcon /></DockAppIcon> },
@@ -164,10 +164,10 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
                 onClose={() => setIsControlCenterOpen(false)}
                 eventInfo={eventInfo}
                 schedule={schedule}
-                playlist={radioPlaylist}
-                currentTrackIndex={currentRadioTrackIndex}
-                isMuted={isRadioMuted}
-                onMuteToggle={handleRadioMuteToggle}
+                playlist={clioPlaylist}
+                currentTrackIndex={currentClioTrackIndex}
+                isPlaying={isClioPlaying}
+                onPlayPause={handleClioPlayPause}
             />
 
             {/* Empty Desktop Area */}
