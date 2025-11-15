@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 // FIX: Added FeedPost to the type imports.
 import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Track, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus } from './types';
@@ -187,13 +188,13 @@ const MobileTopBar: React.FC<{ user: Member, onToggleControlCenter: () => void, 
     }, []);
 
     return (
-        <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-10 flex items-center justify-between px-3 z-30 border-b border-white/10">
-            <button onClick={onOpenProfile} className="flex items-center gap-2">
-                <img src={user.avatar} alt={user.name} className="w-6 h-6 rounded-full" />
+        <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-12 flex items-center justify-between px-3 z-30 border-b border-white/10">
+            <button onClick={onOpenProfile} className="flex items-center gap-2 active:opacity-70">
+                <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
             </button>
             <span className="font-semibold text-sm text-white">{time}</span>
-            <button onClick={onToggleControlCenter} className="p-2 -mr-2">
-                <MenuIcon className="w-5 h-5 text-white" />
+            <button onClick={onToggleControlCenter} className="p-2 -mr-2 active:opacity-70">
+                <MenuIcon className="w-6 h-6 text-white" />
             </button>
         </header>
     );
@@ -235,19 +236,19 @@ const MobileAppDrawer: React.FC<{
             onClick={onClose}
         />
         <div
-            className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-800/80 backdrop-blur-lg rounded-t-2xl transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
-            style={{ maxHeight: '80vh' }}
+            className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-800/90 backdrop-blur-xl rounded-t-2xl transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
+            style={{ maxHeight: '85dvh' }}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
         >
-            <div className="w-10 h-1.5 bg-slate-600 rounded-full mx-auto my-3" onClick={onClose}></div>
-            <div className="overflow-y-auto p-4" style={{ maxHeight: 'calc(80vh - 30px)' }}>
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-y-4">
+            <div className="w-12 h-1.5 bg-slate-500/50 rounded-full mx-auto my-3" onClick={onClose}></div>
+            <div className="overflow-y-auto p-4 pb-12" style={{ maxHeight: 'calc(85dvh - 40px)' }}>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-2 gap-y-6">
                     {apps.map(({ name, title, icon }) => (
-                        <button key={name} onClick={() => onAppClick(name)} className="flex flex-col items-center justify-start p-2 space-y-2 rounded-lg hover:bg-black/20 transition-colors">
-                            <div className="w-16 h-16">{icon}</div>
-                            <span className="text-xs text-center text-slate-200">{title}</span>
+                        <button key={name} onClick={() => onAppClick(name)} className="flex flex-col items-center justify-start p-1 space-y-2 rounded-lg active:bg-white/10 transition-colors">
+                            <div className="w-14 h-14">{icon}</div>
+                            <span className="text-xs text-center text-slate-200 leading-tight">{title}</span>
                         </button>
                     ))}
                 </div>
@@ -934,7 +935,7 @@ const App: React.FC = () => {
     return (
         <AppContext.Provider value={contextValue}>
             <div 
-                className="h-screen w-screen font-sans bg-cover bg-center"
+                className="h-[100dvh] w-screen font-sans bg-cover bg-center overflow-hidden"
                 style={{ backgroundImage: `url(${wallpaperImage || DEFAULT_WALLPAPER})` }}
             >
                  <div className="absolute inset-0 bg-slate-900/30"></div>
@@ -951,10 +952,10 @@ const App: React.FC = () => {
                                         <ChevronLeftIcon className="w-5 h-5" />
                                         <span>Início</span>
                                     </button>
-                                    <h1 className="font-bold text-md text-white">{appConfig.find(a => a.name === activeMobileApp)?.title}</h1>
+                                    <h1 className="font-bold text-md text-white truncate max-w-[50%]">{appConfig.find(a => a.name === activeMobileApp)?.title}</h1>
                                     <div className="w-16"></div> {/* Spacer */}
                                 </header>
-                                <main className="flex-1 overflow-y-auto bg-slate-800/70 backdrop-blur-lg">
+                                <main className="flex-1 overflow-y-auto bg-slate-800/70 backdrop-blur-lg pb-safe">
                                     {appComponents[activeMobileApp]}
                                 </main>
                             </>
@@ -962,7 +963,7 @@ const App: React.FC = () => {
                              <>
                                 <MobileTopBar user={loggedInUser} onToggleControlCenter={() => setIsMobileControlCenterOpen(true)} onOpenProfile={() => setActiveMobileApp('profile')} />
                                 <main 
-                                    className="flex-1 overflow-y-auto p-4 space-y-4"
+                                    className="flex-1 overflow-y-auto p-4 space-y-4 pb-32"
                                     onTouchStart={handleTouchStart}
                                     onTouchMove={handleTouchMove}
                                     onTouchEnd={handleTouchEnd}
@@ -975,18 +976,19 @@ const App: React.FC = () => {
                                        <TeamStatusGadget />
                                     </div>
                                 </main>
-                                <footer className="flex-shrink-0 p-2">
-                                     <div className="bg-black/20 backdrop-blur-xl p-2 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-around">
+                                <footer className="absolute bottom-4 left-0 right-0 flex justify-center z-20 px-4">
+                                     <div className="bg-black/40 backdrop-blur-xl p-2 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-2 md:gap-4 max-w-full overflow-x-auto no-scrollbar">
                                         {['dashboard', 'tasks', 'team_hub', 'finances'].map(appName => {
                                             const app = appConfig.find(a => a.name === appName)!;
                                             return (
-                                                <button key={app.name} onClick={() => setActiveMobileApp(app.name)} className="flex flex-col items-center p-1 space-y-1 rounded-lg">
-                                                    <div className="w-12 h-12">{app.icon}</div>
+                                                <button key={app.name} onClick={() => setActiveMobileApp(app.name)} className="flex flex-col items-center p-2 space-y-1 rounded-xl active:bg-white/10 transition-colors">
+                                                    <div className="w-10 h-10">{app.icon}</div>
                                                 </button>
                                             )
                                         })}
-                                        <button onClick={() => setIsAppDrawerOpen(true)} className="flex flex-col items-center p-1 space-y-1 rounded-lg">
-                                            <div className="w-12 h-12 rounded-[14px] flex items-center justify-center text-white bg-slate-600"><MenuIcon className="w-8 h-8"/></div>
+                                        <div className="w-px h-8 bg-white/20 mx-1"></div>
+                                        <button onClick={() => setIsAppDrawerOpen(true)} className="flex flex-col items-center p-2 space-y-1 rounded-xl active:bg-white/10 transition-colors">
+                                            <div className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white bg-slate-600/80"><MenuIcon className="w-6 h-6"/></div>
                                         </button>
                                      </div>
                                 </footer>

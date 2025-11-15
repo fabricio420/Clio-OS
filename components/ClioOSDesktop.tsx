@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
     PowerIcon, WalletIcon, ArchiveIcon, BrushIcon, BookMarkedIcon, ExternalLinkIcon, HomeIcon,
@@ -16,14 +17,14 @@ interface DockIconProps {
 }
 
 const DockIcon: React.FC<DockIconProps> = ({ icon, label, onClick, disabled }) => (
-    <div className="relative flex flex-col items-center group">
-        <span className="absolute bottom-full mb-2 px-2 py-1 text-xs text-white bg-black/70 rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+    <div className="relative flex flex-col items-center group flex-shrink-0">
+        <span className="absolute bottom-full mb-2 px-2 py-1 text-xs text-white bg-black/70 rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
             {label}
         </span>
         <button
             onClick={onClick}
             disabled={disabled}
-            className="w-16 h-16 flex items-center justify-center transition-all duration-200 ease-out transform group-hover:-translate-y-2 group-hover:scale-110 disabled:opacity-50 disabled:hover:transform-none"
+            className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center transition-all duration-200 ease-out transform group-hover:-translate-y-2 group-hover:scale-110 disabled:opacity-50 disabled:hover:transform-none"
             aria-label={label}
         >
             {icon}
@@ -128,7 +129,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
                     <div className="relative" ref={userMenuRef}>
                         <button onClick={() => setIsUserMenuOpen(prev => !prev)} className="flex items-center gap-2 p-1 rounded-md hover:bg-white/20 transition-colors">
                             <img src={user.avatar} alt={user.name} className="w-5 h-5 rounded-full" />
-                            <span>{user.name}</span>
+                            <span className="hidden sm:inline">{user.name}</span>
                         </button>
                         
                         {isUserMenuOpen && (
@@ -165,20 +166,20 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
                 eventInfo={eventInfo}
                 schedule={schedule}
                 playlist={clioPlaylist}
-                currentTrackIndex={currentClioTrackIndex}
+                currentClioTrackIndex={currentClioTrackIndex}
                 isPlaying={isClioPlaying}
                 onPlayPause={handleClioPlayPause}
             />
 
             {/* Empty Desktop Area */}
-            <main className="flex-1"></main>
+            <main className="flex-1 pointer-events-none"></main>
 
             {/* Dock */}
-            <footer className="w-full flex justify-center pb-2 z-20">
-                <nav className="flex items-end justify-center gap-2 h-20 p-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl">
+            <footer className="w-full flex justify-center pb-2 z-20 px-2">
+                <nav className="flex items-end justify-start md:justify-center gap-1 md:gap-2 h-16 md:h-20 p-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl max-w-[98vw] overflow-x-auto no-scrollbar">
                     {dockApps.map((app, index) => {
                         if ('type' in app && app.type === 'separator') {
-                            return <div key={`sep-${index}`} className="h-12 w-px bg-white/20 self-center" />;
+                            return <div key={`sep-${index}`} className="h-8 md:h-12 w-px bg-white/20 self-center flex-shrink-0 mx-1" />;
                         }
                         const { id, label, icon, disabled } = app as { id: AppName, label: string, icon: React.ReactNode, disabled?: boolean };
                         return (
@@ -193,6 +194,15 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
                     })}
                 </nav>
             </footer>
+            <style>{`
+                .no-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+                .no-scrollbar {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+            `}</style>
         </div>
     );
 };

@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo } from 'react';
-import { HomeIcon, InfoIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, RadioIcon, MusicIcon } from './icons';
+import { HomeIcon, InfoIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, RadioIcon, MusicIcon, WhatsappIcon, MenuIcon } from './icons';
 
 const DocSection: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
   <section className="bg-slate-900 p-6 rounded-lg shadow-md mb-8 border-t border-lime-400">
@@ -106,7 +107,7 @@ const sections = [
       <>
         <p>O Hub da Equipe é o espaço central para a comunicação e gerenciamento dos membros do coletivo. Ele fortalece a colaboração e mantém todos na mesma página.</p>
         <ul>
-          <li><strong>Atualização de Status:</strong> Permite que cada membro compartilhe no que está trabalhando, mantendo a equipe ciente das atividades em tempo real.</li>
+          <li><strong>Atualização de Status:</strong> Permite que cada membro compartilhe no que está trabalhando no momento (ex: "Focando na arte do flyer"), mantendo a equipe ciente das atividades em tempo real.</li>
           <li><strong>Perfis da Equipe:</strong> Visualize todos os membros da equipe de organização com suas fotos, nomes e funções. Clicar em um perfil permite editar essas informações.</li>
           <li><strong>Mural de Comunicação:</strong> Um feed de atualizações onde qualquer membro pode postar mensagens para toda a equipe, como um mini-mural de recados interno para compartilhar novidades, fazer perguntas ou celebrar conquistas.</li>
         </ul>
@@ -165,7 +166,7 @@ const sections = [
     id: 'finances',
     title: 'Finanças',
     icon: <WalletIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'financeiro, orçamento, despesas, receitas, caixa, projetos, transações, dinheiro',
+    keywords: 'financeiro, orçamento, despesas, receitas, caixa, projetos, transações, dinheiro, csv',
     content: (
       <>
         <p>O aplicativo de Finanças é uma ferramenta poderosa para gerenciar todos os aspectos monetários do seu evento. Ele permite um controle detalhado sobre o fluxo de caixa, garantindo transparência e organização.</p>
@@ -173,6 +174,7 @@ const sections = [
           <li><strong>Projetos Financeiros:</strong> Crie diferentes "caixas" ou projetos para separar orçamentos (ex: "Caixa Geral do Evento", "Verba de Alimentação"). Isso ajuda a rastrear de onde o dinheiro vem e para onde vai com mais clareza.</li>
           <li><strong>Registro de Transações:</strong> Dentro de cada projeto, você pode adicionar receitas (entradas) e despesas (saídas), especificando descrição, valor, data e categoria.</li>
           <li><strong>Balanço Automático:</strong> O sistema calcula automaticamente o total de receitas, despesas e o saldo final para cada projeto, oferecendo uma visão clara da saúde financeira a qualquer momento.</li>
+          <li><strong>Exportação CSV:</strong> Exporte o histórico de transações de um projeto para um arquivo CSV, facilitando a análise em planilhas externas como Excel ou Google Sheets.</li>
         </ul>
       </>
     )
@@ -258,6 +260,22 @@ const sections = [
     )
   },
   {
+    id: 'whatsapp',
+    title: 'WhatsApp',
+    icon: <WhatsappIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'whatsapp, mensagem, chat, conversa, comunicação',
+    content: (
+      <>
+        <p>Acesse o WhatsApp Web diretamente de dentro do Clio OS para manter a comunicação com artistas e fornecedores sem trocar de aba.</p>
+        <ul>
+          <li><strong>Acesso Rápido:</strong> Uma janela dedicada para suas conversas do WhatsApp.</li>
+          <li><strong>Privacidade:</strong> O login é mantido localmente no seu navegador, garantindo que suas mensagens permaneçam privadas.</li>
+          <li><strong>Nota de Compatibilidade:</strong> Devido a políticas de segurança modernas dos navegadores, alguns recursos podem ser limitados ou requerer re-autenticação dependendo das configurações.</li>
+        </ul>
+      </>
+    )
+  },
+  {
     id: 'profile',
     title: 'Meu Perfil',
     icon: <UserIcon className="h-6 w-6 text-sky-400" />,
@@ -283,7 +301,23 @@ const sections = [
         <p>Deixe o Clio OS com a sua cara. A personalização permite que você altere a aparência da sua área de trabalho e adicione ferramentas para agilizar seu dia a dia.</p>
         <ul>
           <li><strong>Papel de Parede:</strong> Escolha uma imagem da galeria padrão ou envie seu próprio papel de parede para a área de trabalho e também para a tela de login.</li>
-          <li><strong>Gadgets:</strong> Adicione pequenos "widgets" à sua área de trabalho, como um relógio analógico, uma contagem regressiva para o evento, um bloco de notas rápidas, um uploader de mídias ou um resumo financeiro. Você pode arrastá-los e posicioná-los onde quiser.</li>
+          <li><strong>Gadgets:</strong> Adicione "widgets" flutuantes à sua área de trabalho: Relógio Analógico, Contagem Regressiva, Notas Rápidas, Resumo Financeiro, Status da Equipe e o Mini Player da Rádio Clio. Você pode arrastá-los e posicioná-los onde quiser.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'mobile',
+    title: 'Versão Mobile',
+    icon: <MenuIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'celular, mobile, responsivo, touch, smartphone, android, iphone',
+    content: (
+      <>
+        <p>O Clio OS foi desenhado para acompanhar você em qualquer lugar. A versão mobile oferece uma interface adaptada para telas pequenas, perfeita para o dia do evento.</p>
+        <ul>
+          <li><strong>Navegação por Gestos:</strong> Deslize para cima na parte inferior da tela para abrir a gaveta de aplicativos e deslize para baixo para acessar o Centro de Controle.</li>
+          <li><strong>Dock Inferior:</strong> Acesso rápido e fácil aos apps mais importantes: Dashboard, Tarefas, Hub da Equipe e Finanças.</li>
+          <li><strong>Widgets na Tela Inicial:</strong> Visualize a contagem regressiva para o evento e o status atual da equipe logo ao abrir o aplicativo no celular.</li>
         </ul>
       </>
     )
