@@ -24,12 +24,14 @@ const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement> & {icon: 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLogin, loginWallpaper }) => {
   const [view, setView] = useState<'login' | 'signup'>('login');
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const rememberedUser = localStorage.getItem('rememberedUser');
@@ -49,31 +51,57 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const result = onLogin(email, password);
-    const success = result instanceof Promise ? await result : result;
-    if (!success) {
-      setError('E-mail ou senha inválidos.');
-    } else {
-        if (rememberMe) {
-            localStorage.setItem('rememberedUser', JSON.stringify({ email, password }));
+    setIsLoading(true);
+    try {
+        const result = onLogin(email, password);
+        const success = result instanceof Promise ? await result : result;
+        if (!success) {
+          setError('E-mail ou senha inválidos.');
         } else {
-            localStorage.removeItem('rememberedUser');
+            if (rememberMe) {
+                localStorage.setItem('rememberedUser', JSON.stringify({ email, password }));
+            } else {
+                localStorage.removeItem('rememberedUser');
+            }
         }
+    } catch (err) {
+        setError('Ocorreu um erro ao tentar entrar.');
+    } finally {
+        setIsLoading(false);
     }
   };
 
   const handleSignUpSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setError('');
+      setSuccessMessage('');
+      
       if (password.length < 6) {
           setError('A senha deve ter no mínimo 6 caracteres.');
           return;
       }
-      const result = onSignUp(name, email, password);
-      const { success, message } = result instanceof Promise ? await result : result;
-      
-      if(!success) {
-          setError(message);
+
+      setIsLoading(true);
+
+      try {
+          const result = onSignUp(name, email, password);
+          const { success, message } = result instanceof Promise ? await result : result;
+          
+          if(!success) {
+              setError(message);
+          } else {
+              setSuccessMessage(message);
+              // Limpar campos sensíveis
+              setPassword('');
+              // Transição automática após sucesso
+              setTimeout(() => {
+                  switchView('login');
+              }, 2000);
+          }
+      } catch (err) {
+          setError('Erro inesperado ao criar conta.');
+      } finally {
+          setIsLoading(false);
       }
   }
 
@@ -82,9 +110,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
       setTimeout(() => {
           setView(newView);
           setError('');
-          setName('');
-          setEmail('');
-          setPassword('');
+          setSuccessMessage(''); // Limpa mensagem de sucesso ao trocar manualmente
+          // Mantemos o email preenchido se o usuário acabou de cadastrar para facilitar o login
+          if (newView === 'signup') {
+            setName('');
+            setEmail('');
+            setPassword('');
+          }
           setIsTransitioning(false);
       }, 300);
   }
@@ -107,8 +139,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
             <div className={`transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
                 {view === 'login' ? (
                     <form onSubmit={handleLoginSubmit} className="space-y-4">
-                        <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@coletivo.com" />
-                        <InputField icon={<LockIcon className="h-5 w-5 text-slate-400"/>} name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+                        
+                        {/* Se viemos de um cadastro com sucesso, mostramos aqui */}
+                        {successMessage && (
+                            <div className="bg-lime-500/20 border border-lime-500 text-lime-200 p-3 rounded-lg text-sm text-center mb-4">
+                                {successMessage}
+                            </div>
+                        )}
+
+                        <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@coletivo.com" disabled={isLoading} />
+                        <InputField icon={<LockIcon className="h-5 w-5 text-slate-400"/>} name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" disabled={isLoading} />
                         
                         <div className="flex items-center">
                         <input id="remember-me" name="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-slate-500 bg-slate-700 text-blue-500 focus:ring-blue-500" />
@@ -118,8 +158,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
                         {error && <p className="text-red-400 text-sm text-center bg-red-900/50 p-2 rounded-md">{error}</p>}
 
                         <div className="space-y-4 pt-2">
-                            <button type="submit" className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-sky-500/30 transform hover:scale-105">
-                                Iniciar Sessão
+                            <button type="submit" disabled={isLoading} className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-sky-500/30 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isLoading ? 'Entrando...' : 'Iniciar Sessão'}
                             </button>
                             <div className="relative flex items-center">
                                 <div className="flex-grow border-t border-slate-600"></div>
@@ -129,7 +169,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
                             <button
                                 type="button"
                                 onClick={onGuestLogin}
-                                className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-all shadow-lg"
+                                disabled={isLoading}
+                                className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-all shadow-lg disabled:opacity-50"
                             >
                                 Entrar como Deusa Clio
                             </button>
@@ -142,15 +183,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
                 ) : (
                     <form onSubmit={handleSignUpSubmit} className="space-y-4">
                         <h2 className="text-xl font-bold text-center text-white">Criar Nova Conta</h2>
-                        <InputField icon={<UserIcon className="h-5 w-5 text-slate-400"/>} name="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Maria da Silva" />
-                        <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email-signup" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maria@coletivo.com" />
-                        <InputField icon={<LockIcon className="h-5 w-5 text-slate-400"/>} name="password-signup" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                        
+                        {successMessage && (
+                            <div className="bg-lime-500/20 border border-lime-500 text-lime-200 p-3 rounded-lg text-sm text-center mb-4 animate-pulse">
+                                {successMessage}
+                            </div>
+                        )}
+
+                        <InputField icon={<UserIcon className="h-5 w-5 text-slate-400"/>} name="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Maria da Silva" disabled={isLoading} />
+                        <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email-signup" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maria@coletivo.com" disabled={isLoading} />
+                        <InputField icon={<LockIcon className="h-5 w-5 text-slate-400"/>} name="password-signup" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" disabled={isLoading} />
                         
                         {error && <p className="text-red-400 text-sm text-center bg-red-900/50 p-2 rounded-md">{error}</p>}
                         
                         <div>
-                            <button type="submit" className="w-full py-3 px-4 bg-gradient-to-r from-lime-600 to-green-500 hover:from-lime-700 hover:to-green-600 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-lime-500/30 transform hover:scale-105">
-                                Cadastrar
+                            <button type="submit" disabled={isLoading || !!successMessage} className="w-full py-3 px-4 bg-gradient-to-r from-lime-600 to-green-500 hover:from-lime-700 hover:to-green-600 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-lime-500/30 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isLoading ? 'Criando conta...' : successMessage ? 'Sucesso!' : 'Cadastrar'}
                             </button>
                         </div>
                         <p className="text-center text-sm text-slate-400 pt-2">
