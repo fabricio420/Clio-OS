@@ -425,6 +425,9 @@ const App: React.FC = () => {
                 fetchFeedPosts();
                 fetchTeamStatuses();
                 fetchCollabData();
+                fetchNotebooks();
+                fetchMedia();
+                fetchAlbums();
             } else {
                 setLoadingAuth(false);
             }
@@ -441,6 +444,9 @@ const App: React.FC = () => {
                 fetchFeedPosts();
                 fetchTeamStatuses();
                 fetchCollabData();
+                fetchNotebooks();
+                fetchMedia();
+                fetchAlbums();
             } else {
                 setLoggedInUser(null);
                 setUserState(MOCK_INITIAL_DATA); // Reset to defaults
@@ -484,7 +490,7 @@ const App: React.FC = () => {
                     name: email.split('@')[0], // Default name
                     role: 'Membro',
                     avatar: DEFAULT_AVATAR
-                 };
+                };
                  setLoggedInUser(newUser);
                  loadUserData(email);
             }
@@ -720,6 +726,64 @@ const App: React.FC = () => {
             }
         } catch (e) { console.error(e); }
     };
+    
+    // --- SUPABASE NOTEBOOKS, MEDIA, GALLERY ---
+    const fetchNotebooks = async () => {
+        try {
+            const { data } = await supabase.from('notebooks').select('*, notes(*)');
+            if(data) {
+                const mapped = data.map((nb: any) => ({
+                    id: nb.id,
+                    name: nb.name,
+                    notes: (nb.notes || []).map((n: any) => ({
+                        id: n.id,
+                        title: n.title,
+                        content: n.content,
+                        updatedAt: n.updated_at
+                    }))
+                }));
+                updateUserState('notebooks', mapped);
+            }
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchMedia = async () => {
+         try {
+            const { data } = await supabase.from('media_items').select('*');
+            if(data) {
+                const mapped = data.map((m: any) => ({
+                    id: m.id,
+                    title: m.title,
+                    category: m.category,
+                    fileDataUrl: m.file_data_url,
+                    fileName: m.file_name,
+                    artistId: m.artist_id
+                }));
+                updateUserState('mediaItems', mapped);
+            }
+        } catch (err) { console.error(err); }
+    }
+
+    const fetchAlbums = async () => {
+         try {
+            const { data } = await supabase.from('photo_albums').select('*, photos(*)');
+            if(data) {
+                const mapped = data.map((a: any) => ({
+                    id: a.id,
+                    name: a.name,
+                    description: a.description,
+                    photos: (a.photos || []).map((p: any) => ({
+                        id: p.id,
+                        dataUrl: p.data_url,
+                        caption: p.caption,
+                        fileName: p.file_name
+                    }))
+                }));
+                updateUserState('photoAlbums', mapped);
+            }
+        } catch (err) { console.error(err); }
+    }
+
 
     // --- SUPABASE HANDLERS (CRUD) ---
 
@@ -866,6 +930,91 @@ const App: React.FC = () => {
         await supabase.from('voting_topics').update({ status: 'closed' }).eq('id', topicId);
         fetchCollabData();
     };
+    
+    // --- Notebooks Handlers ---
+    const handleSaveNotebook = async (name: string, editingId?: string) => {
+        if (!loggedInUser) return;
+        if(editingId) {
+             await supabase.from('notebooks').update({ name }).eq('id', editingId);
+        } else {
+             await supabase.from('notebooks').insert([{ name, owner_id: loggedInUser.id }]);
+        }
+        fetchNotebooks();
+    };
+    
+    const handleDeleteNotebook = async (notebookId: string) => {
+        await supabase.from('notebooks').delete().eq('id', notebookId);
+        fetchNotebooks();
+    }
+
+    const handleSaveNote = async (notebookId: string, noteData: Pick<Note, 'title' | 'content'>, editingId?: string) => {
+        const payload = { 
+            notebook_id: notebookId, 
+            title: noteData.title, 
+            content: noteData.content,
+            updated_at: new Date().toISOString()
+        };
+        if(editingId) {
+             await supabase.from('notes').update(payload).eq('id', editingId);
+        } else {
+             await supabase.from('notes').insert([payload]);
+        }
+        fetchNotebooks();
+    };
+
+    const handleDeleteNote = async (notebookId: string, noteId: string) => {
+        await supabase.from('notes').delete().eq('id', noteId);
+        fetchNotebooks();
+    };
+    
+    // --- Media Handlers ---
+    const handleSaveMediaItem = async (mediaData: Omit<MediaItem, 'id'>) => {
+        await supabase.from('media_items').insert([{
+            title: mediaData.title,
+            category: mediaData.category,
+            file_data_url: mediaData.fileDataUrl,
+            file_name: mediaData.fileName,
+            artist_id: mediaData.artistId
+        }]);
+        fetchMedia();
+    };
+    
+    const handleDeleteMediaItem = async (mediaId: string) => {
+        await supabase.from('media_items').delete().eq('id', mediaId);
+        fetchMedia();
+    }
+    
+    // --- Gallery Handlers ---
+    const handleSavePhotoAlbum = async (albumData: Omit<PhotoAlbum, 'id' | 'photos'>, editingId?: string) => {
+        if(editingId) {
+            await supabase.from('photo_albums').update(albumData).eq('id', editingId);
+        } else {
+            await supabase.from('photo_albums').insert([albumData]);
+        }
+        fetchAlbums();
+    };
+    
+    const handleDeletePhotoAlbum = async (albumId: string) => {
+        await supabase.from('photo_albums').delete().eq('id', albumId);
+        fetchAlbums();
+    }
+    
+    const handleAddPhotosToAlbum = async (albumId: string, photos: Omit<Photo, 'id'>[]) => {
+        const payload = photos.map(p => ({
+            album_id: albumId,
+            data_url: p.dataUrl,
+            caption: p.caption,
+            file_name: p.fileName
+        }));
+        await supabase.from('photos').insert(payload);
+        fetchAlbums();
+    };
+    
+    const handleDeletePhoto = async (albumId: string, photoId: string) => {
+        await supabase.from('photos').delete().eq('id', photoId);
+        fetchAlbums();
+    };
+
 
     
     // Handle Global Search Keyboard Shortcut
@@ -897,7 +1046,7 @@ const App: React.FC = () => {
         }
         
         // MOST DATA IS NOW HANDLED BY SUPABASE
-        // Local state is only used for Notebooks, Gadgets, Wallpaper
+        // Local state is only used for Gadgets, Wallpaper
         setUserState(loadedData);
         
         const userWallpaper = localStorage.getItem(`clio-os-wallpaper-${email}`);
@@ -1010,65 +1159,7 @@ const App: React.FC = () => {
 
     const handleSaveEventInfo = (infoData: EventInfoData) => updateUserState('eventInfo', infoData);
     
-    const handleSaveMediaItem = (mediaData: Omit<MediaItem, 'id'>) => updateUserState('mediaItems', [{ ...mediaData, id: crypto.randomUUID()}, ...userState.mediaItems]);
-    const handleDeleteMediaItem = (mediaId: string) => updateUserState('mediaItems', userState.mediaItems.filter((m: MediaItem) => m.id !== mediaId));
     
-    const handleSaveNotebook = (name: string, editingId?: string) => {
-        const newNotebooks = editingId
-            ? userState.notebooks.map((nb: Notebook) => nb.id === editingId ? { ...nb, name } : nb)
-            : [{ id: crypto.randomUUID(), name, notes: [] }, ...userState.notebooks];
-        updateUserState('notebooks', newNotebooks);
-    };
-    const handleDeleteNotebook = (notebookId: string) => updateUserState('notebooks', userState.notebooks.filter((nb: Notebook) => nb.id !== notebookId));
-    const handleSaveNote = (notebookId: string, noteData: Pick<Note, 'title' | 'content'>, editingId?: string) => {
-        const newNotebooks = userState.notebooks.map((nb: Notebook) => {
-            if (nb.id === notebookId) {
-                const newNotes = editingId
-                    ? nb.notes.map((n: Note) => n.id === editingId ? { ...n, ...noteData, updatedAt: new Date().toISOString() } : n)
-                    : [{ ...noteData, id: crypto.randomUUID(), updatedAt: new Date().toISOString() }, ...nb.notes];
-                newNotes.sort((a: Note, b: Note) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-                return { ...nb, notes: newNotes };
-            }
-            return nb;
-        });
-        updateUserState('notebooks', newNotebooks);
-    };
-    const handleDeleteNote = (notebookId: string, noteId: string) => {
-        const newNotebooks = userState.notebooks.map((nb: Notebook) => {
-            if (nb.id === notebookId) {
-                return { ...nb, notes: nb.notes.filter((n: Note) => n.id !== noteId) };
-            }
-            return nb;
-        });
-        updateUserState('notebooks', newNotebooks);
-    };
-    const handleSavePhotoAlbum = (albumData: Omit<PhotoAlbum, 'id' | 'photos'>, editingId?: string) => {
-        const newAlbums = editingId
-            ? userState.photoAlbums.map((a: PhotoAlbum) => a.id === editingId ? { ...a, ...albumData } : a)
-            : [{ ...albumData, id: crypto.randomUUID(), photos: [] }, ...userState.photoAlbums];
-        updateUserState('photoAlbums', newAlbums);
-    };
-    const handleDeletePhotoAlbum = (albumId: string) => updateUserState('photoAlbums', userState.photoAlbums.filter((a: PhotoAlbum) => a.id !== albumId));
-    const handleAddPhotosToAlbum = (albumId: string, photos: Omit<Photo, 'id'>[]) => {
-        const newAlbums = userState.photoAlbums.map((album: PhotoAlbum) => {
-            if (album.id === albumId) {
-                const newPhotos = photos.map(p => ({ ...p, id: crypto.randomUUID() }));
-                return { ...album, photos: [...album.photos, ...newPhotos] };
-            }
-            return album;
-        });
-        updateUserState('photoAlbums', newAlbums);
-    };
-    const handleDeletePhoto = (albumId: string, photoId: string) => {
-        const newAlbums = userState.photoAlbums.map((album: PhotoAlbum) => {
-            if (album.id === albumId) {
-                return { ...album, photos: album.photos.filter((p: Photo) => p.id !== photoId) };
-            }
-            return album;
-        });
-        updateUserState('photoAlbums', newAlbums);
-    };
-
      const handleAddGadget = (type: GadgetType) => {
         const newGadget: Gadget = {
             id: crypto.randomUUID(), type,
