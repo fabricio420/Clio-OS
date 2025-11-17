@@ -419,6 +419,7 @@ const App: React.FC = () => {
                 fetchUserProfile(session.user.id, session.user.email!);
                 fetchTasks(); // Fetch tasks on load
                 fetchArtists(); // Fetch artists on load
+                fetchFinancialData(); // Fetch finances on load
             } else {
                 setLoadingAuth(false);
             }
@@ -429,6 +430,7 @@ const App: React.FC = () => {
                 fetchUserProfile(session.user.id, session.user.email!);
                 fetchTasks(); // Fetch tasks on auth change
                 fetchArtists(); // Fetch artists on auth change
+                fetchFinancialData(); // Fetch finances on auth change
             } else {
                 setLoggedInUser(null);
                 setUserState(MOCK_INITIAL_DATA); // Reset to defaults
@@ -528,6 +530,115 @@ const App: React.FC = () => {
         }
     };
 
+    // --- SUPABASE FINANCIAL HANDLERS ---
+    const fetchFinancialData = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('financial_projects')
+                .select(`
+                    *,
+                    transactions (*)
+                `);
+            
+            if (error) throw error;
+
+            if (data) {
+                const mappedProjects: FinancialProject[] = data.map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    description: p.description,
+                    transactions: (p.transactions || []).map((t: any) => ({
+                        id: t.id,
+                        description: t.description,
+                        amount: t.amount,
+                        type: t.type as 'income' | 'expense',
+                        date: t.date,
+                        category: t.category
+                    }))
+                }));
+                updateUserState('financialProjects', mappedProjects);
+            }
+        } catch (err) {
+            console.error('Error fetching financial data:', err);
+        }
+    };
+
+    const handleSaveFinancialProject = async (projectData: Omit<FinancialProject, 'id' | 'transactions'>, editingId?: string) => {
+        try {
+            if (editingId) {
+                const { error } = await supabase
+                    .from('financial_projects')
+                    .update({ name: projectData.name, description: projectData.description })
+                    .eq('id', editingId);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('financial_projects')
+                    .insert([{ name: projectData.name, description: projectData.description }]);
+                if (error) throw error;
+            }
+            fetchFinancialData();
+        } catch (err) {
+            console.error('Error saving financial project:', err);
+            alert('Erro ao salvar projeto. Tente novamente.');
+        }
+    };
+
+    const handleDeleteFinancialProject = async (projectId: string) => {
+        // Confirmation handled in UI component
+        try {
+            const { error } = await supabase.from('financial_projects').delete().eq('id', projectId);
+            if (error) throw error;
+            fetchFinancialData();
+        } catch (err) {
+            console.error('Error deleting financial project:', err);
+        }
+    };
+
+    const handleSaveTransaction = async (projectId: string, transactionData: Omit<Transaction, 'id'>, editingId?: string) => {
+        try {
+            const payload = {
+                project_id: projectId,
+                description: transactionData.description,
+                amount: transactionData.amount,
+                type: transactionData.type,
+                date: transactionData.date,
+                category: transactionData.category
+            };
+
+            if (editingId) {
+                const { error } = await supabase
+                    .from('transactions')
+                    .update({
+                        description: payload.description,
+                        amount: payload.amount,
+                        type: payload.type,
+                        date: payload.date,
+                        category: payload.category
+                    })
+                    .eq('id', editingId);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('transactions').insert([payload]);
+                if (error) throw error;
+            }
+            fetchFinancialData();
+        } catch (err) {
+            console.error('Error saving transaction:', err);
+            alert('Erro ao salvar transação.');
+        }
+    };
+
+    const handleDeleteTransaction = async (projectId: string, transactionId: string) => {
+        try {
+            const { error } = await supabase.from('transactions').delete().eq('id', transactionId);
+            if (error) throw error;
+            fetchFinancialData();
+        } catch (err) {
+            console.error('Error deleting transaction:', err);
+        }
+    };
+
     
     // Handle Global Search Keyboard Shortcut
     useEffect(() => {
@@ -557,8 +668,7 @@ const App: React.FC = () => {
             loadedData.gadgets = DEFAULT_GADGETS;
         }
         
-        // TASKS & ARTISTS ARE NOW HANDLED BY SUPABASE, so we don't overwrite them from local storage if fetched
-        // fetchTasks/fetchArtists will overwrite these properties later.
+        // TASKS, ARTISTS & FINANCES ARE NOW HANDLED BY SUPABASE
         
         setUserState(loadedData);
         
@@ -808,34 +918,7 @@ const App: React.FC = () => {
     };
     // ... all other handlers follow this pattern ...
     // --- Handlers for all other features --- (omitted for brevity, but the pattern is the same)
-    const handleSaveFinancialProject = (projectData: Omit<FinancialProject, 'id' | 'transactions'>, editingId?: string) => {
-        const newProjects = editingId
-            ? userState.financialProjects.map((p: FinancialProject) => p.id === editingId ? { ...p, ...projectData } : p)
-            : [{ ...projectData, id: crypto.randomUUID(), transactions: [] }, ...userState.financialProjects];
-        updateUserState('financialProjects', newProjects);
-    };
-    const handleDeleteFinancialProject = (projectId: string) => updateUserState('financialProjects', userState.financialProjects.filter((p: FinancialProject) => p.id !== projectId));
-    const handleSaveTransaction = (projectId: string, transactionData: Omit<Transaction, 'id'>, editingId?: string) => {
-        const newProjects = userState.financialProjects.map((p: FinancialProject) => {
-            if (p.id === projectId) {
-                const newTransactions = editingId
-                    ? p.transactions.map((t: Transaction) => t.id === editingId ? { ...t, ...transactionData, id: editingId } : t)
-                    : [{ ...transactionData, id: crypto.randomUUID() }, ...p.transactions];
-                return { ...p, transactions: newTransactions };
-            }
-            return p;
-        });
-        updateUserState('financialProjects', newProjects);
-    };
-    const handleDeleteTransaction = (projectId: string, transactionId: string) => {
-        const newProjects = userState.financialProjects.map((p: FinancialProject) => {
-            if (p.id === projectId) {
-                return { ...p, transactions: p.transactions.filter((t: Transaction) => t.id !== transactionId) };
-            }
-            return p;
-        });
-        updateUserState('financialProjects', newProjects);
-    };
+    
      const handleSaveNotebook = (name: string, editingId?: string) => {
         const newNotebooks = editingId
             ? userState.notebooks.map((nb: Notebook) => nb.id === editingId ? { ...nb, name } : nb)
