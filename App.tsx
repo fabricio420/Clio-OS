@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus } from './types';
+import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus, VoteOption } from './types';
 import { TaskStatus as TaskStatusEnum, InventoryStatus } from './types';
 import LoginScreen from './components/LoginScreen';
 import ClioOSDesktop from './components/ClioOSDesktop';
@@ -417,9 +417,14 @@ const App: React.FC = () => {
             setLoadingAuth(true);
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!);
-                fetchTasks(); // Fetch tasks on load
-                fetchArtists(); // Fetch artists on load
-                fetchFinancialData(); // Fetch finances on load
+                fetchTasks();
+                fetchArtists();
+                fetchFinancialData();
+                fetchSchedule();
+                fetchInventory();
+                fetchFeedPosts();
+                fetchTeamStatuses();
+                fetchCollabData();
             } else {
                 setLoadingAuth(false);
             }
@@ -428,9 +433,14 @@ const App: React.FC = () => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!);
-                fetchTasks(); // Fetch tasks on auth change
-                fetchArtists(); // Fetch artists on auth change
-                fetchFinancialData(); // Fetch finances on auth change
+                fetchTasks();
+                fetchArtists();
+                fetchFinancialData();
+                fetchSchedule();
+                fetchInventory();
+                fetchFeedPosts();
+                fetchTeamStatuses();
+                fetchCollabData();
             } else {
                 setLoggedInUser(null);
                 setUserState(MOCK_INITIAL_DATA); // Reset to defaults
@@ -464,6 +474,8 @@ const App: React.FC = () => {
                 setLoggedInUser(user);
                 // Load generic local data for other components (legacy support)
                 loadUserData(email);
+                // Fetch all profiles to populate members list
+                fetchAllProfiles();
             } else {
                  // Profile doesn't exist, create one based on Auth user
                  const newUser: Member = {
@@ -483,7 +495,21 @@ const App: React.FC = () => {
         }
     };
     
-    // --- SUPABASE DATA FETCHING (TASKS) ---
+    const fetchAllProfiles = async () => {
+        const { data } = await supabase.from('profiles').select('*');
+        if (data) {
+            const mappedMembers = data.map((p: any) => ({
+                id: p.id,
+                name: p.name || 'Sem Nome',
+                role: p.role || 'Membro',
+                avatar: p.avatar || DEFAULT_AVATAR,
+                email: p.email || ''
+            }));
+            updateUserState('members', mappedMembers);
+        }
+    };
+
+    // --- SUPABASE DATA FETCHING (CORE) ---
     const fetchTasks = async () => {
         try {
             const { data, error } = await supabase.from('tasks').select('*');
@@ -495,7 +521,7 @@ const App: React.FC = () => {
                     title: t.title,
                     description: t.description,
                     status: t.status as TaskStatusEnum,
-                    dueDate: t.due_date, // Map from DB snake_case to CamelCase
+                    dueDate: t.due_date,
                     assigneeId: t.assignee_id
                 }));
                 updateUserState('tasks', mappedTasks);
@@ -505,7 +531,6 @@ const App: React.FC = () => {
         }
     };
 
-    // --- SUPABASE DATA FETCHING (ARTISTS) ---
     const fetchArtists = async () => {
         try {
             const { data, error } = await supabase.from('artists').select('*');
@@ -530,15 +555,42 @@ const App: React.FC = () => {
         }
     };
 
-    // --- SUPABASE FINANCIAL HANDLERS ---
+    const fetchSchedule = async () => {
+        try {
+            const { data, error } = await supabase.from('schedule_items').select('*');
+            if (error) throw error;
+            if (data) {
+                updateUserState('schedule', data);
+            }
+        } catch (err) {
+            console.error('Error fetching schedule:', err);
+        }
+    };
+
+    const fetchInventory = async () => {
+        try {
+            const { data, error } = await supabase.from('inventory_items').select('*');
+            if (error) throw error;
+            if (data) {
+                const mappedInventory = data.map((i: any) => ({
+                    id: i.id,
+                    name: i.name,
+                    quantity: i.quantity,
+                    status: i.status,
+                    responsibleId: i.responsible_id
+                }));
+                updateUserState('inventoryItems', mappedInventory);
+            }
+        } catch (err) {
+            console.error('Error fetching inventory:', err);
+        }
+    };
+
     const fetchFinancialData = async () => {
         try {
             const { data, error } = await supabase
                 .from('financial_projects')
-                .select(`
-                    *,
-                    transactions (*)
-                `);
+                .select(`*, transactions (*)`);
             
             if (error) throw error;
 
@@ -563,80 +615,256 @@ const App: React.FC = () => {
         }
     };
 
-    const handleSaveFinancialProject = async (projectData: Omit<FinancialProject, 'id' | 'transactions'>, editingId?: string) => {
+    // --- SUPABASE FEED & COLLAB FETCHING ---
+    const fetchFeedPosts = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('team_feed_posts')
+                .select(`
+                    *,
+                    author:profiles(*)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            if (data) {
+                const mappedPosts: FeedPost[] = data.map((p: any) => ({
+                    id: p.id,
+                    content: p.content,
+                    timestamp: p.created_at,
+                    author: {
+                        id: p.author?.id,
+                        name: p.author?.name || 'Desconhecido',
+                        role: p.author?.role || '',
+                        avatar: p.author?.avatar || DEFAULT_AVATAR,
+                        email: p.author?.email || ''
+                    }
+                }));
+                updateUserState('feedPosts', mappedPosts);
+            }
+        } catch (err) {
+            console.error('Error fetching feed:', err);
+        }
+    };
+
+    const fetchTeamStatuses = async () => {
+        try {
+            const { data } = await supabase.from('team_statuses').select('*');
+            if (data) {
+                const mappedStatuses = data.map((s: any) => ({
+                    memberId: s.member_id,
+                    status: s.status
+                }));
+                updateUserState('teamStatuses', mappedStatuses);
+            }
+        } catch (err) {
+            console.error('Error fetching statuses:', err);
+        }
+    };
+
+    const fetchCollabData = async () => {
+        // Documents
+        try {
+            const { data: docs } = await supabase.from('collective_documents').select('*');
+            if (docs) {
+                const mappedDocs = docs.map((d: any) => ({
+                    id: d.id,
+                    name: d.name,
+                    fileDataUrl: d.file_data_url,
+                    fileName: d.file_name,
+                    fileType: d.file_type,
+                    uploadedAt: d.created_at,
+                    uploaderId: d.uploader_id
+                }));
+                updateUserState('collectiveDocuments', mappedDocs);
+            }
+        } catch (e) { console.error(e); }
+
+        // Meeting Minutes
+        try {
+             const { data: minutes } = await supabase.from('meeting_minutes').select('*');
+             if (minutes) {
+                 const mappedMinutes = minutes.map((m: any) => ({
+                     id: m.id,
+                     date: m.date,
+                     attendeeIds: m.attendee_ids || [],
+                     agenda: m.agenda,
+                     decisions: m.decisions
+                 }));
+                 updateUserState('meetingMinutes', mappedMinutes);
+             }
+        } catch (e) { console.error(e); }
+
+        // Voting Topics & Options
+        try {
+            const { data: topics } = await supabase
+                .from('voting_topics')
+                .select(`*, options:voting_options(*)`);
+            
+            if (topics) {
+                const mappedTopics: VotingTopic[] = topics.map((t: any) => ({
+                    id: t.id,
+                    title: t.title,
+                    description: t.description,
+                    creatorId: t.creator_id,
+                    createdAt: t.created_at,
+                    status: t.status,
+                    options: (t.options || []).map((o: any) => ({
+                        id: o.id,
+                        text: o.text,
+                        voterIds: o.voter_ids || []
+                    }))
+                }));
+                updateUserState('votingTopics', mappedTopics);
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    // --- SUPABASE HANDLERS (CRUD) ---
+
+    // Tasks
+    const handleSaveTask = async (taskData: Omit<Task, 'id' | 'status'>, editingId?: string) => {
         try {
             if (editingId) {
-                const { error } = await supabase
-                    .from('financial_projects')
-                    .update({ name: projectData.name, description: projectData.description })
-                    .eq('id', editingId);
-                if (error) throw error;
+                await supabase.from('tasks').update({ title: taskData.title, description: taskData.description, due_date: taskData.dueDate, assignee_id: taskData.assigneeId || null }).eq('id', editingId);
             } else {
-                const { error } = await supabase
-                    .from('financial_projects')
-                    .insert([{ name: projectData.name, description: projectData.description }]);
-                if (error) throw error;
+                await supabase.from('tasks').insert([{ title: taskData.title, description: taskData.description, due_date: taskData.dueDate, assignee_id: taskData.assigneeId || null, status: TaskStatusEnum.ToDo }]);
             }
-            fetchFinancialData();
-        } catch (err) {
-            console.error('Error saving financial project:', err);
-            alert('Erro ao salvar projeto. Tente novamente.');
+            fetchTasks();
+        } catch (err) { console.error(err); }
+    };
+    const handleDeleteTask = async (id: string) => { await supabase.from('tasks').delete().eq('id', id); fetchTasks(); };
+    const handleUpdateTaskStatus = async (id: string, status: TaskStatus) => { await supabase.from('tasks').update({ status }).eq('id', id); fetchTasks(); };
+
+    // Artists
+    const handleSaveArtist = async (data: any, id?: string) => {
+        const payload = { name: data.name, performance_type: data.performanceType, contact: data.contact, notes: data.notes, instagram: data.instagram, whatsapp: data.whatsapp, cpf: data.cpf, rg: data.rg, document_image: data.documentImage };
+        if(id) await supabase.from('artists').update(payload).eq('id', id);
+        else await supabase.from('artists').insert([payload]);
+        fetchArtists();
+    };
+    const handleDeleteArtist = async (id: string) => { await supabase.from('artists').delete().eq('id', id); fetchArtists(); };
+
+    // Schedule
+    const handleSaveScheduleItem = async (data: any, id?: string) => {
+        if(id) await supabase.from('schedule_items').update(data).eq('id', id);
+        else await supabase.from('schedule_items').insert([data]);
+        fetchSchedule();
+    };
+    const handleDeleteScheduleItem = async (id: string) => { await supabase.from('schedule_items').delete().eq('id', id); fetchSchedule(); };
+
+    // Inventory
+    const handleSaveInventoryItem = async (data: any, id?: string) => {
+        const payload = { name: data.name, quantity: data.quantity, status: data.status, responsible_id: data.responsibleId };
+        if(id) await supabase.from('inventory_items').update(payload).eq('id', id);
+        else await supabase.from('inventory_items').insert([payload]);
+        fetchInventory();
+    };
+    const handleDeleteInventoryItem = async (id: string) => { await supabase.from('inventory_items').delete().eq('id', id); fetchInventory(); };
+
+    // Finances
+    const handleSaveFinancialProject = async (data: any, id?: string) => {
+        if(id) await supabase.from('financial_projects').update({ name: data.name, description: data.description }).eq('id', id);
+        else await supabase.from('financial_projects').insert([{ name: data.name, description: data.description }]);
+        fetchFinancialData();
+    };
+    const handleDeleteFinancialProject = async (id: string) => { await supabase.from('financial_projects').delete().eq('id', id); fetchFinancialData(); };
+    const handleSaveTransaction = async (projId: string, data: any, id?: string) => {
+        const payload = { project_id: projId, description: data.description, amount: data.amount, type: data.type, date: data.date, category: data.category };
+        if(id) await supabase.from('transactions').update(payload).eq('id', id);
+        else await supabase.from('transactions').insert([payload]);
+        fetchFinancialData();
+    };
+    const handleDeleteTransaction = async (pid: string, id: string) => { await supabase.from('transactions').delete().eq('id', id); fetchFinancialData(); };
+
+    // Team Hub (Feed & Status)
+    const handleAddPost = async (content: string, author: Member) => {
+        if (!loggedInUser) return;
+        await supabase.from('team_feed_posts').insert([{ content, author_id: loggedInUser.id }]);
+        fetchFeedPosts();
+    };
+    const handleUpdateTeamStatus = async (statusText: string) => {
+        if (!loggedInUser) return;
+        await supabase.from('team_statuses').upsert({ member_id: loggedInUser.id, status: statusText });
+        fetchTeamStatuses();
+    };
+
+    // Collab Clio (Docs, Minutes, Voting)
+    const handleSaveCollectiveDocument = async (docData: any, uploaderId: string) => {
+        await supabase.from('collective_documents').insert([{
+            name: docData.name,
+            file_data_url: docData.fileDataUrl, // Note: Storing Base64 in DB is not ideal for prod (use Storage)
+            file_name: docData.file.name,
+            file_type: docData.file.type,
+            uploader_id: uploaderId
+        }]);
+        fetchCollabData();
+    };
+    const handleDeleteCollectiveDocument = async (id: string) => {
+        if(window.confirm('Tem certeza?')) {
+            await supabase.from('collective_documents').delete().eq('id', id);
+            fetchCollabData();
         }
     };
 
-    const handleDeleteFinancialProject = async (projectId: string) => {
-        // Confirmation handled in UI component
-        try {
-            const { error } = await supabase.from('financial_projects').delete().eq('id', projectId);
-            if (error) throw error;
-            fetchFinancialData();
-        } catch (err) {
-            console.error('Error deleting financial project:', err);
+    const handleSaveMeetingMinute = async (data: any, id?: string) => {
+        const payload = { date: data.date, attendee_ids: data.attendeeIds, agenda: data.agenda, decisions: data.decisions };
+        if(id) await supabase.from('meeting_minutes').update(payload).eq('id', id);
+        else await supabase.from('meeting_minutes').insert([payload]);
+        fetchCollabData();
+    };
+    const handleDeleteMeetingMinute = async (id: string) => {
+        if(window.confirm('Tem certeza?')) {
+            await supabase.from('meeting_minutes').delete().eq('id', id);
+            fetchCollabData();
         }
     };
 
-    const handleSaveTransaction = async (projectId: string, transactionData: Omit<Transaction, 'id'>, editingId?: string) => {
-        try {
-            const payload = {
-                project_id: projectId,
-                description: transactionData.description,
-                amount: transactionData.amount,
-                type: transactionData.type,
-                date: transactionData.date,
-                category: transactionData.category
-            };
+    const handleSaveVotingTopic = async (data: any, creatorId: string) => {
+        const { data: topic, error } = await supabase
+            .from('voting_topics')
+            .insert([{ title: data.title, description: data.description, creator_id: creatorId }])
+            .select()
+            .single();
+        
+        if (topic && !error) {
+            const optionsPayload = data.options.map((o: any) => ({
+                topic_id: topic.id,
+                text: o.text
+            }));
+            await supabase.from('voting_options').insert(optionsPayload);
+            fetchCollabData();
+        }
+    };
 
-            if (editingId) {
-                const { error } = await supabase
-                    .from('transactions')
-                    .update({
-                        description: payload.description,
-                        amount: payload.amount,
-                        type: payload.type,
-                        date: payload.date,
-                        category: payload.category
-                    })
-                    .eq('id', editingId);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase.from('transactions').insert([payload]);
-                if (error) throw error;
+    const handleCastVote = async (topicId: string, optionId: string, voterId: string) => {
+        // This logic is simplified. In a real app, this should be a Postgres function to be atomic.
+        // 1. Get current options for the topic
+        const { data: options } = await supabase.from('voting_options').select('*').eq('topic_id', topicId);
+        if (!options) return;
+
+        // 2. Remove voterId from all options of this topic
+        for (const opt of options) {
+            const currentVoters = opt.voter_ids || [];
+            if (currentVoters.includes(voterId)) {
+                const newVoters = currentVoters.filter((id: string) => id !== voterId);
+                await supabase.from('voting_options').update({ voter_ids: newVoters }).eq('id', opt.id);
             }
-            fetchFinancialData();
-        } catch (err) {
-            console.error('Error saving transaction:', err);
-            alert('Erro ao salvar transação.');
         }
+
+        // 3. Add voterId to selected option
+        const targetOption = options.find((o: any) => o.id === optionId);
+        if (targetOption) {
+            const currentVoters = targetOption.voter_ids || [];
+            await supabase.from('voting_options').update({ voter_ids: [...currentVoters, voterId] }).eq('id', optionId);
+        }
+        fetchCollabData();
     };
 
-    const handleDeleteTransaction = async (projectId: string, transactionId: string) => {
-        try {
-            const { error } = await supabase.from('transactions').delete().eq('id', transactionId);
-            if (error) throw error;
-            fetchFinancialData();
-        } catch (err) {
-            console.error('Error deleting transaction:', err);
-        }
+    const handleCloseVoting = async (topicId: string) => {
+        await supabase.from('voting_topics').update({ status: 'closed' }).eq('id', topicId);
+        fetchCollabData();
     };
 
     
@@ -668,8 +896,8 @@ const App: React.FC = () => {
             loadedData.gadgets = DEFAULT_GADGETS;
         }
         
-        // TASKS, ARTISTS & FINANCES ARE NOW HANDLED BY SUPABASE
-        
+        // MOST DATA IS NOW HANDLED BY SUPABASE
+        // Local state is only used for Notebooks, Gadgets, Wallpaper
         setUserState(loadedData);
         
         const userWallpaper = localStorage.getItem(`clio-os-wallpaper-${email}`);
@@ -765,161 +993,27 @@ const App: React.FC = () => {
     const updateUserState = (key: keyof typeof MOCK_INITIAL_DATA, value: any) => {
         setUserState((current: any) => ({ ...current, [key]: value }));
     };
-
-    // --- SUPABASE TASK HANDLERS ---
-    const handleSaveTask = async (taskData: Omit<Task, 'id' | 'status'>, editingId?: string) => {
-        try {
-            if (editingId) {
-                const { error } = await supabase
-                    .from('tasks')
-                    .update({
-                        title: taskData.title,
-                        description: taskData.description,
-                        due_date: taskData.dueDate,
-                        assignee_id: taskData.assigneeId || null
-                    })
-                    .eq('id', editingId);
-
-                if (error) throw error;
-            } else {
-                const { error } = await supabase
-                    .from('tasks')
-                    .insert([{
-                        title: taskData.title,
-                        description: taskData.description,
-                        due_date: taskData.dueDate,
-                        assignee_id: taskData.assigneeId || null,
-                        status: TaskStatusEnum.ToDo
-                    }]);
-
-                if (error) throw error;
-            }
-            fetchTasks();
-        } catch (err) {
-            console.error('Error saving task:', err);
-            alert('Erro ao salvar tarefa. Tente novamente.');
-        }
-    };
-
-    const handleDeleteTask = async (taskId: string) => {
-        try {
-            const { error } = await supabase.from('tasks').delete().eq('id', taskId);
-            if (error) throw error;
-            fetchTasks();
-        } catch (err) {
-            console.error('Error deleting task:', err);
-        }
-    };
-
-    const handleUpdateTaskStatus = async (taskId: string, newStatus: TaskStatus) => {
-        try {
-            // Optimistic UI update for speed
-            const updatedTasks = userState.tasks.map((t: Task) => t.id === taskId ? { ...t, status: newStatus } : t);
-            updateUserState('tasks', updatedTasks);
-
-            const { error } = await supabase
-                .from('tasks')
-                .update({ status: newStatus })
-                .eq('id', taskId);
-            
-            if (error) {
-                throw error;
-            }
-        } catch (err) {
-            console.error('Error updating task status:', err);
-            fetchTasks(); // Revert to server state
-        }
-    };
     
-    // --- SUPABASE ARTIST HANDLERS ---
-    const handleSaveArtist = async (artistData: Omit<Artist, 'id'>, editingId?: string) => {
-        try {
-            const payload = {
-                name: artistData.name,
-                performance_type: artistData.performanceType,
-                contact: artistData.contact,
-                notes: artistData.notes,
-                instagram: artistData.instagram,
-                whatsapp: artistData.whatsapp,
-                cpf: artistData.cpf,
-                rg: artistData.rg,
-                document_image: artistData.documentImage
-            };
-
-            if (editingId) {
-                const { error } = await supabase
-                    .from('artists')
-                    .update(payload)
-                    .eq('id', editingId);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase
-                    .from('artists')
-                    .insert([payload]);
-                if (error) throw error;
-            }
-            fetchArtists();
-        } catch (err) {
-            console.error('Error saving artist:', err);
-            alert('Erro ao salvar artista. Tente novamente.');
-        }
-    };
-
-    const handleDeleteArtist = async (artistId: string) => {
-        try {
-            const { error } = await supabase.from('artists').delete().eq('id', artistId);
-            if (error) throw error;
-            fetchArtists();
-        } catch (err) {
-            console.error('Error deleting artist:', err);
-        }
-    };
-    
-    // --- LOCAL HANDLERS (Legacy) ---
+    // --- LOCAL HANDLERS (Legacy / Not Migrated Yet) ---
     const handleSaveMember = (memberData: Member) => updateUserState('members', userState.members.map((m: Member) => m.id === memberData.id ? { ...m, ...memberData } : m));
     const handleSaveProfile = (updatedData: Partial<Member>) => {
         if(!loggedInUser) return;
         const updatedUser = { ...loggedInUser, ...updatedData };
         setLoggedInUser(updatedUser);
         handleSaveMember(updatedUser);
+        // Ideally update 'profiles' table here too
     }
     const handleChangePassword = (currentPassword: string, newPassword: string) => {
-        // Supabase password change would go here
-        // For now, basic alert that it's not implemented fully in this refactor step
         alert('Alteração de senha via Supabase ainda será implementada.');
         return { success: true, message: 'Simulação: Senha alterada!' };
     };
-
-    // Schedule, EventInfo, etc. (still local for this step)
-    const handleSaveScheduleItem = (itemData: Omit<ScheduleItem, 'id'>, editingId?: string) => {
-        const newSchedule = editingId
-            ? userState.schedule.map((s: ScheduleItem) => s.id === editingId ? { ...s, ...itemData, id: editingId } : s)
-            : [...userState.schedule, { ...itemData, id: crypto.randomUUID() }];
-        updateUserState('schedule', newSchedule);
-    };
-    const handleDeleteScheduleItem = (itemId: string) => updateUserState('schedule', userState.schedule.filter((s: ScheduleItem) => s.id !== itemId));
 
     const handleSaveEventInfo = (infoData: EventInfoData) => updateUserState('eventInfo', infoData);
     
     const handleSaveMediaItem = (mediaData: Omit<MediaItem, 'id'>) => updateUserState('mediaItems', [{ ...mediaData, id: crypto.randomUUID()}, ...userState.mediaItems]);
     const handleDeleteMediaItem = (mediaId: string) => updateUserState('mediaItems', userState.mediaItems.filter((m: MediaItem) => m.id !== mediaId));
-
-    const handleSaveInventoryItem = (itemData: Omit<InventoryItem, 'id'>, editingId?: string) => {
-        const newItems = editingId
-            ? userState.inventoryItems.map((i: InventoryItem) => i.id === editingId ? { ...i, ...itemData, id: editingId } : i)
-            : [...userState.inventoryItems, { ...itemData, id: crypto.randomUUID() }];
-        updateUserState('inventoryItems', newItems);
-    };
-    const handleDeleteInventoryItem = (itemId: string) => updateUserState('inventoryItems', userState.inventoryItems.filter((i: InventoryItem) => i.id !== itemId));
     
-    const handleAddPost = (content: string, author: Member) => {
-        const newPost: FeedPost = { id: crypto.randomUUID(), author, content, timestamp: new Date().toISOString() };
-        updateUserState('feedPosts', [newPost, ...userState.feedPosts]);
-    };
-    // ... all other handlers follow this pattern ...
-    // --- Handlers for all other features --- (omitted for brevity, but the pattern is the same)
-    
-     const handleSaveNotebook = (name: string, editingId?: string) => {
+    const handleSaveNotebook = (name: string, editingId?: string) => {
         const newNotebooks = editingId
             ? userState.notebooks.map((nb: Notebook) => nb.id === editingId ? { ...nb, name } : nb)
             : [{ id: crypto.randomUUID(), name, notes: [] }, ...userState.notebooks];
@@ -973,73 +1067,6 @@ const App: React.FC = () => {
             return album;
         });
         updateUserState('photoAlbums', newAlbums);
-    };
-     const handleSaveCollectiveDocument = (docData: { name: string, file: File, fileDataUrl: string }, uploaderId: string) => {
-        const newDocument: CollectiveDocument = {
-            id: crypto.randomUUID(), name: docData.name, fileDataUrl: docData.fileDataUrl,
-            fileName: docData.file.name, fileType: docData.file.type,
-            uploadedAt: new Date().toISOString(), uploaderId: uploaderId,
-        };
-        updateUserState('collectiveDocuments', [newDocument, ...userState.collectiveDocuments]);
-    };
-    const handleDeleteCollectiveDocument = (docId: string) => {
-        if(window.confirm('Tem certeza?')) {
-            updateUserState('collectiveDocuments', userState.collectiveDocuments.filter((d: CollectiveDocument) => d.id !== docId));
-        }
-    };
-    const handleSaveMeetingMinute = (minuteData: Omit<MeetingMinute, 'id'>, editingId?: string) => {
-        const newMinutes = editingId
-            ? userState.meetingMinutes.map((m: MeetingMinute) => m.id === editingId ? { ...m, ...minuteData, id: editingId } : m)
-            : [{...minuteData, id: crypto.randomUUID() }, ...userState.meetingMinutes];
-        updateUserState('meetingMinutes', newMinutes);
-    };
-    const handleDeleteMeetingMinute = (minuteId: string) => {
-        if(window.confirm('Tem certeza?')) {
-            updateUserState('meetingMinutes', userState.meetingMinutes.filter((m: MeetingMinute) => m.id !== minuteId));
-        }
-    };
-    const handleSaveVotingTopic = (topicData: Omit<VotingTopic, 'id' | 'creatorId' | 'createdAt' | 'status'>, creatorId: string) => {
-        const newTopic: VotingTopic = {
-            ...topicData, id: crypto.randomUUID(), creatorId, createdAt: new Date().toISOString(), status: 'open',
-            options: topicData.options.map(o => ({ ...o, id: crypto.randomUUID(), voterIds: [] }))
-        };
-        updateUserState('votingTopics', [newTopic, ...userState.votingTopics]);
-    };
-    const handleCastVote = (topicId: string, optionId: string, voterId: string) => {
-        const newTopics = userState.votingTopics.map((topic: VotingTopic) => {
-            if (topic.id === topicId && topic.status === 'open') {
-                const newOptions = topic.options.map(opt => {
-                    const newVoterIds = opt.voterIds.filter(id => id !== voterId);
-                    if (opt.id === optionId) { newVoterIds.push(voterId); }
-                    return { ...opt, voterIds: newVoterIds };
-                });
-                return { ...topic, options: newOptions };
-            }
-            return topic;
-        });
-        updateUserState('votingTopics', newTopics);
-    };
-    const handleCloseVoting = (topicId: string) => {
-        const newTopics = userState.votingTopics.map((topic: VotingTopic) => 
-            topic.id === topicId ? { ...topic, status: 'closed' } : topic
-        );
-        updateUserState('votingTopics', newTopics);
-    };
-    const handleUpdateTeamStatus = (statusText: string) => {
-        if (!loggedInUser) return;
-
-        const existingStatusIndex = userState.teamStatuses.findIndex((s: TeamStatus) => s.memberId === loggedInUser.id);
-        let newStatuses;
-        if (existingStatusIndex > -1) {
-            // Update existing status
-            newStatuses = [...userState.teamStatuses];
-            newStatuses[existingStatusIndex] = { ...newStatuses[existingStatusIndex], status: statusText };
-        } else {
-            // Add new status
-            const newStatus: TeamStatus = { memberId: loggedInUser.id, status: statusText };
-            newStatuses = [...userState.teamStatuses, newStatus];
-        }
-        updateUserState('teamStatuses', newStatuses);
     };
 
      const handleAddGadget = (type: GadgetType) => {
