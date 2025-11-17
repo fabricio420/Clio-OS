@@ -567,7 +567,8 @@ const App: React.FC = () => {
             options: {
                 data: {
                     name: name, // Metadata for trigger if needed, or we insert manually
-                }
+                },
+                emailRedirectTo: window.location.origin,
             }
         });
 
@@ -582,7 +583,7 @@ const App: React.FC = () => {
              if (profileError) console.error('Error creating profile:', profileError);
         }
 
-        return { success: true, message: 'Conta criada! Verifique seu e-mail ou faça login.' };
+        return { success: true, message: 'Conta criada! Verifique seu e-mail para confirmar.' };
     };
     
     // Wrap in a promise compatible structure for existing component prop
