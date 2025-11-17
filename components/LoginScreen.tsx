@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { ClioAppIcon, MailIcon, LockIcon, UserIcon } from './icons';
 
 interface LoginScreenProps {
-  onLogin: (email: string, password: string) => boolean;
-  onSignUp: (name: string, email: string, password: string) => { success: boolean, message: string };
+  onLogin: (email: string, password: string) => Promise<boolean> | boolean;
+  onSignUp: (name: string, email: string, password: string) => Promise<{ success: boolean, message: string }> | { success: boolean, message: string };
   onGuestLogin: () => void;
   loginWallpaper: string | null;
 }
@@ -46,10 +46,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
     }
   }, []);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const success = onLogin(email, password);
+    const result = onLogin(email, password);
+    const success = result instanceof Promise ? await result : result;
     if (!success) {
       setError('E-mail ou senha inválidos.');
     } else {
@@ -61,7 +62,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
     }
   };
 
-  const handleSignUpSubmit = (e: React.FormEvent) => {
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setError('');
       if (password.length < 6) {
@@ -69,8 +70,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
           return;
       }
       const result = onSignUp(name, email, password);
-      if(!result.success) {
-          setError(result.message);
+      const { success, message } = result instanceof Promise ? await result : result;
+      
+      if(!success) {
+          setError(message);
       }
   }
 

@@ -25,7 +25,7 @@ const sections = [
     keywords: 'introdução, boas vindas, visão geral, cultura, produção',
     content: (
       <>
-        <p>O <strong>Clio OS</strong> é o sistema operacional definitivo para coletivos culturais. Projetado como uma alternativa focada na arte ao Bitrix24, ele centraliza a produção, a comunicação, o financeiro e a governança democrática do seu sarau em uma interface imersiva e intuitiva.</p>
+        <p>O <strong>Clio OS</strong> é o sistema operacional definitivo para coletivos culturais. Projetado como uma alternativa focada na arte ao desempenho, ele centraliza a produção, a comunicação, o financeiro e a governança democrática do seu sarau em uma interface imersiva e intuitiva.</p>
         <p>Navegue pelos tópicos abaixo para dominar todas as ferramentas e profissionalizar a sua produção cultural.</p>
       </>
     )
