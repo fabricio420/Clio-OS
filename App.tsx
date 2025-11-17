@@ -418,6 +418,7 @@ const App: React.FC = () => {
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!);
                 fetchTasks(); // Fetch tasks on load
+                fetchArtists(); // Fetch artists on load
             } else {
                 setLoadingAuth(false);
             }
@@ -427,6 +428,7 @@ const App: React.FC = () => {
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!);
                 fetchTasks(); // Fetch tasks on auth change
+                fetchArtists(); // Fetch artists on auth change
             } else {
                 setLoggedInUser(null);
                 setUserState(MOCK_INITIAL_DATA); // Reset to defaults
@@ -501,6 +503,31 @@ const App: React.FC = () => {
         }
     };
 
+    // --- SUPABASE DATA FETCHING (ARTISTS) ---
+    const fetchArtists = async () => {
+        try {
+            const { data, error } = await supabase.from('artists').select('*');
+            if (error) throw error;
+            if (data) {
+                const mappedArtists: Artist[] = data.map((a: any) => ({
+                    id: a.id,
+                    name: a.name,
+                    performanceType: a.performance_type,
+                    contact: a.contact,
+                    notes: a.notes,
+                    instagram: a.instagram,
+                    whatsapp: a.whatsapp,
+                    cpf: a.cpf,
+                    rg: a.rg,
+                    documentImage: a.document_image
+                }));
+                updateUserState('artists', mappedArtists);
+            }
+        } catch (err) {
+            console.error('Error fetching artists:', err);
+        }
+    };
+
     
     // Handle Global Search Keyboard Shortcut
     useEffect(() => {
@@ -530,9 +557,8 @@ const App: React.FC = () => {
             loadedData.gadgets = DEFAULT_GADGETS;
         }
         
-        // TASKS ARE NOW HANDLED BY SUPABASE, so we don't overwrite them from local storage if fetched
-        // However, initially userState might be set here before fetchTasks completes.
-        // fetchTasks will overwrite 'tasks' property later.
+        // TASKS & ARTISTS ARE NOW HANDLED BY SUPABASE, so we don't overwrite them from local storage if fetched
+        // fetchTasks/fetchArtists will overwrite these properties later.
         
         setUserState(loadedData);
         
@@ -586,23 +612,7 @@ const App: React.FC = () => {
         return { success: true, message: 'Conta criada! Verifique seu e-mail para confirmar.' };
     };
     
-    // Wrap in a promise compatible structure for existing component prop
     const handleSignUpWrapper = (name: string, email: string, pass: string) => {
-         // Since the original was synchronous and returned object immediately, 
-         // we need to handle this async. 
-         // But LoginScreen expects synchronous return. 
-         // We will have to modify LoginScreen to handle async or just perform the side effect here.
-         // For this refactor, I'll cheat and trigger the async call, then return a "Processing" state
-         // But actually LoginScreen needs to wait. 
-         // I'll modify LoginScreen to accept async or manage state in App.
-         // To keep changes minimal, let's assume LoginScreen handles promises or we just do it.
-         // Wait, standard React event handlers can be async.
-         // But the prop definition in LoginScreen expects { success: boolean... }.
-         // I will cast it for now or update LoginScreen if I could.
-         // Correct approach: The LoginScreen calls this. I should return the promise.
-         // I will update the Type in LoginScreen prop if possible, but I can't change it easily without changing that file.
-         // Actually I can change LoginScreen.tsx in the next prompt if needed. 
-         // For now, I will implement `handleSignUp` as async and let JS handle the promise return.
          return handleSignUp(name, email, pass) as any; 
     }
 
@@ -648,10 +658,8 @@ const App: React.FC = () => {
 
     // --- SUPABASE TASK HANDLERS ---
     const handleSaveTask = async (taskData: Omit<Task, 'id' | 'status'>, editingId?: string) => {
-        // Optimistic update (optional) or just wait for server
         try {
             if (editingId) {
-                // Update
                 const { error } = await supabase
                     .from('tasks')
                     .update({
@@ -664,7 +672,6 @@ const App: React.FC = () => {
 
                 if (error) throw error;
             } else {
-                // Insert
                 const { error } = await supabase
                     .from('tasks')
                     .insert([{
@@ -677,7 +684,6 @@ const App: React.FC = () => {
 
                 if (error) throw error;
             }
-            // Refresh tasks
             fetchTasks();
         } catch (err) {
             console.error('Error saving task:', err);
@@ -708,11 +714,54 @@ const App: React.FC = () => {
             
             if (error) {
                 throw error;
-                // Revert if needed, but simple enough to just log
             }
         } catch (err) {
             console.error('Error updating task status:', err);
             fetchTasks(); // Revert to server state
+        }
+    };
+    
+    // --- SUPABASE ARTIST HANDLERS ---
+    const handleSaveArtist = async (artistData: Omit<Artist, 'id'>, editingId?: string) => {
+        try {
+            const payload = {
+                name: artistData.name,
+                performance_type: artistData.performanceType,
+                contact: artistData.contact,
+                notes: artistData.notes,
+                instagram: artistData.instagram,
+                whatsapp: artistData.whatsapp,
+                cpf: artistData.cpf,
+                rg: artistData.rg,
+                document_image: artistData.documentImage
+            };
+
+            if (editingId) {
+                const { error } = await supabase
+                    .from('artists')
+                    .update(payload)
+                    .eq('id', editingId);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('artists')
+                    .insert([payload]);
+                if (error) throw error;
+            }
+            fetchArtists();
+        } catch (err) {
+            console.error('Error saving artist:', err);
+            alert('Erro ao salvar artista. Tente novamente.');
+        }
+    };
+
+    const handleDeleteArtist = async (artistId: string) => {
+        try {
+            const { error } = await supabase.from('artists').delete().eq('id', artistId);
+            if (error) throw error;
+            fetchArtists();
+        } catch (err) {
+            console.error('Error deleting artist:', err);
         }
     };
     
@@ -731,7 +780,7 @@ const App: React.FC = () => {
         return { success: true, message: 'Simulação: Senha alterada!' };
     };
 
-    // Schedule, Artist, EventInfo, etc. (still local for this step)
+    // Schedule, EventInfo, etc. (still local for this step)
     const handleSaveScheduleItem = (itemData: Omit<ScheduleItem, 'id'>, editingId?: string) => {
         const newSchedule = editingId
             ? userState.schedule.map((s: ScheduleItem) => s.id === editingId ? { ...s, ...itemData, id: editingId } : s)
@@ -739,14 +788,6 @@ const App: React.FC = () => {
         updateUserState('schedule', newSchedule);
     };
     const handleDeleteScheduleItem = (itemId: string) => updateUserState('schedule', userState.schedule.filter((s: ScheduleItem) => s.id !== itemId));
-
-    const handleSaveArtist = (artistData: Omit<Artist, 'id'>, editingId?: string) => {
-        const newArtists = editingId
-            ? userState.artists.map((a: Artist) => a.id === editingId ? { ...a, ...artistData, id: editingId } : a)
-            : [...userState.artists, { ...artistData, id: crypto.randomUUID() }];
-        updateUserState('artists', newArtists);
-    };
-    const handleDeleteArtist = (artistId: string) => updateUserState('artists', userState.artists.filter((a: Artist) => a.id !== artistId));
 
     const handleSaveEventInfo = (infoData: EventInfoData) => updateUserState('eventInfo', infoData);
     
