@@ -1,17 +1,18 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import type { EventInfoData, ScheduleItem, Track } from '../types';
-import { ChevronLeftIcon, ChevronRightIcon, MoonIcon, BellIcon, ClockIcon, PlayIcon, PauseIcon } from './icons';
+import type { EventInfoData, ScheduleItem } from '../types';
+import { ChevronLeftIcon, ChevronRightIcon, MoonIcon, BellIcon, ClockIcon } from './icons';
 
 interface ControlCenterProps {
     isOpen: boolean;
     onClose: () => void;
     eventInfo?: EventInfoData;
     schedule?: ScheduleItem[];
-    playlist?: Track[];
-    currentTrackIndex?: number;
-    isPlaying?: boolean;
-    onPlayPause?: () => void;
 }
+
+const getBrazilDate = () => {
+    const now = new Date();
+    return new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+};
 
 const isSameDay = (d1: Date, d2: Date) =>
     d1.getFullYear() === d2.getFullYear() &&
@@ -37,16 +38,11 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
     onClose, 
     eventInfo, 
     schedule = [],
-    playlist = [],
-    currentTrackIndex = 0,
-    isPlaying,
-    onPlayPause
 }) => {
     const eventDateObj = useMemo(() => eventInfo?.eventDate ? new Date(eventInfo.eventDate) : null, [eventInfo?.eventDate]);
-    const currentTrack = playlist[currentTrackIndex];
 
-    const [currentDate, setCurrentDate] = useState(eventDateObj || new Date());
-    const [selectedDate, setSelectedDate] = useState(eventDateObj || new Date());
+    const [currentDate, setCurrentDate] = useState(getBrazilDate());
+    const [selectedDate, setSelectedDate] = useState(eventDateObj || getBrazilDate());
     const [doNotDisturb, setDoNotDisturb] = useState(false);
     const [notificationsActive, setNotificationsActive] = useState(true);
 
@@ -75,7 +71,8 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
 
     useEffect(() => {
         if (isOpen) {
-            const initialDate = eventDateObj || new Date();
+            const nowBrazil = getBrazilDate();
+            const initialDate = eventDateObj || nowBrazil;
             setCurrentDate(initialDate);
             setSelectedDate(initialDate);
         }
@@ -90,9 +87,13 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
         for (let i = 0; i < startingDay; i++) {
             days.push(<div key={`empty-${i}`} className="w-10 h-10"></div>);
         }
+        
+        const todayBrazil = getBrazilDate();
+
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-            const isToday = isSameDay(date, new Date());
+            
+            const isToday = isSameDay(date, todayBrazil);
             const isSelected = isSameDay(date, selectedDate);
             const isEventDay = eventDateObj && isSameDay(date, eventDateObj);
 
@@ -144,22 +145,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({
                     <ControlButton icon={<BellIcon className="w-6 h-6"/>} label="Notificações" active={notificationsActive} onClick={() => setNotificationsActive(p => !p)} />
                 </div>
 
-                {playlist.length > 0 && typeof isPlaying !== 'undefined' && onPlayPause && (
-                    <div className="p-4 border-b border-slate-700/50">
-                        <h4 className="font-semibold text-xs text-slate-400 uppercase mb-2">Player Clio</h4>
-                        <div className="bg-slate-700/50 rounded-lg p-3 flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                                <p className="font-bold text-white truncate">{currentTrack?.name || '...'}</p>
-                                <p className="text-sm text-lime-300 truncate">{currentTrack?.artist || '...'}</p>
-                            </div>
-                            <div className="flex items-center space-x-2 ml-2">
-                                <button onClick={onPlayPause} className="w-10 h-10 bg-lime-500 rounded-full flex items-center justify-center text-slate-900">
-                                {isPlaying ? <PauseIcon className="w-6 h-6"/> : <PlayIcon className="w-6 h-6"/>}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
                 
                 <div className="p-4">
                     <div className="flex justify-between items-center mb-4">

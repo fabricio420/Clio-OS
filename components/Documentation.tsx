@@ -1,6 +1,7 @@
 
+
 import React, { useState, useMemo } from 'react';
-import { HomeIcon, InfoIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, RadioIcon, MusicIcon, WhatsappIcon, MenuIcon } from './icons';
+import { HomeIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, MenuIcon } from './icons';
 
 const DocSection: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
   <section className="bg-slate-900 p-6 rounded-lg shadow-md mb-8 border-t border-lime-400">
@@ -21,26 +22,25 @@ const sections = [
     id: 'intro',
     title: 'Bem-vindo ao Clio OS',
     icon: <GlobeIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'introdução, boas vindas, visão geral',
+    keywords: 'introdução, boas vindas, visão geral, cultura, produção',
     content: (
       <>
-        <p>O <strong>Clio OS</strong> é o sistema operacional dedicado a coletivos culturais. Inspirado na eficiência de ferramentas corporativas, mas com a alma da arte, ele centraliza a produção, a comunicação e a governança do seu evento em um único lugar.</p>
-        <p>Navegue pelos tópicos abaixo para dominar todas as ferramentas disponíveis.</p>
+        <p>O <strong>Clio OS</strong> é o sistema operacional definitivo para coletivos culturais. Projetado como uma alternativa focada na arte ao Bitrix24, ele centraliza a produção, a comunicação, o financeiro e a governança democrática do seu sarau em uma interface imersiva e intuitiva.</p>
+        <p>Navegue pelos tópicos abaixo para dominar todas as ferramentas e profissionalizar a sua produção cultural.</p>
       </>
     )
   },
   {
     id: 'dashboard',
-    title: 'Dashboard (Painel de Controle)',
+    title: 'Dashboard (Central de Comando)',
     icon: <HomeIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'central comando contagem regressiva métricas progresso atalhos',
+    keywords: 'dashboard, home, inicio, métricas, resumo, urgências',
     content: (
       <>
-        <p>O Dashboard é a sua visão panorâmica. Assim que você entra no sistema, ele te informa o que é mais urgente.</p>
+        <p>O seu ponto de partida. O Dashboard oferece um raio-X instantâneo da saúde do evento.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Contagem Regressiva:</strong> O coração pulsante do evento. Saiba exatamente quantos dias, horas e minutos faltam.</li>
-          <li><strong>Métricas em Tempo Real:</strong> Visualize rapidamente quantos artistas estão confirmados, o saldo do orçamento e o progresso das tarefas.</li>
-          <li><strong>Acesso Rápido:</strong> Atalhos para tarefas pendentes e os próximos itens do cronograma, garantindo que nada seja esquecido.</li>
+          <li><strong>Termômetro do Evento:</strong> A contagem regressiva te mantém no tempo certo, enquanto as barras de progresso mostram visualmente o quanto falta para bater as metas de tarefas, orçamento e curadoria artística.</li>
+          <li><strong>Alertas de Urgência:</strong> Tarefas atrasadas e os próximos compromissos do cronograma aparecem em destaque para que nada importante seja esquecido no calor do momento.</li>
         </ul>
       </>
     )
@@ -49,30 +49,61 @@ const sections = [
     id: 'tasks',
     title: 'Gestão de Tarefas (Kanban)',
     icon: <CheckSquareIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'kanban a fazer em andamento concluído arrastar soltar atribuir',
+    keywords: 'tarefas, kanban, a fazer, produção, checklist, prazos',
     content: (
       <>
-        <p>Organize o caos criativo. O quadro Kanban permite visualizar o fluxo de trabalho da equipe.</p>
+        <p>Transforme o "tem que ver isso aí" em ação concreta. O quadro Kanban visualiza o fluxo de trabalho do coletivo.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Arrastar e Soltar:</strong> Mova tarefas entre "A Fazer", "Em Andamento" e "Concluído" intuitivamente.</li>
-          <li><strong>Delegação:</strong> Ao criar uma tarefa, atribua um responsável da equipe e defina um prazo fatal.</li>
-          <li><strong>Edição Rápida:</strong> Use o menu de opções no cartão da tarefa para editar detalhes ou excluí-la.</li>
+          <li><strong>Fluxo Visual:</strong> Arraste cartões de "A Fazer" para "Em Andamento" e celebre quando chegarem em "Concluído".</li>
+          <li><strong>Responsabilidade Clara:</strong> Cada tarefa tem um dono e um prazo (deadline). Isso evita o clássico "achei que fulano ia fazer".</li>
+          <li><strong>Agilidade:</strong> Edite ou exclua tarefas rapidamente direto no cartão.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'schedule',
+    title: 'Cronograma & Roteiro',
+    icon: <ClockIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'horário, lineup, roteiro, dia do evento, tempo, atrações',
+    content: (
+      <>
+        <p>A partitura do seu evento. O Cronograma define o que acontece, quando e quem está no comando daquela ação.</p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Minuto a Minuto:</strong> Essencial para o dia do sarau. Organize a passagem de som, abertura dos portões, ordem das apresentações e encerramento.</li>
+          <li><strong>Line-up Organizado:</strong> Garanta que os artistas saibam exatamente a hora de entrar em cena.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'artists',
+    title: 'Banco de Artistas (Casting)',
+    icon: <MicIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'artistas, poetas, músicos, cadastro, casting, contatos',
+    content: (
+      <>
+        <p>Seu CRM cultural. Mantenha um banco de dados vivo de todos os poetas, músicos e performers que constroem o sarau com você.</p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Ficha Técnica Completa:</strong> Guarde infos vitais como nome artístico, minibio, contatos e especificidades técnicas.</li>
+          <li><strong>Documentação:</strong> Armazene fotos de documentos (RG/CPF) para facilitar pagamentos e contratos.</li>
+          <li><strong>Conexão Direta:</strong> Atalhos inteligentes para chamar no WhatsApp ou ver o Instagram do artista com um clique.</li>
         </ul>
       </>
     )
   },
   {
     id: 'team_hub',
-    title: 'Hub da Equipe',
+    title: 'Hub da Equipe & Comunicação',
     icon: <UsersIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'equipe membros perfis comunicação mural feed status',
+    keywords: 'equipe, chat, mural, status, membros, comunicação interna',
     content: (
       <>
-        <p>Mantenha a sintonia fina entre os organizadores.</p>
+        <p>A sala de estar virtual do coletivo. Mantenha a sintonia fina, mesmo à distância.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Status Ao Vivo:</strong> Atualize seu status ("Focando no design", "Em reunião externa") para que todos saibam sua disponibilidade. Isso reflete no gadget da área de trabalho.</li>
-          <li><strong>Mural de Recados:</strong> Um feed exclusivo para a equipe postar avisos rápidos, atualizações ou celebrações.</li>
-          <li><strong>Diretório de Membros:</strong> Acesse e edite os perfis de todos os membros, incluindo fotos e funções.</li>
+          <li><strong>Status em Tempo Real:</strong> Atualize se está "Produzindo arte", "Em reunião" ou "Focando na planilha". O status aparece nos gadgets de todos.</li>
+          <li><strong>Mural de Recados:</strong> Um feed estilo rede social para avisos gerais, enquetes rápidas ou para celebrar pequenas vitórias do dia a dia.</li>
+          <li><strong>Quem é Quem:</strong> Diretório visual com foto e função de cada membro, fortalecendo o senso de pertencimento.</li>
         </ul>
       </>
     )
@@ -81,153 +112,106 @@ const sections = [
     id: 'collab_clio',
     title: 'Collab Clio (Governança)',
     icon: <BriefcaseIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'governança, documentos, atas, votação, decisões, coletivo, colaboração',
+    keywords: 'governança, atas, votação, democracia, documentos, estatuto',
     content: (
       <>
-        <p>O pilar de transparência e organização institucional do coletivo.</p>
+        <p>Ferramentas para uma gestão horizontal, transparente e democrática.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Documentos Coletivos:</strong> Repositório para arquivos essenciais como estatutos, editais, planilhas e contratos.</li>
-          <li><strong>Atas de Reunião:</strong> Registre formalmente o que foi discutido. Marque a data, quem estava presente, as pautas e, principalmente, as decisões tomadas.</li>
-          <li><strong>Sistema de Votação:</strong> Precisa decidir algo democraticamente? Crie uma votação, adicione opções e deixe os membros votarem. O sistema calcula os percentuais e permite encerrar a votação quando necessário.</li>
+          <li><strong>Votações Digitais:</strong> Tome decisões difíceis de forma justa. Crie enquetes sobre temas do coletivo e registre os votos de cada membro. O sistema calcula e arquiva o resultado.</li>
+          <li><strong>Memória Institucional (Atas):</strong> Registre o que foi decidido nas reuniões. Pautas, presentes e encaminhamentos ficam salvos para consulta futura, acabando com o "disse me disse".</li>
+          <li><strong>Acervo de Documentos:</strong> Centralize editais, estatutos, planilhas mestras e contratos em um local seguro e acessível a todos.</li>
         </ul>
       </>
     )
   },
   {
     id: 'finances',
-    title: 'Finanças & Orçamento',
+    title: 'Finanças & Transparência',
     icon: <WalletIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'financeiro, orçamento, despesas, receitas, caixa, projetos, transações, dinheiro, csv',
+    keywords: 'dinheiro, caixa, orçamento, gastos, receitas, projetos, csv',
     content: (
       <>
-        <p>Controle rigoroso de cada centavo, organizado por projetos.</p>
+        <p>Profissionalize a gestão da grana. Controle rigoroso para garantir a sustentabilidade do projeto.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Projetos Financeiros (Caixas):</strong> Crie caixas separados para diferentes fins (ex: "Edital 2024", "Venda de Bar", "Caixinha do Coletivo").</li>
-          <li><strong>Transações Detalhadas:</strong> Lance Receitas e Despesas com data, categoria e descrição.</li>
-          <li><strong>Dashboard Financeiro:</strong> Visualize gráficos de despesas por categoria e o balanço geral.</li>
-          <li><strong>Filtros e Exportação:</strong> Filtre por mês ou semana e exporte o extrato de qualquer projeto para CSV (Excel/Planilhas).</li>
-        </ul>
-      </>
-    )
-  },
-  {
-    id: 'schedule',
-    title: 'Cronograma',
-    icon: <ClockIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'linha do tempo horário roteiro atividades responsável',
-    content: (
-      <>
-        <p>O roteiro minuto a minuto do dia do evento.</p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Planejamento Temporal:</strong> Organize as atrações e atividades por horário.</li>
-          <li><strong>Responsáveis:</strong> Defina quem da equipe é o "dono" daquela atividade, garantindo que ela aconteça na hora certa.</li>
-        </ul>
-      </>
-    )
-  },
-  {
-    id: 'artists',
-    title: 'Banco de Artistas',
-    icon: <MicIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'banco de dados participantes contato whatsapp instagram mídia',
-    content: (
-      <>
-        <p>CRM cultural para gerenciar seus talentos.</p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Ficha Completa:</strong> Nome, performance, contato, CPF/RG e até upload de documento (foto).</li>
-          <li><strong>Integração Social:</strong> Botões diretos para o WhatsApp e Instagram do artista.</li>
+          <li><strong>Gestão por Projetos (Caixas):</strong> Crie centros de custo separados (ex: "Verba Edital", "Bar do Sarau", "Caixinha Colaborativa") para não misturar as contas.</li>
+          <li><strong>Fluxo de Caixa:</strong> Lance cada centavo que entra e sai. Categorize gastos (Transporte, Cachê, Divulgação) para gerar gráficos automáticos.</li>
+          <li><strong>Prestação de Contas:</strong> Filtre extratos por período e exporte tudo para planilhas (CSV) com um clique, facilitando relatórios para editais.</li>
         </ul>
       </>
     )
   },
   {
     id: 'media',
-    title: 'Hub de Mídia',
+    title: 'Hub de Mídia & Divulgação',
     icon: <ImageIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'mídia arquivos arte divulgação banner flyer imagens upload',
+    keywords: 'flyer, card, instagram, design, arquivos, marketing',
     content: (
       <>
-        <p>Centralize as artes gráficas para evitar o uso de logos antigos ou flyers errados.</p>
+        <p>O drive criativo do evento. Chega de pedir a logo no grupo de WhatsApp toda hora.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Categorias:</strong> Separe o que é "Divulgação Geral" do evento e o que é "Mídia de Artista" específica.</li>
-          <li><strong>Vínculo com Artistas:</strong> Ao subir um flyer de um artista, vincule-o ao perfil dele para acesso rápido aos dados de contato na mesma tela.</li>
-        </ul>
-      </>
-    )
-  },
-  {
-    id: 'gallery',
-    title: 'Galeria de Fotos',
-    icon: <ImageIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'fotos, galeria, álbum, imagens, recordações, upload, lightbox',
-    content: (
-      <>
-        <p>A memória visual do coletivo.</p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Álbuns:</strong> Crie álbuns por evento ou tema.</li>
-          <li><strong>Visualização Imersiva:</strong> Clique nas fotos para abrir em modo tela cheia (lightbox) e navegue com as setas do teclado.</li>
-          <li><strong>Upload em Lote:</strong> Envie várias fotos de uma vez para agilizar o arquivamento.</li>
+          <li><strong>Centralização de Assets:</strong> Armazene logos, templates, flyers e vídeos de divulgação em alta qualidade.</li>
+          <li><strong>Mídia dos Artistas:</strong> Vincule materiais de divulgação (fotos de divulgação) diretamente ao perfil do artista.</li>
         </ul>
       </>
     )
   },
   {
     id: 'inventory',
-    title: 'Inventário',
+    title: 'Inventário & Logística',
     icon: <BoxIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'inventário materiais equipamentos estoque lista verificação',
+    keywords: 'equipamentos, cabos, som, materiais, logística',
     content: (
       <>
-        <p>Não esqueça nenhum cabo ou equipamento.</p>
+        <p>Controle total sobre o material físico. Não chegue no evento faltando um cabo XLR.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Status do Item:</strong> Marque como "Pendente", "Confirmado" ou "No Local".</li>
-          <li><strong>Responsável:</strong> Saiba quem ficou de levar ou conseguir cada item.</li>
-        </ul>
-      </>
-    )
-  },
-  {
-    id: 'reports',
-    title: 'Relatórios',
-    icon: <FileTextIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'relatório pdf imprimir resumo documento exportar consolidado',
-    content: (
-      <>
-        <p>Gere dossiês automáticos do evento com um clique.</p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Consolidado:</strong> Reúne informações do evento, estatísticas financeiras, lista de tarefas, cronograma e equipe.</li>
-          <li><strong>Exportação:</strong> Imprima direto ou baixe um PDF formatado profissionalmente para enviar a parceiros ou arquivar.</li>
+          <li><strong>Checklist de Equipamentos:</strong> Liste som, iluminação, decoração e itens de bar.</li>
+          <li><strong>Rastreabilidade:</strong> Defina o status (Pendente, Confirmado, No Local) e quem ficou responsável por conseguir ou levar cada item.</li>
         </ul>
       </>
     )
   },
   {
     id: 'notebooks',
-    title: 'Cadernos de Notas',
+    title: 'Cadernos Criativos',
     icon: <BookMarkedIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'notas, caderno, bloco de notas, editor de texto, escrever, ABNT, ideias',
+    keywords: 'notas, escrita, poesia, rascunho, ideias, texto',
     content: (
       <>
-        <p>Espaço para brainstorming e rascunhos.</p>
+        <p>Um espaço seguro para a sua criatividade fluir dentro da plataforma.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Editor Rico:</strong> Formatação de texto (negrito, itálico, justificado) para organizar suas ideias.</li>
-          <li><strong>Múltiplos Cadernos:</strong> Crie cadernos separados por assunto (ex: "Ideias de Sarau", "Poesias", "Rascunhos de Edital").</li>
+          <li><strong>Organização Temática:</strong> Crie cadernos separados para "Poesias", "Roteiros de Apresentação", "Ideias de Projetos" e "Rascunhos de Editais".</li>
+          <li><strong>Editor Rico:</strong> Ferramentas de formatação de texto para deixar suas notas organizadas e bonitas.</li>
         </ul>
       </>
     )
   },
   {
-    id: 'clio_player',
-    title: 'Rádio & Player Clio',
-    icon: <MusicIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'player, música, playlist, som, curadoria, mp3, trilha sonora, tocar, pausar',
+    id: 'gallery',
+    title: 'Galeria de Memórias',
+    icon: <ImageIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'fotos, álbuns, registro, memória, fotografia',
     content: (
       <>
-        <p>A trilha sonora do trabalho coletivo.</p>
+        <p>A memória visual da sua trajetória.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Curadoria:</strong> Vem com uma playlist padrão de artistas parceiros.</li>
-          <li><strong>MP3 Player:</strong> Use o widget de música (nota musical no topo da tela) para carregar seus próprios arquivos MP3 locais.</li>
-          <li><strong>Gadget de Rádio:</strong> Um widget de mesa para controle rápido da reprodução.</li>
+          <li><strong>Álbuns de Eventos:</strong> Crie álbuns para cada edição do sarau.</li>
+          <li><strong>Visualização Imersiva:</strong> Lightbox em tela cheia para reviver os melhores momentos.</li>
+          <li><strong>Upload em Lote:</strong> Suba dezenas de fotos de uma vez para manter o arquivo atualizado.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'reports',
+    title: 'Relatórios Automáticos',
+    icon: <FileTextIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'pdf, impressão, relatório final, dossiê, resumo',
+    content: (
+      <>
+        <p>Transforme dados em documentos profissionais em segundos.</p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Dossiê do Evento:</strong> O sistema compila automaticamente as estatísticas, lista de artistas, cronograma, equipe e balanço financeiro em um layout pronto para impressão ou PDF.</li>
+          <li><strong>Transparência:</strong> Ótimo para apresentar resultados para a equipe ou patrocinadores pós-evento.</li>
         </ul>
       </>
     )
@@ -236,37 +220,25 @@ const sections = [
     id: 'personalize',
     title: 'Personalização & Gadgets',
     icon: <BrushIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'papel de parede, wallpaper, fundo, gadgets, widgets, customizar',
+    keywords: 'customização, wallpaper, widgets, área de trabalho',
     content: (
       <>
-        <p>Deixe o Clio OS com a sua cara e aumente sua produtividade.</p>
+        <p>O Clio OS é seu. Deixe-o com a cara do seu coletivo.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Papel de Parede:</strong> Troque o fundo da área de trabalho (upload de imagem ou galeria).</li>
-          <li><strong>Gadgets (Widgets):</strong> Adicione ferramentas flutuantes à sua área de trabalho:
-            <ul className="list-circle pl-5 mt-1 text-sm text-slate-400">
-               <li><em>Relógio Analógico</em></li>
-               <li><em>Contagem Regressiva</em></li>
-               <li><em>Notas Rápidas (Post-it)</em></li>
-               <li><em>Resumo Financeiro</em></li>
-               <li><em>Status da Equipe</em></li>
-               <li><em>Rádio Clio</em></li>
-            </ul>
-          </li>
+          <li><strong>Identidade Visual:</strong> Troque o papel de parede por fotos do seu evento ou artes personalizadas.</li>
+          <li><strong>Gadgets Produtivos:</strong> Adicione widgets flutuantes na área de trabalho: Relógio, Contagem Regressiva, Post-its, Resumo Financeiro e Status da Equipe.</li>
         </ul>
       </>
     )
   },
   {
     id: 'browser',
-    title: 'Navegador',
+    title: 'Navegador Interno',
     icon: <GlobeIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'browser, internet, comunicação externa',
+    keywords: 'internet, web, navegador',
     content: (
       <>
-        <p>Ferramenta para manter o foco sem sair do app.</p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Navegador Interno:</strong> Para pesquisas rápidas e acesso a sistemas web simples.</li>
-        </ul>
+        <p>Acesse sistemas web externos sem sair do seu fluxo de trabalho no Clio OS.</p>
       </>
     )
   },
@@ -274,29 +246,28 @@ const sections = [
     id: 'profile',
     title: 'Perfil & Segurança',
     icon: <UserIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'perfil, usuário, conta, senha, avatar',
+    keywords: 'conta, senha, avatar, dados',
     content: (
       <>
-        <p>Gerencie sua identidade no sistema.</p>
+        <p>Cuide da sua identidade no sistema.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Dados Pessoais:</strong> Atualize seu nome, função e foto de perfil.</li>
-          <li><strong>Segurança:</strong> Altere sua senha de acesso periodicamente.</li>
+          <li><strong>Perfil Profissional:</strong> Mantenha sua foto e cargo atualizados para facilitar a identificação pela equipe.</li>
+          <li><strong>Segurança:</strong> Troque sua senha periodicamente para manter os dados do coletivo seguros.</li>
         </ul>
       </>
     )
   },
   {
     id: 'mobile',
-    title: 'Versão Mobile (Celular)',
+    title: 'Clio Mobile',
     icon: <MenuIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'celular, mobile, responsivo, touch, gestos',
+    keywords: 'celular, smartphone, app, touch',
     content: (
       <>
-        <p>O Clio OS no seu bolso, otimizado para telas de toque.</p>
+        <p>Toda a potência do Clio OS, otimizada para a tela do seu celular.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Gaveta de Apps:</strong> Deslize para <strong>CIMA</strong> na parte inferior da tela para ver todos os aplicativos.</li>
-          <li><strong>Centro de Controle:</strong> Deslize para <strong>BAIXO</strong> em qualquer lugar para ver o calendário, notificações e player de música.</li>
-          <li><strong>Dock Rápido:</strong> Acesso inferior aos apps essenciais: Dashboard, Tarefas, Hub e Finanças.</li>
+          <li><strong>Interface Touch:</strong> Gestos intuitivos de deslizar para acessar o menu de apps (gaveta) e o centro de controle.</li>
+          <li><strong>Widgets Móveis:</strong> Organize seus gadgets em páginas deslizantes na tela inicial do celular.</li>
         </ul>
       </>
     )

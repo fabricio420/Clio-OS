@@ -1,11 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
-    PowerIcon, WalletIcon, ArchiveIcon, BrushIcon, BookMarkedIcon, ExternalLinkIcon, HomeIcon,
-    CheckSquareIcon, ClockIcon, InfoIcon, ImageIcon, BookOpenIcon, BoxIcon, UsersIcon, FileTextIcon, LifeBuoyIcon, DockAppIcon,
-    MusicIcon, GlobeIcon, BriefcaseIcon, UserIcon, RadioIcon, WhatsappIcon
+    PowerIcon, WalletIcon, BrushIcon, BookMarkedIcon, HomeIcon,
+    CheckSquareIcon, ClockIcon, InfoIcon, ImageIcon, BookOpenIcon, BoxIcon, UsersIcon, FileTextIcon, DockAppIcon,
+    GlobeIcon, BriefcaseIcon, UserIcon, SearchIcon
 } from './icons';
-import type { Member, EventInfoData, ScheduleItem, Track } from '../types';
+import type { Member, EventInfoData, ScheduleItem } from '../types';
 import type { AppName, AppStates } from '../App';
 import ControlCenter from './ControlCenter';
 
@@ -38,20 +38,14 @@ interface ClioOSDesktopProps {
     user: Member;
     onLogout: () => void;
     appStates: AppStates;
-    isMusicPlayerOpen: boolean;
-    onToggleMusicPlayer: () => void;
     eventInfo: EventInfoData;
     schedule: ScheduleItem[];
-    clioPlaylist: Track[];
-    currentClioTrackIndex: number;
-    isClioPlaying: boolean;
-    handleClioPlayPause: () => void;
+    onOpenSearch: () => void;
 }
 
 const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({ 
-    onAppClick, user, onLogout, appStates, isMusicPlayerOpen, onToggleMusicPlayer,
-    eventInfo, schedule, clioPlaylist, currentClioTrackIndex, isClioPlaying, 
-    handleClioPlayPause
+    onAppClick, user, onLogout, appStates,
+    eventInfo, schedule, onOpenSearch
 }) => {
     const [time, setTime] = useState(new Date());
     const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
@@ -94,7 +88,6 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
         { type: 'separator' },
         { id: 'finances', label: 'Finanças', icon: <DockAppIcon bgColorClasses="bg-emerald-600"><WalletIcon /></DockAppIcon> },
         { id: 'notebooks', label: 'Cadernos', icon: <DockAppIcon bgColorClasses="bg-amber-600"><BookMarkedIcon /></DockAppIcon> },
-        { id: 'clio_player', label: 'Player Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><MusicIcon /></DockAppIcon> },
         { id: 'collab_clio', label: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon> },
         { id: 'browser', label: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon> },
         { type: 'separator' },
@@ -107,12 +100,12 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
              {/* Top Menu Bar */}
             <header className="absolute top-0 left-0 right-0 h-7 bg-black/20 backdrop-blur-sm flex items-center justify-between px-4 text-sm text-white/90 z-30">
                 <div className="flex-1 flex justify-start">
-                    <button
-                        onClick={onToggleMusicPlayer}
-                        className={`p-1 rounded-md transition-colors ${isMusicPlayerOpen ? 'text-lime-400 bg-white/20' : 'text-white/80 hover:text-white hover:bg-white/20'}`}
-                        aria-label="Abrir Music Player"
+                   <button 
+                        onClick={onOpenSearch}
+                        className="hover:bg-white/10 p-1 rounded-md transition-colors flex items-center gap-1 group"
+                        title="Buscar (Ctrl + K)"
                     >
-                        <MusicIcon className="h-4 w-4" />
+                        <SearchIcon className="w-4 h-4 text-slate-300 group-hover:text-white" />
                     </button>
                 </div>
                 <div className="flex-1 flex justify-center">
@@ -164,10 +157,6 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
                 onClose={() => setIsControlCenterOpen(false)}
                 eventInfo={eventInfo}
                 schedule={schedule}
-                playlist={clioPlaylist}
-                currentClioTrackIndex={currentClioTrackIndex}
-                isPlaying={isClioPlaying}
-                onPlayPause={handleClioPlayPause}
             />
 
             {/* Empty Desktop Area */}

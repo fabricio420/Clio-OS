@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { ImageIcon, StickyNoteIcon, UploadCloudIcon, BarChartIcon, UsersIcon, RadioIcon } from './icons';
 import type { GadgetType } from '../types';
@@ -195,12 +196,6 @@ const PersonalizeApp: React.FC<PersonalizeAppProps> = ({ currentWallpaper, onSet
                                 <div className="p-4 bg-teal-500/20 w-full h-full flex flex-col items-center justify-center">
                                     <UsersIcon className="w-10 h-10 text-teal-400 mb-2"/>
                                     <p className="text-xs text-slate-400 text-center">Veja o que a equipe está fazendo.</p>
-                                </div>
-                            </GadgetPreviewCard>
-                            <GadgetPreviewCard title="Rádio Clio" onAdd={() => handleAddGadget('radio_clio')}>
-                                <div className="p-4 bg-rose-500/20 w-full h-full flex flex-col items-center justify-center">
-                                    <RadioIcon className="w-10 h-10 text-rose-400 mb-2"/>
-                                    <p className="text-xs text-slate-400 text-center">Player de música do coletivo.</p>
                                 </div>
                             </GadgetPreviewCard>
                         </div>

@@ -1,13 +1,18 @@
+
 import React, { createContext, useContext } from 'react';
 import type {
     Artist,
+    CollectiveDocument,
     EventInfoData,
     FinancialProject,
+    InventoryItem,
     MediaItem,
     Member,
     Note,
     Notebook,
     PhotoAlbum,
+    ScheduleItem,
+    Task,
     TeamStatus
 } from '../types';
 
@@ -27,6 +32,10 @@ export interface AppContextType {
     currentUser: Member | null;
     teamStatuses: TeamStatus[];
     handleUpdateTeamStatus: (statusText: string) => void;
+    tasks: Task[];
+    schedule: ScheduleItem[];
+    inventoryItems: InventoryItem[];
+    collectiveDocuments: CollectiveDocument[];
 }
 
 export const AppContext = createContext<AppContextType | null>(null);

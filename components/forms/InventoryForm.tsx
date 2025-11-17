@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import type { InventoryItem, Member } from '../../types';
 import { InventoryStatus } from '../../types';
@@ -17,7 +19,7 @@ export const InventoryForm: React.FC<InventoryFormProps> = ({ onSubmit, item, me
             setFormData({ name: item.name, quantity: item.quantity, status: item.status, responsibleId: item.responsibleId || '' });
         }
     }, [item]);
-    
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         const val = type === 'number' ? parseInt(value, 10) || 1 : value;

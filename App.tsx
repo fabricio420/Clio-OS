@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-// FIX: Added FeedPost to the type imports.
-import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Track, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus } from './types';
+import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus } from './types';
 import { TaskStatus as TaskStatusEnum, InventoryStatus } from './types';
 import LoginScreen from './components/LoginScreen';
 import ClioOSDesktop from './components/ClioOSDesktop';
@@ -10,17 +9,14 @@ import PersonalizeApp from './components/PersonalizeApp';
 import FinanceApp from './components/FinanceApp';
 import NotebooksApp from './components/NotebooksApp';
 import PhotoGalleryApp from './components/PhotoGalleryApp';
-import MusicPlayerWidget from './components/MusicPlayerWidget';
 import BrowserApp from './components/BrowserApp';
 import CollabClioApp from './components/CollabClioApp';
-import ClioPlayerApp from './components/ClioPlayerApp';
 import GadgetWrapper from './components/gadgets/GadgetWrapper';
 import AnalogClock from './components/gadgets/AnalogClock';
 import CountdownGadget from './components/gadgets/CountdownGadget';
 import QuickNoteGadget from './components/gadgets/QuickNoteGadget';
 import FinancialSummaryGadget from './components/gadgets/FinancialSummaryGadget';
 import TeamStatusGadget from './components/gadgets/TeamStatusGadget';
-import RadioClioGadget from './components/gadgets/RadioClioGadget';
 import Dashboard from './components/Dashboard';
 import KanbanBoard from './components/kanban/KanbanBoard';
 import Schedule from './components/Schedule';
@@ -34,6 +30,7 @@ import Inventory from './components/Inventory';
 import Reports from './components/Reports';
 import AvatarViewer from './components/AvatarViewer';
 import ControlCenter from './components/ControlCenter';
+import GlobalSearch from './components/GlobalSearch';
 import { ProfileApp } from './components/ProfileApp';
 import { TaskForm } from './components/forms/TaskForm';
 import { ScheduleForm } from './components/forms/ScheduleForm';
@@ -47,8 +44,8 @@ import { PhotoUploadForm } from './components/forms/PhotoUploadForm';
 import { CollectiveDocumentForm } from './components/forms/CollectiveDocumentForm';
 import { MeetingMinuteForm } from './components/forms/MeetingMinuteForm';
 import { VotingTopicForm } from './components/forms/VotingTopicForm';
-import { ChevronLeftIcon, PowerIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, RadioIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, WhatsappIcon, MusicIcon, SkipBackIcon, SkipForwardIcon, PlayIcon, PauseIcon, MenuIcon, ExternalLinkIcon, RefreshCwIcon, XIcon, BarChartIcon, StickyNoteIcon } from './components/icons';
-// FIX: Import AppContext to provide context to children components.
+import { TransactionForm } from './components/forms/TransactionForm';
+import { ChevronLeftIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, MenuIcon, BarChartIcon, StickyNoteIcon, XIcon, SearchIcon } from './components/icons';
 import { AppContext } from './contexts/AppContext';
 
 // --- RESPONSIVE HOOK ---
@@ -69,7 +66,7 @@ const useMediaQuery = (query: string): boolean => {
 
 // --- MOCK DATA FOR NEW USERS ---
 const defaultEventDate = new Date();
-defaultEventDate.setMonth(defaultEventDate.getMonth() + 1);
+// Removed adding 1 month to ensure the date is correct for new users (today)
 
 const MOCK_EVENT_INFO: EventInfoData = {
     eventName: 'Meu Novo Sarau',
@@ -87,9 +84,9 @@ const MOCK_EVENT_INFO: EventInfoData = {
 };
 
 const DEFAULT_GADGETS: Gadget[] = [
-    { id: 'default-clock', type: 'analog_clock', position: { x: 20, y: 20 } },
-    { id: 'default-countdown', type: 'countdown', position: { x: 20, y: 200 } },
-    { id: 'default-team', type: 'team_status', position: { x: 300, y: 20 } }
+    { id: 'default-countdown', type: 'countdown', position: { x: 20, y: 20 } },
+    { id: 'default-note', type: 'quick_note', position: { x: 300, y: 20 }, data: { content: 'Lembretes importantes do Sarau...' } },
+    { id: 'default-team', type: 'team_status', position: { x: 20, y: 200 } }
 ];
 
 const MOCK_INITIAL_DATA = {
@@ -112,37 +109,6 @@ const MOCK_INITIAL_DATA = {
     totalBudget: 0,
 };
 
-const CURATED_RADIO_PLAYLIST: Track[] = [
-    {
-        name: 'Super Hero',
-        artist: 'Ébanos Black',
-        url: 'https://files.catbox.moe/49tch7.mp3',
-        artwork: 'https://i.postimg.cc/8PqFhf7p/ebanosblacksuperhero.png',
-        duration: 202,
-    },
-    {
-        name: 'A milhão',
-        artist: 'Ébanos Black',
-        url: 'https://files.catbox.moe/08cne1.mp3',
-        artwork: 'https://i.postimg.cc/jSthz1wd/ebanosblackamilhao.png',
-        duration: 184,
-    },
-    {
-        name: 'Abraços Cronometrados',
-        artist: 'Molotov das Ruas',
-        url: 'https://files.catbox.moe/srxd8a.mp3',
-        artwork: 'https://i.postimg.cc/xCChGWSb/molotovdasruasabracos.png',
-        duration: 192,
-    },
-    {
-        name: 'Flores desabrocharão',
-        artist: 'Molotov das Ruas',
-        url: 'https://files.catbox.moe/kkfycl.mp3',
-        artwork: 'https://i.postimg.cc/L5hqp6FK/molotovdasruasflores.png',
-        duration: 218,
-    }
-];
-
 const wallpapers = [
     { name: 'Clio Rebelde 1', url: 'https://i.postimg.cc/0NYRtj9R/clio-rebelde-editada-0-6.jpg' },
     { name: 'Clio Rebelde 2', url: 'https://i.postimg.cc/76HcmNBn/clio-rebelde-editada-0-5.jpg' },
@@ -152,34 +118,12 @@ const wallpapers = [
     { name: 'Clio Rebelde 6', url: 'https://i.postimg.cc/tRZ0fBq3/clio-rebelde-1920x1080-1.jpg' }
 ];
 
-// --- HELPER FUNCTIONS ---
-// Smart shuffle: ensures the same artist doesn't play twice in a row if possible
-const smartShuffle = (tracks: Track[]): Track[] => {
-    if (tracks.length <= 1) return tracks;
-
-    let shuffled = [...tracks].sort(() => Math.random() - 0.5);
-    
-    // Attempt to separate adjacent artists
-    for (let i = 0; i < shuffled.length - 1; i++) {
-        if (shuffled[i].artist === shuffled[i+1].artist) {
-            // Find a swap candidate forward
-            for (let j = i + 2; j < shuffled.length; j++) {
-                if (shuffled[j].artist !== shuffled[i].artist) {
-                    [shuffled[i+1], shuffled[j]] = [shuffled[j], shuffled[i+1]];
-                    break;
-                }
-            }
-        }
-    }
-    return shuffled;
-};
-
 
 // --- APP TYPES ---
 export type AppName = 
     | 'dashboard' | 'info' | 'tasks' | 'schedule' | 'artists' | 'team_hub' 
     | 'media' | 'inventory' | 'reports' | 'documentation' | 'clio_company' 
-    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile' | 'clio_player';
+    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile';
 
 export type AppStatus = 'open' | 'minimized' | 'closed';
 export type AppStates = Record<AppName, AppStatus>;
@@ -189,7 +133,7 @@ const initialAppStates: AppStates = {
     artists: 'closed', team_hub: 'closed', media: 'closed', inventory: 'closed',
     reports: 'closed', documentation: 'closed', clio_company: 'closed',
     personalize: 'closed', finances: 'closed', notebooks: 'closed', gallery: 'closed',
-    browser: 'closed', collab_clio: 'closed', profile: 'closed', clio_player: 'closed'
+    browser: 'closed', collab_clio: 'closed', profile: 'closed'
 };
 
 const DEFAULT_WALLPAPER = 'https://i.postimg.cc/0NYRtj9R/clio-rebelde-editada-0-6.jpg';
@@ -205,25 +149,36 @@ const GUEST_USER: Member = {
 };
 
 // --- MOBILE-SPECIFIC COMPONENTS ---
-const MobileTopBar: React.FC<{ user: Member, onToggleControlCenter: () => void, onOpenProfile: () => void }> = ({ user, onToggleControlCenter, onOpenProfile }) => {
-    const [time, setTime] = useState(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+const MobileTopBar: React.FC<{ user: Member, onToggleControlCenter: () => void, onOpenProfile: () => void, onOpenSearch: () => void }> = ({ user, onToggleControlCenter, onOpenProfile, onOpenSearch }) => {
+    const [time, setTime] = useState(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }));
 
     useEffect(() => {
         const timer = setInterval(() => {
-            setTime(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+            setTime(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }));
         }, 1000 * 60);
         return () => clearInterval(timer);
     }, []);
 
     return (
-        <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-12 flex items-center justify-between px-3 z-30 border-b border-white/10">
-            <button onClick={onOpenProfile} className="flex items-center gap-2 active:opacity-70">
-                <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
-            </button>
-            <span className="font-semibold text-sm text-white">{time}</span>
-            <button onClick={onToggleControlCenter} className="p-2 -mr-2 active:opacity-70">
-                <MenuIcon className="w-6 h-6 text-white" />
-            </button>
+        <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-12 flex items-center justify-between px-3 z-30 border-b border-white/10 relative">
+            <div className="flex items-center justify-start flex-1">
+                <button onClick={onOpenProfile} className="flex items-center active:opacity-70">
+                    <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
+                </button>
+            </div>
+            
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                <span className="font-semibold text-sm text-white">{time}</span>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 flex-1">
+                 <button onClick={onOpenSearch} className="p-2 rounded-full active:bg-white/20">
+                    <SearchIcon className="w-5 h-5 text-white" />
+                </button>
+                <button onClick={onToggleControlCenter} className="p-2 -mr-2 active:opacity-70">
+                    <MenuIcon className="w-6 h-6 text-white" />
+                </button>
+            </div>
         </header>
     );
 };
@@ -346,7 +301,6 @@ const GadgetSelectorModal: React.FC<{ isOpen: boolean, onClose: () => void, onSe
          { type: 'quick_note', label: 'Nota', icon: <StickyNoteIcon className="w-6 h-6 text-yellow-400" /> },
          { type: 'financial_summary', label: 'Finanças', icon: <BarChartIcon className="w-6 h-6 text-emerald-400" /> },
          { type: 'team_status', label: 'Equipe', icon: <UsersIcon className="w-6 h-6 text-teal-400" /> },
-         { type: 'radio_clio', label: 'Rádio', icon: <RadioIcon className="w-6 h-6 text-rose-400" /> },
     ];
 
     return (
@@ -389,6 +343,14 @@ const App: React.FC = () => {
     const [isGadgetMenuOpen, setIsGadgetMenuOpen] = useState(false);
     const [isGadgetSelectorOpen, setIsGadgetSelectorOpen] = useState(false);
 
+    // Global Search State
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+    // Modal State
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalView, setModalView] = useState<ModalView | null>(null);
+    const [editingItem, setEditingItem] = useState<any>(null);
+    
     // Mobile gesture handling
     const touchStartX = useRef<number | null>(null);
     const touchStartY = useRef<number | null>(null);
@@ -417,7 +379,7 @@ const App: React.FC = () => {
         const isHorizontal = Math.abs(xDiff) > Math.abs(yDiff);
 
         // Don't trigger if a panel is already open
-        if (isAppDrawerOpen || isMobileControlCenterOpen) {
+        if (isAppDrawerOpen || isMobileControlCenterOpen || isSearchOpen) {
             touchStartY.current = null; touchStartX.current = null;
             touchEndY.current = null; touchEndX.current = null;
             return;
@@ -447,34 +409,6 @@ const App: React.FC = () => {
         touchEndY.current = null; touchEndX.current = null;
     };
 
-
-    // Modal State
-    const [modalOpen, setModalOpen] = useState(false);
-    const [modalView, setModalView] = useState<ModalView | null>(null);
-    const [editingItem, setEditingItem] = useState<any>(null);
-
-    // Personal Music Player State
-    const [isMusicPlayerOpen, setIsMusicPlayerOpen] = useState(false);
-    const [playlist, setPlaylist] = useState<Track[]>([]);
-    const playlistRef = useRef(playlist);
-    playlistRef.current = playlist;
-    const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [volume, setVolume] = useState(0.75);
-    const [progress, setProgress] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const audioRef = useRef<HTMLAudioElement>(null);
-    const musicFileInputRef = useRef<HTMLInputElement>(null);
-
-    // Clio Player State
-    // Initialize with Smart Shuffle
-    const [clioPlaylist] = useState<Track[]>(() => smartShuffle(CURATED_RADIO_PLAYLIST));
-    const [currentClioTrackIndex, setCurrentClioTrackIndex] = useState(0);
-    const [isClioPlaying, setIsClioPlaying] = useState(false);
-    const [clioProgress, setClioProgress] = useState(0);
-    const [isClioSeeking, setIsClioSeeking] = useState(false);
-    const clioAudioRef = useRef<HTMLAudioElement>(null);
-
     
     // --- USER & DATA MANAGEMENT ---
     useEffect(() => {
@@ -482,16 +416,16 @@ const App: React.FC = () => {
         localStorage.setItem('clio-os-users', JSON.stringify(users));
     }, [users]);
     
+    // Handle Global Search Keyboard Shortcut
     useEffect(() => {
-        // This effect will run only once, on mount, and its cleanup will run on unmount.
-        return () => {
-            // Revoke any blob URLs from the music player playlist to prevent memory leaks
-            playlistRef.current.forEach(track => {
-                if (track.url.startsWith('blob:')) {
-                    URL.revokeObjectURL(track.url);
-                }
-            });
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setIsSearchOpen(prev => !prev);
+            }
         };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
 
@@ -842,7 +776,12 @@ const App: React.FC = () => {
 
 
     // --- App Window Handlers ---
-    const handleAppClick = (appName: AppName) => setAppStates(prev => ({ ...prev, [appName]: 'open' }));
+    const handleAppClick = (appName: AppName) => {
+        setAppStates(prev => ({ ...prev, [appName]: 'open' }));
+        if (isMobile) {
+            setActiveMobileApp(appName);
+        }
+    }
     const handleAppClose = (appName: AppName) => setAppStates(prev => ({ ...prev, [appName]: 'closed' }));
     const handleAppMinimize = (appName: AppName) => setAppStates(prev => ({ ...prev, [appName]: 'minimized' }));
 
@@ -858,120 +797,6 @@ const App: React.FC = () => {
         setEditingItem(null);
     };
 
-    // --- Music Player Handlers ---
-    const handlePlayPause = useCallback(() => { if (playlist.length > 0) setIsPlaying(!isPlaying); }, [playlist.length, isPlaying]);
-    const handleNextTrack = useCallback(() => {
-        if (playlist.length > 0) {
-            setCurrentTrackIndex(p => (p + 1) % playlist.length);
-            setIsPlaying(true);
-        }
-    }, [playlist.length]);
-
-    useEffect(() => {
-        const audio = audioRef.current;
-        if (!audio) return;
-        const setAudioData = () => setDuration(audio.duration);
-        const setAudioTime = () => setProgress(audio.currentTime);
-        const handleAudioEnd = () => handleNextTrack();
-        audio.addEventListener('loadeddata', setAudioData);
-        audio.addEventListener('timeupdate', setAudioTime);
-        audio.addEventListener('ended', handleAudioEnd);
-        return () => {
-            audio.removeEventListener('loadeddata', setAudioData);
-            audio.removeEventListener('timeupdate', setAudioTime);
-            audio.removeEventListener('ended', handleAudioEnd);
-        };
-    }, [playlist, currentTrackIndex, handleNextTrack]);
-    useEffect(() => { if (audioRef.current) { isPlaying ? audioRef.current.play().catch(console.error) : audioRef.current.pause(); } }, [isPlaying, currentTrackIndex]);
-    useEffect(() => { if (audioRef.current) { audioRef.current.volume = volume; } }, [volume]);
-
-    const handlePrevTrack = useCallback(() => { 
-        if(playlist.length > 0) {
-            setCurrentTrackIndex(p => (p - 1 + playlist.length) % playlist.length); 
-            setIsPlaying(true); 
-        }
-    }, [playlist.length]);
-
-    const handleSelectTrack = useCallback((index: number) => { 
-        setCurrentTrackIndex(index); 
-        setIsPlaying(true); 
-    }, []);
-
-    const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value); };
-    const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => setVolume(Number(e.target.value));
-    const handleMusicFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const track: Omit<Track, 'duration'> & { duration?: number } = { name: file.name.replace('.mp3', ''), artist: 'Desconhecido', url: URL.createObjectURL(file), artwork: '' };
-            const audioForDuration = new Audio(track.url);
-            audioForDuration.onloadedmetadata = () => {
-                const fullTrack: Track = {...track, duration: audioForDuration.duration };
-                setPlaylist(p => [...p, fullTrack]);
-                if (!isPlaying) { setCurrentTrackIndex(playlist.length); setIsPlaying(true); }
-            };
-        }
-    };
-    const triggerMusicFileInput = () => musicFileInputRef.current?.click();
-
-    // --- Clio Player Handlers ---
-    const handleClioPlayPause = useCallback(() => {
-        if (clioPlaylist.length > 0) {
-            const audio = clioAudioRef.current;
-            if (audio) {
-                if (isClioPlaying) {
-                    audio.pause();
-                } else {
-                    audio.play().catch(e => {
-                        console.error("Audio play failed:", e);
-                        setIsClioPlaying(false); // Revert state if play fails
-                    });
-                }
-                setIsClioPlaying(!isClioPlaying);
-            }
-        }
-    }, [clioPlaylist.length, isClioPlaying]);
-
-    const handleClioNext = useCallback(() => {
-        if (clioPlaylist.length > 0) {
-            setCurrentClioTrackIndex(p => (p + 1) % clioPlaylist.length);
-        }
-    }, [clioPlaylist]);
-
-    const handleClioPrev = useCallback(() => {
-        if (clioPlaylist.length > 0) {
-            setCurrentClioTrackIndex(p => (p - 1 + clioPlaylist.length) % clioPlaylist.length);
-        }
-    }, [clioPlaylist]);
-    
-    useEffect(() => {
-        if (clioAudioRef.current) {
-             setIsClioPlaying(true);
-             clioAudioRef.current.play().catch(e => {
-                 console.log("Audio couldn't auto-play, requires user interaction.");
-                 setIsClioPlaying(false);
-             });
-        }
-    }, [currentClioTrackIndex]);
-
-    const handleClioTimeUpdate = () => {
-        if (clioAudioRef.current && !isClioSeeking) {
-            setClioProgress(clioAudioRef.current.currentTime);
-        }
-    };
-
-    const handleClioSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (clioAudioRef.current) {
-            clioAudioRef.current.currentTime = Number(e.target.value);
-            setClioProgress(Number(e.target.value));
-        }
-    };
-
-    const handleClioSeekMouseDown = () => setIsClioSeeking(true);
-    const handleClioSeekMouseUp = () => setIsClioSeeking(false);
-    
-    const handleClioSelectTrack = (index: number) => {
-        setCurrentClioTrackIndex(index);
-    };
 
     const handleOpenGadgetMenu = (gadgetId: string) => {
         setSelectedGadgetId(gadgetId);
@@ -991,6 +816,7 @@ const App: React.FC = () => {
             setIsGadgetSelectorOpen(false);
         }
     };
+    
 
     // --- RENDER LOGIC ---
     if (!loggedInUser || !userState) {
@@ -1020,6 +846,8 @@ const App: React.FC = () => {
             case 'collective_document': return <CollectiveDocumentForm onSubmit={handleAndClose(handleSaveDocWithUploader)} />;
             case 'meeting_minute': return <MeetingMinuteForm onSubmit={handleAndClose(handleSaveMeetingMinute)} minute={editingItem} />;
             case 'voting_topic': return <VotingTopicForm onSubmit={handleAndClose(handleSaveVoteWithCreator)} />;
+            case 'financial_project': return <div />; // Handled inside FinanceApp logic, but referenced here for type safety
+            case 'transaction': return <TransactionForm onSubmit={handleAndClose((data, id) => handleSaveTransaction(editingItem?.projectId || selectedGadgetId, {...data, type: editingItem?.type || 'expense' }, id))} transaction={editingItem} type={editingItem?.type || 'expense'} />; 
             default: return null;
         }
     };
@@ -1060,7 +888,6 @@ const App: React.FC = () => {
         { name: 'documentation', title: 'Documentação', icon: <DockAppIcon bgColorClasses="bg-indigo-700"><BookOpenIcon /></DockAppIcon>, component: <Documentation /> },
         { name: 'finances', title: 'Finanças', icon: <DockAppIcon bgColorClasses="bg-emerald-600"><WalletIcon /></DockAppIcon>, component: <FinanceApp financialProjects={financialProjects} handleSaveFinancialProject={handleSaveFinancialProject} handleDeleteFinancialProject={handleDeleteFinancialProject} handleSaveTransaction={handleSaveTransaction} handleDeleteTransaction={handleDeleteTransaction} /> },
         { name: 'notebooks', title: 'Cadernos', icon: <DockAppIcon bgColorClasses="bg-amber-600"><BookMarkedIcon /></DockAppIcon>, component: <NotebooksApp notebooks={notebooks} handleSaveNotebook={handleSaveNotebook} handleDeleteNotebook={handleDeleteNotebook} handleSaveNote={handleSaveNote} handleDeleteNote={handleDeleteNote} /> },
-        { name: 'clio_player', title: 'Player Clio', icon: <DockAppIcon bgColorClasses="bg-rose-600"><MusicIcon /></DockAppIcon>, component: <ClioPlayerApp playlist={clioPlaylist} currentTrackIndex={currentClioTrackIndex} isPlaying={isClioPlaying} onPlayPause={handleClioPlayPause} onNext={handleClioNext} onPrev={handleClioPrev} progress={clioProgress} duration={clioAudioRef.current?.duration || 0} onSeek={handleClioSeek} onSeekMouseDown={handleClioSeekMouseDown} onSeekMouseUp={handleClioSeekMouseUp} onSelectTrack={handleClioSelectTrack} /> },
         { name: 'collab_clio', title: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon>, component: <CollabClioApp onOpenModal={openModal} currentUser={loggedInUser} {...userState} handleDeleteCollectiveDocument={handleDeleteCollectiveDocument} handleDeleteMeetingMinute={handleDeleteMeetingMinute} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} /> },
         { name: 'browser', title: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon>, component: <BrowserApp /> },
         { name: 'profile', title: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon>, component: <ProfileApp currentUser={loggedInUser} onSaveProfile={handleSaveProfile} onChangePassword={handleChangePassword} /> },
@@ -1086,6 +913,10 @@ const App: React.FC = () => {
         currentUser: loggedInUser,
         teamStatuses,
         handleUpdateTeamStatus,
+        tasks,
+        schedule,
+        inventoryItems,
+        collectiveDocuments
     };
 
     // Mobile Gadget Rendering Logic
@@ -1101,16 +932,6 @@ const App: React.FC = () => {
                     {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
                     {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
                     {gadget.type === 'team_status' && <TeamStatusGadget />}
-                    {gadget.type === 'radio_clio' && (
-                        <div className="flex justify-center">
-                            <RadioClioGadget
-                                playlist={clioPlaylist}
-                                currentTrackIndex={currentClioTrackIndex}
-                                isPlaying={isClioPlaying}
-                                onPlayPause={handleClioPlayPause}
-                            />
-                        </div>
-                    )}
                  </div>
              </MobileGadgetWrapper>
         )
@@ -1123,6 +944,14 @@ const App: React.FC = () => {
                 style={{ backgroundImage: `url(${wallpaperImage || DEFAULT_WALLPAPER})` }}
             >
                  <div className="absolute inset-0 bg-slate-900/30"></div>
+                 
+                 {/* Global Search Overlay */}
+                 <GlobalSearch 
+                    isOpen={isSearchOpen} 
+                    onClose={() => setIsSearchOpen(false)} 
+                    onOpenModal={openModal} 
+                 />
+                 
                 {isMobile ? (
                     <div className="h-full w-full overflow-hidden flex flex-col relative bg-slate-900">
                         {/* Static Background for Mobile */}
@@ -1145,7 +974,12 @@ const App: React.FC = () => {
                             </>
                         ) : (
                              <>
-                                <MobileTopBar user={loggedInUser} onToggleControlCenter={() => setIsMobileControlCenterOpen(true)} onOpenProfile={() => setActiveMobileApp('profile')} />
+                                <MobileTopBar 
+                                    user={loggedInUser} 
+                                    onToggleControlCenter={() => setIsMobileControlCenterOpen(true)} 
+                                    onOpenProfile={() => setActiveMobileApp('profile')} 
+                                    onOpenSearch={() => setIsSearchOpen(true)}
+                                />
                                 <main 
                                     className="flex-1 flex flex-col relative overflow-hidden pb-28" // Added pb-28 to avoid overlap with dock
                                     onTouchStart={handleTouchStart}
@@ -1218,10 +1052,6 @@ const App: React.FC = () => {
                             onClose={() => setIsMobileControlCenterOpen(false)}
                             eventInfo={eventInfo}
                             schedule={schedule}
-                            playlist={clioPlaylist}
-                            currentTrackIndex={currentClioTrackIndex}
-                            isPlaying={isClioPlaying}
-                            onPlayPause={handleClioPlayPause}
                         />
                         
                         <MobileGadgetMenu 
@@ -1239,32 +1069,16 @@ const App: React.FC = () => {
                     </div>
                 ) : (
                     <>
-                        <audio ref={audioRef} src={playlist[currentTrackIndex]?.url} />
-                        <audio 
-                            ref={clioAudioRef} 
-                            src={clioPlaylist?.[currentClioTrackIndex]?.url} 
-                            onTimeUpdate={handleClioTimeUpdate}
-                            onEnded={handleClioNext}
-                            playsInline // FIX: Added playsInline for better mobile support
-                            onLoadedMetadata={() => clioAudioRef.current && setClioProgress(clioAudioRef.current.currentTime)}
-                         />
-                        <input type="file" ref={musicFileInputRef} onChange={handleMusicFileChange} accept=".mp3" className="hidden" />
-
                         <ClioOSDesktop 
                             onAppClick={handleAppClick} 
                             user={loggedInUser} 
                             onLogout={handleLogout}
                             appStates={appStates}
-                            isMusicPlayerOpen={isMusicPlayerOpen}
-                            onToggleMusicPlayer={() => setIsMusicPlayerOpen(!isMusicPlayerOpen)}
                             eventInfo={eventInfo}
                             schedule={schedule}
-                            clioPlaylist={clioPlaylist}
-                            currentClioTrackIndex={currentClioTrackIndex}
-                            isClioPlaying={isClioPlaying}
-                            handleClioPlayPause={handleClioPlayPause}
+                            onOpenSearch={() => setIsSearchOpen(true)}
                         />
-
+                        
                         {gadgets.map((gadget: Gadget) => (
                             <GadgetWrapper key={gadget.id} gadget={gadget} onClose={handleRemoveGadget} onPositionChange={handleUpdateGadgetPosition} >
                                 {gadget.type === 'analog_clock' && <AnalogClock />}
@@ -1272,18 +1086,9 @@ const App: React.FC = () => {
                                 {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
                                 {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
                                 {gadget.type === 'team_status' && <TeamStatusGadget />}
-                                {gadget.type === 'radio_clio' && (
-                                    <RadioClioGadget
-                                        playlist={clioPlaylist}
-                                        currentTrackIndex={currentClioTrackIndex}
-                                        isPlaying={isClioPlaying}
-                                        onPlayPause={handleClioPlayPause}
-                                    />
-                                )}
                             </GadgetWrapper>
                         ))}
 
-                        <MusicPlayerWidget isOpen={isMusicPlayerOpen} onClose={() => setIsMusicPlayerOpen(false)} playlist={playlist} currentTrackIndex={currentTrackIndex} isPlaying={isPlaying} volume={volume} progress={progress} duration={duration} onPlayPause={handlePlayPause} onNext={handleNextTrack} onPrev={handlePrevTrack} onSelectTrack={handleSelectTrack} onSeek={handleSeek} onVolumeChange={handleVolumeChange} onLoadFile={triggerMusicFileInput} />
                         
                         {appConfig.map(({ name, title, component }) => (
                             appStates[name] === 'open' && (

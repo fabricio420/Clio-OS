@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import type { Task, Member } from '../../types';
 import { FormInput } from './FormElements';
@@ -8,7 +10,7 @@ interface TaskFormProps {
     members: Member[];
 }
 
-export const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, task, members}) => {
+export const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, task, members }) => {
     const [formData, setFormData] = useState({ title: '', description: '', assigneeId: '', dueDate: '' });
     
     useEffect(() => { 

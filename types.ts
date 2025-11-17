@@ -1,5 +1,4 @@
 
-
 export enum TaskStatus {
   ToDo = 'A Fazer',
   InProgress = 'Em Andamento',
@@ -131,20 +130,12 @@ export interface Notebook {
   notes: Note[];
 }
 
-export interface Track {
-  name: string;
-  artist: string;
-  url: string;
-  artwork: string;
-  duration: number;
-}
-
 export interface TeamStatus {
   memberId: string;
   status: string;
 }
 
-export type GadgetType = 'analog_clock' | 'countdown' | 'quick_note' | 'financial_summary' | 'team_status' | 'radio_clio';
+export type GadgetType = 'analog_clock' | 'countdown' | 'quick_note' | 'financial_summary' | 'team_status';
 
 export interface GadgetData {
     content?: string;
