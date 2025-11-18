@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo } from 'react';
 import { HomeIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, MenuIcon } from './icons';
 
@@ -27,6 +26,22 @@ const sections = [
       <>
         <p>O <strong>Clio OS</strong> é o sistema operacional definitivo para coletivos culturais. Projetado como uma alternativa focada na arte ao desempenho, ele centraliza a produção, a comunicação, o financeiro e a governança democrática do seu sarau em uma interface imersiva e intuitiva.</p>
         <p>Navegue pelos tópicos abaixo para dominar todas as ferramentas e profissionalizar a sua produção cultural.</p>
+      </>
+    )
+  },
+  {
+    id: 'global_search',
+    title: 'Busca Global (Ctrl + K)',
+    icon: <SearchIcon className="h-6 w-6 text-sky-400" />,
+    keywords: 'busca, encontrar, atalho, teclado, pesquisa',
+    content: (
+      <>
+        <p>Encontre qualquer coisa no sistema instantaneamente sem tirar as mãos do teclado.</p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Atalho Rápido:</strong> Pressione <code>Ctrl + K</code> (ou <code>Cmd + K</code> no Mac) em qualquer lugar para abrir a busca.</li>
+          <li><strong>Busca Universal:</strong> Localize membros da equipe, tarefas específicas, artistas, itens de inventário ou projetos financeiros.</li>
+          <li><strong>Navegação:</strong> Use as setas do teclado para navegar e <code>Enter</code> para abrir o item diretamente.</li>
+        </ul>
       </>
     )
   },
@@ -329,3 +344,4 @@ const Documentation: React.FC = () => {
 };
 
 export default Documentation;
+    

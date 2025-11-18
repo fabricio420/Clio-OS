@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus, VoteOption } from './types';
+import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus, VoteOption, AuditLog } from './types';
 import { TaskStatus as TaskStatusEnum, InventoryStatus } from './types';
 import LoginScreen from './components/LoginScreen';
 import ClioOSDesktop from './components/ClioOSDesktop';
@@ -48,6 +48,7 @@ import { TransactionForm } from './components/forms/TransactionForm';
 import { ChevronLeftIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, MenuIcon, BarChartIcon, StickyNoteIcon, XIcon, SearchIcon } from './components/icons';
 import { AppContext } from './contexts/AppContext';
 import { supabase } from './supabaseClient';
+import Toast, { ToastType } from './components/Toast';
 
 // --- RESPONSIVE HOOK ---
 const useMediaQuery = (query: string): boolean => {
@@ -105,7 +106,8 @@ const MOCK_INITIAL_DATA = {
     meetingMinutes: [] as MeetingMinute[],
     votingTopics: [] as VotingTopic[],
     teamStatuses: [] as TeamStatus[],
-    gadgets: DEFAULT_GADGETS, // Initialize with defaults
+    gadgets: DEFAULT_GADGETS,
+    auditLogs: [] as AuditLog[],
     totalBudget: 0,
 };
 
@@ -352,6 +354,13 @@ const App: React.FC = () => {
     const [modalView, setModalView] = useState<ModalView | null>(null);
     const [editingItem, setEditingItem] = useState<any>(null);
     
+    // Toast State
+    const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+    
+    const showToast = (message: string, type: ToastType = 'success') => {
+        setToast({ message, type });
+    };
+
     // Mobile gesture handling
     const touchStartX = useRef<number | null>(null);
     const touchStartY = useRef<number | null>(null);
@@ -417,6 +426,7 @@ const App: React.FC = () => {
             setLoadingAuth(true);
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!);
+                // Initial data fetch
                 fetchTasks();
                 fetchArtists();
                 fetchFinancialData();
@@ -428,6 +438,7 @@ const App: React.FC = () => {
                 fetchNotebooks();
                 fetchMedia();
                 fetchAlbums();
+                fetchAuditLogs();
             } else {
                 setLoadingAuth(false);
             }
@@ -447,6 +458,7 @@ const App: React.FC = () => {
                 fetchNotebooks();
                 fetchMedia();
                 fetchAlbums();
+                fetchAuditLogs();
             } else {
                 setLoggedInUser(null);
                 setUserState(MOCK_INITIAL_DATA); // Reset to defaults
@@ -456,6 +468,43 @@ const App: React.FC = () => {
 
         return () => subscription.unsubscribe();
     }, []);
+
+    // --- SUPABASE REALTIME SUBSCRIPTION ---
+    useEffect(() => {
+        if (!loggedInUser) return;
+
+        // Channel for general data updates
+        const channel = supabase.channel('clio_realtime_sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchTasks())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'artists' }, () => fetchArtists())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_items' }, () => fetchSchedule())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items' }, () => fetchInventory())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_projects' }, () => fetchFinancialData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchFinancialData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'team_feed_posts' }, () => fetchFeedPosts())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'team_statuses' }, () => fetchTeamStatuses())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'collective_documents' }, () => fetchCollabData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_minutes' }, () => fetchCollabData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'voting_topics' }, () => fetchCollabData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'voting_options' }, () => fetchCollabData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notebooks' }, () => fetchNotebooks())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => fetchNotebooks())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'media_items' }, () => fetchMedia())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'photo_albums' }, () => fetchAlbums())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'photos' }, () => fetchAlbums())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchAllProfiles())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => fetchAuditLogs())
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('Clio OS Realtime: Conectado');
+                }
+            });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [loggedInUser]);
+
 
     const fetchUserProfile = async (userId: string, email: string) => {
         try {
@@ -513,6 +562,43 @@ const App: React.FC = () => {
             }));
             updateUserState('members', mappedMembers);
         }
+    };
+
+    // --- AUDIT LOG HELPER ---
+    const logAction = async (action: 'CREATE' | 'UPDATE' | 'DELETE', entity: string, details: string) => {
+        if (!loggedInUser) return;
+        try {
+            await supabase.from('audit_logs').insert({
+                user_id: loggedInUser.id,
+                user_name: loggedInUser.name,
+                user_avatar: loggedInUser.avatar,
+                action: action,
+                entity: entity,
+                details: details,
+                created_at: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error("Error logging action:", err); // Fail silently in UI
+        }
+    };
+
+    const fetchAuditLogs = async () => {
+        try {
+            const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
+            if (data) {
+                const mappedLogs: AuditLog[] = data.map((l: any) => ({
+                    id: l.id,
+                    userId: l.user_id,
+                    userName: l.user_name || 'Desconhecido',
+                    userAvatar: l.user_avatar || DEFAULT_AVATAR,
+                    action: l.action,
+                    entity: l.entity,
+                    details: l.details,
+                    timestamp: l.created_at
+                }));
+                updateUserState('auditLogs', mappedLogs);
+            }
+        } catch (err) { console.error(err); }
     };
 
     // --- SUPABASE DATA FETCHING (CORE) ---
@@ -792,96 +878,171 @@ const App: React.FC = () => {
         try {
             if (editingId) {
                 await supabase.from('tasks').update({ title: taskData.title, description: taskData.description, due_date: taskData.dueDate, assignee_id: taskData.assigneeId || null }).eq('id', editingId);
+                logAction('UPDATE', 'Tarefa', `Editou a tarefa: ${taskData.title}`);
+                showToast('Tarefa atualizada!', 'success');
             } else {
                 await supabase.from('tasks').insert([{ title: taskData.title, description: taskData.description, due_date: taskData.dueDate, assignee_id: taskData.assigneeId || null, status: TaskStatusEnum.ToDo }]);
+                logAction('CREATE', 'Tarefa', `Criou nova tarefa: ${taskData.title}`);
+                showToast('Tarefa criada!', 'success');
             }
-            fetchTasks();
-        } catch (err) { console.error(err); }
+        } catch (err) { console.error(err); showToast('Erro ao salvar tarefa', 'error'); }
     };
-    const handleDeleteTask = async (id: string) => { await supabase.from('tasks').delete().eq('id', id); fetchTasks(); };
-    const handleUpdateTaskStatus = async (id: string, status: TaskStatus) => { await supabase.from('tasks').update({ status }).eq('id', id); fetchTasks(); };
+    const handleDeleteTask = async (id: string) => { 
+        const task = tasks.find(t => t.id === id);
+        await supabase.from('tasks').delete().eq('id', id); 
+        logAction('DELETE', 'Tarefa', `Excluiu a tarefa: ${task?.title || id}`);
+        showToast('Tarefa excluída', 'info');
+    };
+    const handleUpdateTaskStatus = async (id: string, status: TaskStatus) => { 
+        await supabase.from('tasks').update({ status }).eq('id', id);
+        const task = tasks.find(t => t.id === id);
+        logAction('UPDATE', 'Tarefa', `Moveu tarefa "${task?.title}" para ${status}`);
+    };
 
     // Artists
     const handleSaveArtist = async (data: any, id?: string) => {
         const payload = { name: data.name, performance_type: data.performanceType, contact: data.contact, notes: data.notes, instagram: data.instagram, whatsapp: data.whatsapp, cpf: data.cpf, rg: data.rg, document_image: data.documentImage };
-        if(id) await supabase.from('artists').update(payload).eq('id', id);
-        else await supabase.from('artists').insert([payload]);
-        fetchArtists();
+        if(id) {
+            await supabase.from('artists').update(payload).eq('id', id);
+            logAction('UPDATE', 'Artista', `Atualizou dados de: ${data.name}`);
+            showToast('Artista atualizado!', 'success');
+        } else {
+            await supabase.from('artists').insert([payload]);
+            logAction('CREATE', 'Artista', `Cadastrou novo artista: ${data.name}`);
+            showToast('Artista cadastrado!', 'success');
+        }
     };
-    const handleDeleteArtist = async (id: string) => { await supabase.from('artists').delete().eq('id', id); fetchArtists(); };
+    const handleDeleteArtist = async (id: string) => { 
+        const artist = artists.find(a => a.id === id);
+        await supabase.from('artists').delete().eq('id', id); 
+        logAction('DELETE', 'Artista', `Removeu artista: ${artist?.name || id}`);
+        showToast('Artista removido', 'info');
+    };
 
     // Schedule
     const handleSaveScheduleItem = async (data: any, id?: string) => {
-        if(id) await supabase.from('schedule_items').update(data).eq('id', id);
-        else await supabase.from('schedule_items').insert([data]);
-        fetchSchedule();
+        if(id) {
+            await supabase.from('schedule_items').update(data).eq('id', id);
+            logAction('UPDATE', 'Cronograma', `Editou item do cronograma: ${data.time} - ${data.title}`);
+            showToast('Cronograma atualizado!', 'success');
+        } else {
+            await supabase.from('schedule_items').insert([data]);
+            logAction('CREATE', 'Cronograma', `Adicionou ao cronograma: ${data.time} - ${data.title}`);
+            showToast('Item adicionado ao cronograma!', 'success');
+        }
     };
-    const handleDeleteScheduleItem = async (id: string) => { await supabase.from('schedule_items').delete().eq('id', id); fetchSchedule(); };
+    const handleDeleteScheduleItem = async (id: string) => { 
+        const item = schedule.find(i => i.id === id);
+        await supabase.from('schedule_items').delete().eq('id', id); 
+        logAction('DELETE', 'Cronograma', `Removeu item: ${item?.title || id}`);
+        showToast('Item removido do cronograma', 'info');
+    };
 
     // Inventory
     const handleSaveInventoryItem = async (data: any, id?: string) => {
         const payload = { name: data.name, quantity: data.quantity, status: data.status, responsible_id: data.responsibleId };
-        if(id) await supabase.from('inventory_items').update(payload).eq('id', id);
-        else await supabase.from('inventory_items').insert([payload]);
-        fetchInventory();
+        if(id) {
+            await supabase.from('inventory_items').update(payload).eq('id', id);
+            logAction('UPDATE', 'Inventário', `Atualizou item: ${data.name} (${data.quantity})`);
+            showToast('Item atualizado!', 'success');
+        } else {
+            await supabase.from('inventory_items').insert([payload]);
+            logAction('CREATE', 'Inventário', `Adicionou item: ${data.name} (${data.quantity})`);
+            showToast('Item adicionado ao inventário!', 'success');
+        }
     };
-    const handleDeleteInventoryItem = async (id: string) => { await supabase.from('inventory_items').delete().eq('id', id); fetchInventory(); };
+    const handleDeleteInventoryItem = async (id: string) => { 
+        const item = inventoryItems.find(i => i.id === id);
+        await supabase.from('inventory_items').delete().eq('id', id); 
+        logAction('DELETE', 'Inventário', `Removeu item: ${item?.name || id}`);
+        showToast('Item removido do inventário', 'info');
+    };
 
     // Finances
     const handleSaveFinancialProject = async (data: any, id?: string) => {
-        if(id) await supabase.from('financial_projects').update({ name: data.name, description: data.description }).eq('id', id);
-        else await supabase.from('financial_projects').insert([{ name: data.name, description: data.description }]);
-        fetchFinancialData();
+        if(id) {
+            await supabase.from('financial_projects').update({ name: data.name, description: data.description }).eq('id', id);
+            logAction('UPDATE', 'Financeiro', `Editou projeto: ${data.name}`);
+            showToast('Projeto atualizado!', 'success');
+        } else {
+            await supabase.from('financial_projects').insert([{ name: data.name, description: data.description }]);
+            logAction('CREATE', 'Financeiro', `Criou projeto: ${data.name}`);
+            showToast('Projeto criado!', 'success');
+        }
     };
-    const handleDeleteFinancialProject = async (id: string) => { await supabase.from('financial_projects').delete().eq('id', id); fetchFinancialData(); };
+    const handleDeleteFinancialProject = async (id: string) => { 
+        const project = financialProjects.find(p => p.id === id);
+        await supabase.from('financial_projects').delete().eq('id', id); 
+        logAction('DELETE', 'Financeiro', `Excluiu projeto: ${project?.name || id}`);
+        showToast('Projeto excluído', 'info');
+    };
     const handleSaveTransaction = async (projId: string, data: any, id?: string) => {
         const payload = { project_id: projId, description: data.description, amount: data.amount, type: data.type, date: data.date, category: data.category };
-        if(id) await supabase.from('transactions').update(payload).eq('id', id);
-        else await supabase.from('transactions').insert([payload]);
-        fetchFinancialData();
+        if(id) {
+            await supabase.from('transactions').update(payload).eq('id', id);
+            logAction('UPDATE', 'Financeiro', `Editou transação: ${data.description} (R$${data.amount})`);
+            showToast('Transação atualizada!', 'success');
+        } else {
+            await supabase.from('transactions').insert([payload]);
+            logAction('CREATE', 'Financeiro', `Nova transação: ${data.description} (R$${data.amount})`);
+            showToast('Transação registrada!', 'success');
+        }
     };
-    const handleDeleteTransaction = async (pid: string, id: string) => { await supabase.from('transactions').delete().eq('id', id); fetchFinancialData(); };
+    const handleDeleteTransaction = async (pid: string, id: string) => { 
+        await supabase.from('transactions').delete().eq('id', id); 
+        logAction('DELETE', 'Financeiro', 'Excluiu uma transação');
+        showToast('Transação excluída', 'info');
+    };
 
     // Team Hub (Feed & Status)
     const handleAddPost = async (content: string, author: Member) => {
         if (!loggedInUser) return;
         await supabase.from('team_feed_posts').insert([{ content, author_id: loggedInUser.id }]);
-        fetchFeedPosts();
+        showToast('Postagem publicada!', 'success');
     };
     const handleUpdateTeamStatus = async (statusText: string) => {
         if (!loggedInUser) return;
         await supabase.from('team_statuses').upsert({ member_id: loggedInUser.id, status: statusText });
-        fetchTeamStatuses();
+        showToast('Status atualizado!', 'success');
     };
 
     // Collab Clio (Docs, Minutes, Voting)
     const handleSaveCollectiveDocument = async (docData: any, uploaderId: string) => {
         await supabase.from('collective_documents').insert([{
             name: docData.name,
-            file_data_url: docData.fileDataUrl, // Note: Storing Base64 in DB is not ideal for prod (use Storage)
+            file_data_url: docData.fileDataUrl, 
             file_name: docData.file.name,
             file_type: docData.file.type,
             uploader_id: uploaderId
         }]);
-        fetchCollabData();
+        logAction('CREATE', 'Documentos', `Carregou documento: ${docData.name}`);
+        showToast('Documento salvo!', 'success');
     };
     const handleDeleteCollectiveDocument = async (id: string) => {
         if(window.confirm('Tem certeza?')) {
             await supabase.from('collective_documents').delete().eq('id', id);
-            fetchCollabData();
+            logAction('DELETE', 'Documentos', 'Excluiu um documento');
+            showToast('Documento excluído', 'info');
         }
     };
 
     const handleSaveMeetingMinute = async (data: any, id?: string) => {
         const payload = { date: data.date, attendee_ids: data.attendeeIds, agenda: data.agenda, decisions: data.decisions };
-        if(id) await supabase.from('meeting_minutes').update(payload).eq('id', id);
-        else await supabase.from('meeting_minutes').insert([payload]);
-        fetchCollabData();
+        if(id) {
+            await supabase.from('meeting_minutes').update(payload).eq('id', id);
+            logAction('UPDATE', 'Reuniões', `Atualizou ata de: ${data.date}`);
+            showToast('Ata atualizada!', 'success');
+        } else {
+            await supabase.from('meeting_minutes').insert([payload]);
+            logAction('CREATE', 'Reuniões', `Criou ata de reunião: ${data.date}`);
+            showToast('Ata salva!', 'success');
+        }
     };
     const handleDeleteMeetingMinute = async (id: string) => {
         if(window.confirm('Tem certeza?')) {
             await supabase.from('meeting_minutes').delete().eq('id', id);
-            fetchCollabData();
+            logAction('DELETE', 'Reuniões', 'Excluiu ata de reunião');
+            showToast('Ata excluída', 'info');
         }
     };
 
@@ -898,7 +1059,8 @@ const App: React.FC = () => {
                 text: o.text
             }));
             await supabase.from('voting_options').insert(optionsPayload);
-            fetchCollabData();
+            logAction('CREATE', 'Votação', `Iniciou votação: ${data.title}`);
+            showToast('Votação criada!', 'success');
         }
     };
 
@@ -923,12 +1085,13 @@ const App: React.FC = () => {
             const currentVoters = targetOption.voter_ids || [];
             await supabase.from('voting_options').update({ voter_ids: [...currentVoters, voterId] }).eq('id', optionId);
         }
-        fetchCollabData();
+        showToast('Voto computado!', 'success');
     };
 
     const handleCloseVoting = async (topicId: string) => {
         await supabase.from('voting_topics').update({ status: 'closed' }).eq('id', topicId);
-        fetchCollabData();
+        logAction('UPDATE', 'Votação', 'Encerrou uma votação');
+        showToast('Votação encerrada!', 'info');
     };
     
     // --- Notebooks Handlers ---
@@ -936,15 +1099,16 @@ const App: React.FC = () => {
         if (!loggedInUser) return;
         if(editingId) {
              await supabase.from('notebooks').update({ name }).eq('id', editingId);
+             showToast('Caderno renomeado!', 'success');
         } else {
              await supabase.from('notebooks').insert([{ name, owner_id: loggedInUser.id }]);
+             showToast('Caderno criado!', 'success');
         }
-        fetchNotebooks();
     };
     
     const handleDeleteNotebook = async (notebookId: string) => {
         await supabase.from('notebooks').delete().eq('id', notebookId);
-        fetchNotebooks();
+        showToast('Caderno excluído', 'info');
     }
 
     const handleSaveNote = async (notebookId: string, noteData: Pick<Note, 'title' | 'content'>, editingId?: string) => {
@@ -956,15 +1120,16 @@ const App: React.FC = () => {
         };
         if(editingId) {
              await supabase.from('notes').update(payload).eq('id', editingId);
+             // Note: We don't toast on every auto-save to avoid spam
         } else {
              await supabase.from('notes').insert([payload]);
+             showToast('Nota criada!', 'success');
         }
-        fetchNotebooks();
     };
 
     const handleDeleteNote = async (notebookId: string, noteId: string) => {
         await supabase.from('notes').delete().eq('id', noteId);
-        fetchNotebooks();
+        showToast('Nota excluída', 'info');
     };
     
     // --- Media Handlers ---
@@ -976,27 +1141,31 @@ const App: React.FC = () => {
             file_name: mediaData.fileName,
             artist_id: mediaData.artistId
         }]);
-        fetchMedia();
+        logAction('CREATE', 'Mídia', `Upload de arquivo: ${mediaData.title}`);
+        showToast('Mídia salva!', 'success');
     };
     
     const handleDeleteMediaItem = async (mediaId: string) => {
+        const media = mediaItems.find(m => m.id === mediaId);
         await supabase.from('media_items').delete().eq('id', mediaId);
-        fetchMedia();
+        logAction('DELETE', 'Mídia', `Excluiu arquivo: ${media?.title || mediaId}`);
+        showToast('Mídia excluída', 'info');
     }
     
     // --- Gallery Handlers ---
     const handleSavePhotoAlbum = async (albumData: Omit<PhotoAlbum, 'id' | 'photos'>, editingId?: string) => {
         if(editingId) {
             await supabase.from('photo_albums').update(albumData).eq('id', editingId);
+            showToast('Álbum atualizado!', 'success');
         } else {
             await supabase.from('photo_albums').insert([albumData]);
+            showToast('Álbum criado!', 'success');
         }
-        fetchAlbums();
     };
     
     const handleDeletePhotoAlbum = async (albumId: string) => {
         await supabase.from('photo_albums').delete().eq('id', albumId);
-        fetchAlbums();
+        showToast('Álbum excluído', 'info');
     }
     
     const handleAddPhotosToAlbum = async (albumId: string, photos: Omit<Photo, 'id'>[]) => {
@@ -1007,12 +1176,12 @@ const App: React.FC = () => {
             file_name: p.fileName
         }));
         await supabase.from('photos').insert(payload);
-        fetchAlbums();
+        showToast(`${photos.length} fotos adicionadas!`, 'success');
     };
     
     const handleDeletePhoto = async (albumId: string, photoId: string) => {
         await supabase.from('photos').delete().eq('id', photoId);
-        fetchAlbums();
+        showToast('Foto excluída', 'info');
     };
 
 
@@ -1250,7 +1419,7 @@ const App: React.FC = () => {
         return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUpWrapper} onGuestLogin={handleGuestLogin} loginWallpaper={randomLoginWallpaper} />;
     }
 
-    const { members, artists, tasks, schedule, financialProjects, totalBudget, feedPosts, eventInfo, mediaItems, inventoryItems, gadgets, notebooks, photoAlbums, collectiveDocuments, meetingMinutes, votingTopics, teamStatuses } = userState;
+    const { members, artists, tasks, schedule, financialProjects, totalBudget, feedPosts, eventInfo, mediaItems, inventoryItems, gadgets, notebooks, photoAlbums, collectiveDocuments, meetingMinutes, votingTopics, teamStatuses, auditLogs } = userState;
     const recentlyUpdatedTaskId = null; 
 
     const renderModalContent = () => {
@@ -1318,7 +1487,7 @@ const App: React.FC = () => {
         { name: 'collab_clio', title: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon>, component: <CollabClioApp onOpenModal={openModal} currentUser={loggedInUser} {...userState} handleDeleteCollectiveDocument={handleDeleteCollectiveDocument} handleDeleteMeetingMinute={handleDeleteMeetingMinute} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} /> },
         { name: 'browser', title: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon>, component: <BrowserApp /> },
         { name: 'profile', title: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon>, component: <ProfileApp currentUser={loggedInUser} onSaveProfile={handleSaveProfile} onChangePassword={handleChangePassword} /> },
-        { name: 'personalize', title: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon>, component: <PersonalizeApp currentWallpaper={wallpaperImage || DEFAULT_WALLPAPER} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} wallpapers={wallpapers} /> },
+        { name: 'personalize', title: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon>, component: <PersonalizeApp currentWallpaper={wallpaperImage || DEFAULT_WALLPAPER} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} wallpapers={wallpapers} mediaItems={mediaItems} photoAlbums={photoAlbums} collectiveDocuments={collectiveDocuments} /> },
     ];
     
     const appComponents = appConfig.reduce((acc, app) => ({ ...acc, [app.name]: app.component }), {} as Record<AppName, React.ReactNode>);
@@ -1378,6 +1547,11 @@ const App: React.FC = () => {
                     onClose={() => setIsSearchOpen(false)} 
                     onOpenModal={openModal} 
                  />
+                 
+                {/* Global Toast Container */}
+                <div className="fixed top-5 right-5 z-[100] flex flex-col gap-2">
+                    {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+                </div>
                  
                 {isMobile ? (
                     <div className="h-full w-full overflow-hidden flex flex-col relative bg-slate-900">

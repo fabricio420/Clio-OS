@@ -1,9 +1,10 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
     PowerIcon, WalletIcon, BrushIcon, BookMarkedIcon, HomeIcon,
     CheckSquareIcon, ClockIcon, InfoIcon, ImageIcon, BookOpenIcon, BoxIcon, UsersIcon, FileTextIcon, DockAppIcon,
-    GlobeIcon, BriefcaseIcon, UserIcon, SearchIcon
+    GlobeIcon, BriefcaseIcon, UserIcon, SearchIcon, CloudCheckIcon
 } from './icons';
 import type { Member, EventInfoData, ScheduleItem } from '../types';
 import type { AppName, AppStates } from '../App';
@@ -99,13 +100,22 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
         <div className="absolute inset-0 flex flex-col overflow-hidden">
              {/* Top Menu Bar */}
             <header className="absolute top-0 left-0 right-0 h-7 bg-black/20 backdrop-blur-sm flex items-center justify-between px-4 text-sm text-white/90 z-30">
-                <div className="flex-1 flex justify-start">
+                <div className="flex-1 flex justify-start items-center gap-3">
                    <button 
                         onClick={onOpenSearch}
                         className="hover:bg-white/10 p-1 rounded-md transition-colors flex items-center gap-1 group"
                         title="Buscar (Ctrl + K)"
                     >
                         <SearchIcon className="w-4 h-4 text-slate-300 group-hover:text-white" />
+                    </button>
+                    
+                    {/* Cloud Status Icon */}
+                    <button
+                        onClick={() => onAppClick('personalize')}
+                        className="hover:bg-white/10 p-1 rounded-md transition-colors flex items-center gap-1 group text-lime-400"
+                        title="Conectado à Nuvem (Clique para detalhes)"
+                    >
+                        <CloudCheckIcon className="w-4 h-4" />
                     </button>
                 </div>
                 <div className="flex-1 flex justify-center">

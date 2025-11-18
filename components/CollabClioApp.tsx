@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
-import type { CollectiveDocument, ModalView, Member, MeetingMinute, VotingTopic, VoteOption } from '../types';
-import { PlusIcon, FileTextIcon, DownloadIcon, XIcon, MoreVerticalIcon, ClipboardListIcon, VoteIcon, UsersIcon, ChevronRightIcon } from './icons';
+import type { CollectiveDocument, ModalView, Member, MeetingMinute, VotingTopic, VoteOption, AuditLog } from '../types';
+import { PlusIcon, FileTextIcon, DownloadIcon, XIcon, MoreVerticalIcon, ClipboardListIcon, VoteIcon, UsersIcon, ChevronRightIcon, ActivityIcon } from './icons';
 import Header from './Header';
 
 interface CollabClioAppProps {
@@ -10,13 +11,14 @@ interface CollabClioAppProps {
     meetingMinutes: MeetingMinute[];
     votingTopics: VotingTopic[];
     members: Member[];
+    auditLogs?: AuditLog[];
     handleDeleteCollectiveDocument: (docId: string) => void;
     handleDeleteMeetingMinute: (minuteId: string) => void;
     handleCastVote: (topicId: string, optionId: string, voterId: string) => void;
     handleCloseVoting: (topicId: string) => void;
 }
 
-type ActiveTab = 'documents' | 'minutes' | 'voting';
+type ActiveTab = 'documents' | 'minutes' | 'voting' | 'audit';
 
 const TabButton: React.FC<{ label: string; icon: React.ReactNode; isActive: boolean; onClick: () => void; }> = ({ label, icon, isActive, onClick }) => (
     <button
@@ -170,8 +172,44 @@ const VotingCard: React.FC<{ topic: VotingTopic; currentUser: Member; members: M
     );
 };
 
+// --- Audit Log (Memory) Component ---
+const AuditLogRow: React.FC<{ log: AuditLog }> = ({ log }) => {
+    const actionColors = {
+        'CREATE': 'bg-green-500',
+        'UPDATE': 'bg-blue-500',
+        'DELETE': 'bg-red-500'
+    };
+    const actionLabels = {
+        'CREATE': 'Criou',
+        'UPDATE': 'Atualizou',
+        'DELETE': 'Removeu'
+    };
 
-const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser, collectiveDocuments, meetingMinutes, votingTopics, members, handleDeleteCollectiveDocument, handleDeleteMeetingMinute, handleCastVote, handleCloseVoting }) => {
+    return (
+        <div className="flex gap-4 p-4 bg-slate-900/50 rounded-lg border border-slate-800 hover:border-slate-600 transition-colors">
+            <div className="flex-shrink-0">
+                <img src={log.userAvatar} alt={log.userName} className="w-10 h-10 rounded-full border border-slate-600" />
+            </div>
+            <div className="flex-grow min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-white text-sm">{log.userName}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-slate-900 ${actionColors[log.action] || 'bg-slate-500'}`}>
+                        {actionLabels[log.action]}
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium">{log.entity}</span>
+                </div>
+                <p className="text-sm text-slate-300 truncate">{log.details}</p>
+            </div>
+            <div className="flex-shrink-0 text-xs text-slate-500 self-start">
+                {new Date(log.timestamp).toLocaleDateString('pt-BR')} <br/>
+                {new Date(log.timestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+            </div>
+        </div>
+    );
+};
+
+
+const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser, collectiveDocuments, meetingMinutes, votingTopics, members, auditLogs = [], handleDeleteCollectiveDocument, handleDeleteMeetingMinute, handleCastVote, handleCloseVoting }) => {
     const [activeTab, setActiveTab] = useState<ActiveTab>('documents');
 
     const sortedDocs = [...collectiveDocuments].sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
@@ -179,10 +217,12 @@ const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser,
     const openVotingTopics = votingTopics.filter(t => t.status === 'open').sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     const closedVotingTopics = votingTopics.filter(t => t.status === 'closed').sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    const TABS: { id: ActiveTab; label: string; icon: React.ReactNode; modal: ModalView; buttonLabel: string }[] = [
+    // TABS Configuration
+    const TABS: { id: ActiveTab; label: string; icon: React.ReactNode; modal?: ModalView; buttonLabel?: string }[] = [
         { id: 'documents', label: 'Documentos', icon: <FileTextIcon className="w-5 h-5" />, modal: 'collective_document', buttonLabel: 'Adicionar Documento'},
         { id: 'minutes', label: 'Atas de Reunião', icon: <ClipboardListIcon className="w-5 h-5" />, modal: 'meeting_minute', buttonLabel: 'Nova Ata'},
         { id: 'voting', label: 'Votações', icon: <VoteIcon className="w-5 h-5" />, modal: 'voting_topic', buttonLabel: 'Criar Votação'},
+        { id: 'audit', label: 'Memória', icon: <ActivityIcon className="w-5 h-5 text-amber-400" /> }, // No button for Audit
     ];
 
     const currentTab = TABS.find(t => t.id === activeTab);
@@ -193,17 +233,19 @@ const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser,
                 title="Collab Clio"
                 subtitle="Governança e acervo intelectual do coletivo."
                 action={
-                    <button
-                        onClick={() => onOpenModal(currentTab!.modal)}
-                        className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition"
-                    >
-                        <PlusIcon className="h-5 w-5" />
-                        <span>{currentTab?.buttonLabel}</span>
-                    </button>
+                    currentTab?.buttonLabel ? (
+                        <button
+                            onClick={() => currentTab.modal && onOpenModal(currentTab.modal)}
+                            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition"
+                        >
+                            <PlusIcon className="h-5 w-5" />
+                            <span>{currentTab.buttonLabel}</span>
+                        </button>
+                    ) : undefined
                 }
             />
             <div className="px-4 md:px-8 flex-shrink-0">
-                <div className="border-b border-slate-700 flex items-center">
+                <div className="border-b border-slate-700 flex items-center overflow-x-auto no-scrollbar">
                     {TABS.map(tab => (
                         <TabButton
                             key={tab.id}
@@ -264,6 +306,23 @@ const CollabClioApp: React.FC<CollabClioAppProps> = ({ onOpenModal, currentUser,
                                 <p className="text-slate-400 text-center py-6 bg-slate-900/50 rounded-lg">Nenhuma votação encerrada ainda.</p>
                             )}
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'audit' && (
+                    <div className="space-y-4 max-w-4xl mx-auto">
+                         <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 text-sm text-slate-400 mb-4">
+                            Esta é a Memória Institucional do Coletivo. Todas as ações importantes (criação, edição, exclusão) ficam registradas aqui para transparência.
+                        </div>
+                        {auditLogs && auditLogs.length > 0 ? (
+                            auditLogs.map(log => (
+                                <AuditLogRow key={log.id} log={log} />
+                            ))
+                        ) : (
+                             <div className="text-center py-16 text-slate-500">
+                                <p>Nenhuma atividade registrada ainda.</p>
+                             </div>
+                        )}
                     </div>
                 )}
             </main>

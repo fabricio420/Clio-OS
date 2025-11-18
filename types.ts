@@ -93,7 +93,7 @@ export type TransactionType = 'income' | 'expense';
 
 export const TRANSACTION_CATEGORIES = {
   income: [
-    'Vendas', 'Doações', 'Patrocínio', 'Ingressos', 'Outras Receitas'
+    'Vendas', 'Doações', 'Patrocínio', 'Ingressos', 'Outras Receitas', 'Contribuição', 'Mensalidade'
   ],
   expense: [
     'Alimentação', 'Transporte', 'Aluguel de Equipamento', 'Cachê Artista', 'Divulgação', 'Material de Consumo', 'Taxas', 'Outras Despesas'
@@ -196,6 +196,17 @@ export interface VotingTopic {
   creatorId: string;
   createdAt: string; // ISO string
   status: 'open' | 'closed';
+}
+
+export interface AuditLog {
+    id: string;
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    action: 'CREATE' | 'UPDATE' | 'DELETE';
+    entity: string;
+    details: string;
+    timestamp: string;
 }
 
 export type ModalView = 'task' | 'schedule' | 'artist' | 'info' | 'media' | 'inventory' | 'member' | 'avatar_viewer' | 'financial_project' | 'transaction' | 'notebook' | 'photo_album' | 'photo' | 'collective_document' | 'meeting_minute' | 'voting_topic' | 'profile';
