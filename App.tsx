@@ -1,8 +1,15 @@
 
+
+
+
+
+
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus, VoteOption, AuditLog } from './types';
+import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus, VoteOption, AuditLog, Collective } from './types';
 import { TaskStatus as TaskStatusEnum, InventoryStatus } from './types';
 import LoginScreen from './components/LoginScreen';
+import CollectiveOnboarding from './components/CollectiveOnboarding';
 import ClioOSDesktop from './components/ClioOSDesktop';
 import AppWindow from './components/AppWindow';
 import PersonalizeApp from './components/PersonalizeApp';
@@ -326,9 +333,9 @@ const GadgetSelectorModal: React.FC<{ isOpen: boolean, onClose: () => void, onSe
 // --- MAIN APP COMPONENT ---
 const App: React.FC = () => {
     // --- STATE MANAGEMENT ---
-    const [users, setUsers] = useState<Member[]>(() => JSON.parse(localStorage.getItem('clio-os-users') || '[]'));
     const [loggedInUser, setLoggedInUser] = useState<Member | null>(null);
     const [loadingAuth, setLoadingAuth] = useState(true);
+    const [currentCollective, setCurrentCollective] = useState<Collective | null>(null);
 
     // This state will hold all data for the currently logged-in user
     const [userState, setUserState] = useState<any>(MOCK_INITIAL_DATA);
@@ -419,26 +426,13 @@ const App: React.FC = () => {
         touchEndY.current = null; touchEndX.current = null;
     };
 
-    // --- SUPABASE AUTH ---
+    // --- SUPABASE AUTH & COLLECTIVE CHECK ---
     useEffect(() => {
         // Check active session
         supabase.auth.getSession().then(({ data: { session } }) => {
             setLoadingAuth(true);
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!);
-                // Initial data fetch
-                fetchTasks();
-                fetchArtists();
-                fetchFinancialData();
-                fetchSchedule();
-                fetchInventory();
-                fetchFeedPosts();
-                fetchTeamStatuses();
-                fetchCollabData();
-                fetchNotebooks();
-                fetchMedia();
-                fetchAlbums();
-                fetchAuditLogs();
             } else {
                 setLoadingAuth(false);
             }
@@ -447,20 +441,9 @@ const App: React.FC = () => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!);
-                fetchTasks();
-                fetchArtists();
-                fetchFinancialData();
-                fetchSchedule();
-                fetchInventory();
-                fetchFeedPosts();
-                fetchTeamStatuses();
-                fetchCollabData();
-                fetchNotebooks();
-                fetchMedia();
-                fetchAlbums();
-                fetchAuditLogs();
             } else {
                 setLoggedInUser(null);
+                setCurrentCollective(null);
                 setUserState(MOCK_INITIAL_DATA); // Reset to defaults
                 setLoadingAuth(false);
             }
@@ -468,44 +451,64 @@ const App: React.FC = () => {
 
         return () => subscription.unsubscribe();
     }, []);
+    
+    // --- LOAD DATA WHEN COLLECTIVE IS SELECTED ---
+    useEffect(() => {
+        if (loggedInUser && currentCollective) {
+            console.log("Loading data for collective:", currentCollective.name);
+            fetchTasks();
+            fetchArtists();
+            fetchFinancialData();
+            fetchSchedule();
+            fetchInventory();
+            fetchFeedPosts();
+            fetchTeamStatuses();
+            fetchCollabData();
+            fetchNotebooks();
+            fetchMedia();
+            fetchAlbums();
+            fetchAuditLogs();
+            fetchAllProfiles(); // Fetch members associated with this collective
+        }
+    }, [loggedInUser, currentCollective]);
 
     // --- SUPABASE REALTIME SUBSCRIPTION ---
     useEffect(() => {
-        if (!loggedInUser) return;
+        if (!loggedInUser || !currentCollective) return;
 
-        // Channel for general data updates
-        const channel = supabase.channel('clio_realtime_sync')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchTasks())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'artists' }, () => fetchArtists())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_items' }, () => fetchSchedule())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items' }, () => fetchInventory())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_projects' }, () => fetchFinancialData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchFinancialData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'team_feed_posts' }, () => fetchFeedPosts())
+        // Channel for general data updates filtered by collective_id
+        const channel = supabase.channel(`clio_sync_${currentCollective.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchTasks())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'artists', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchArtists())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_items', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchSchedule())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchInventory())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_projects', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchFinancialData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchFinancialData()) // Transactions are children of projects, tricky to filter by collective_id directly if not on table, but typically projects are filtered.
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'team_feed_posts', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchFeedPosts())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'team_statuses' }, () => fetchTeamStatuses())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'collective_documents' }, () => fetchCollabData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_minutes' }, () => fetchCollabData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'voting_topics' }, () => fetchCollabData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'collective_documents', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchCollabData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_minutes', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchCollabData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'voting_topics', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchCollabData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'voting_options' }, () => fetchCollabData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'notebooks' }, () => fetchNotebooks())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notebooks', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchNotebooks())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => fetchNotebooks())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'media_items' }, () => fetchMedia())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'photo_albums' }, () => fetchAlbums())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'media_items', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchMedia())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'photo_albums', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchAlbums())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'photos' }, () => fetchAlbums())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchAllProfiles())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'collective_members', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchAllProfiles())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => fetchAuditLogs())
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log('Clio OS Realtime: Conectado');
+                    console.log(`Clio OS Realtime: Conectado ao coletivo ${currentCollective.name}`);
                 }
             });
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [loggedInUser]);
+    }, [loggedInUser, currentCollective]);
 
-
+    // --- USER & COLLECTIVE SETUP ---
     const fetchUserProfile = async (userId: string, email: string) => {
         try {
             const { data, error } = await supabase
@@ -514,10 +517,6 @@ const App: React.FC = () => {
                 .eq('id', userId)
                 .single();
             
-            if (error && error.code !== 'PGRST116') {
-                console.error('Error fetching profile:', error);
-            }
-
             if (data) {
                 const user: Member = {
                     id: data.id,
@@ -527,38 +526,157 @@ const App: React.FC = () => {
                     avatar: data.avatar || DEFAULT_AVATAR
                 };
                 setLoggedInUser(user);
-                // Load generic local data for other components (legacy support)
-                loadUserData(email);
-                // Fetch all profiles to populate members list
-                fetchAllProfiles();
+                checkUserCollectives(userId);
+                loadUserData(email); // Legacy local data for gadgets/wallpaper
             } else {
-                 // Profile doesn't exist, create one based on Auth user
-                 const newUser: Member = {
-                    id: userId,
-                    email: email,
-                    name: email.split('@')[0], // Default name
-                    role: 'Membro',
-                    avatar: DEFAULT_AVATAR
-                };
+                // Fallback if profile creation failed during signup
+                 const newUser: Member = { id: userId, email: email, name: email.split('@')[0], role: 'Membro', avatar: DEFAULT_AVATAR };
                  setLoggedInUser(newUser);
-                 loadUserData(email);
+                 setLoadingAuth(false);
             }
         } catch (err) {
             console.error(err);
+            setLoadingAuth(false);
+        }
+    };
+
+    const checkUserCollectives = async (userId: string) => {
+        try {
+            // Fetch collectives where this user is a member
+            const { data: memberships, error } = await supabase
+                .from('collective_members')
+                .select(`
+                    role,
+                    collectives ( id, name, description )
+                `)
+                .eq('user_id', userId);
+
+            if (memberships && memberships.length > 0) {
+                // Found memberships! Pick the first one for now (Single Tenant simulation within Multi-Tenant)
+                const first = memberships[0];
+                if (first.collectives) {
+                    const col: Collective = {
+                        id: (first.collectives as any).id,
+                        name: (first.collectives as any).name,
+                        description: (first.collectives as any).description,
+                        role: first.role
+                    };
+                    setCurrentCollective(col);
+                    // Update event info locally to match collective name
+                    updateUserState('eventInfo', { ...userState.eventInfo, collectiveName: col.name });
+                }
+            } else {
+                // No collectives found. Stay in onboarding mode (currentCollective remains null)
+                console.log("User has no collectives.");
+            }
+        } catch (e) {
+            console.error("Error checking collectives:", e);
         } finally {
             setLoadingAuth(false);
         }
     };
+
+    const handleCreateCollective = async (name: string, description: string) => {
+        if (!loggedInUser) return;
+        try {
+            // 1. Create Collective
+            const { data: collective, error: colError } = await supabase
+                .from('collectives')
+                .insert([{ name, description }])
+                .select()
+                .single();
+            
+            if (colError) throw colError;
+
+            // 2. Add Creator as Admin Member
+            const { error: memError } = await supabase
+                .from('collective_members')
+                .insert([{ collective_id: collective.id, user_id: loggedInUser.id, role: 'Admin' }]);
+
+            if (memError) throw memError;
+
+            // 3. Set State
+            const newCollective: Collective = {
+                id: collective.id,
+                name: collective.name,
+                description: collective.description,
+                role: 'Admin'
+            };
+            setCurrentCollective(newCollective);
+            updateUserState('eventInfo', { ...userState.eventInfo, collectiveName: newCollective.name });
+            showToast('Coletivo criado com sucesso!', 'success');
+
+        } catch (err: any) {
+            console.error(err);
+            showToast(err.message || 'Erro ao criar coletivo.', 'error');
+        }
+    };
+
+    const handleJoinCollective = async (collectiveId: string) => {
+        if (!loggedInUser) return;
+        try {
+            // 1. Check if collective exists
+            const { data: collective, error: colError } = await supabase
+                .from('collectives')
+                .select('*')
+                .eq('id', collectiveId)
+                .single();
+            
+            if (colError || !collective) {
+                showToast('Coletivo não encontrado. Verifique o código.', 'error');
+                return;
+            }
+
+            // 2. Join
+             const { error: memError } = await supabase
+                .from('collective_members')
+                .insert([{ collective_id: collective.id, user_id: loggedInUser.id, role: 'Membro' }]);
+
+            if (memError) {
+                if (memError.code === '23505') { // Unique violation
+                    showToast('Você já faz parte deste coletivo.', 'info');
+                } else {
+                    throw memError;
+                }
+            } else {
+                showToast(`Você entrou em: ${collective.name}!`, 'success');
+            }
+
+             // 3. Set State
+            const joinedCollective: Collective = {
+                id: collective.id,
+                name: collective.name,
+                description: collective.description,
+                role: 'Membro'
+            };
+            setCurrentCollective(joinedCollective);
+            updateUserState('eventInfo', { ...userState.eventInfo, collectiveName: joinedCollective.name });
+
+
+        } catch (err: any) {
+            console.error(err);
+            showToast('Erro ao entrar no coletivo.', 'error');
+        }
+    }
     
     const fetchAllProfiles = async () => {
-        const { data } = await supabase.from('profiles').select('*');
+        if (!currentCollective) return;
+        // Fetch only members of the current collective
+        const { data } = await supabase
+            .from('collective_members')
+            .select(`
+                role,
+                profiles (*)
+            `)
+            .eq('collective_id', currentCollective.id);
+
         if (data) {
-            const mappedMembers = data.map((p: any) => ({
-                id: p.id,
-                name: p.name || 'Sem Nome',
-                role: p.role || 'Membro',
-                avatar: p.avatar || DEFAULT_AVATAR,
-                email: p.email || ''
+            const mappedMembers = data.map((item: any) => ({
+                id: item.profiles.id,
+                name: item.profiles.name || 'Sem Nome',
+                role: item.profiles.role || item.role || 'Membro', // Use collective role if available
+                avatar: item.profiles.avatar || DEFAULT_AVATAR,
+                email: item.profiles.email || ''
             }));
             updateUserState('members', mappedMembers);
         }
@@ -601,143 +719,98 @@ const App: React.FC = () => {
         } catch (err) { console.error(err); }
     };
 
-    // --- SUPABASE DATA FETCHING (CORE) ---
+    // --- SUPABASE DATA FETCHING (CORE - Filtered by Collective) ---
     const fetchTasks = async () => {
+        if (!currentCollective) return;
         try {
-            const { data, error } = await supabase.from('tasks').select('*');
+            const { data, error } = await supabase.from('tasks').select('*').eq('collective_id', currentCollective.id);
             if (error) throw error;
-            
             if (data) {
                 const mappedTasks: Task[] = data.map((t: any) => ({
-                    id: t.id,
-                    title: t.title,
-                    description: t.description,
-                    status: t.status as TaskStatusEnum,
-                    dueDate: t.due_date,
-                    assigneeId: t.assignee_id
+                    id: t.id, title: t.title, description: t.description, status: t.status as TaskStatusEnum, dueDate: t.due_date, assigneeId: t.assignee_id, collectiveId: t.collective_id
                 }));
                 updateUserState('tasks', mappedTasks);
             }
-        } catch (err) {
-            console.error('Error fetching tasks:', err);
-        }
+        } catch (err) { console.error('Error fetching tasks:', err); }
     };
 
     const fetchArtists = async () => {
+        if (!currentCollective) return;
         try {
-            const { data, error } = await supabase.from('artists').select('*');
+            const { data, error } = await supabase.from('artists').select('*').eq('collective_id', currentCollective.id);
             if (error) throw error;
             if (data) {
                 const mappedArtists: Artist[] = data.map((a: any) => ({
-                    id: a.id,
-                    name: a.name,
-                    performanceType: a.performance_type,
-                    contact: a.contact,
-                    notes: a.notes,
-                    instagram: a.instagram,
-                    whatsapp: a.whatsapp,
-                    cpf: a.cpf,
-                    rg: a.rg,
-                    documentImage: a.document_image
+                    id: a.id, name: a.name, performanceType: a.performance_type, contact: a.contact, notes: a.notes, instagram: a.instagram, whatsapp: a.whatsapp, cpf: a.cpf, rg: a.rg, documentImage: a.document_image
                 }));
                 updateUserState('artists', mappedArtists);
             }
-        } catch (err) {
-            console.error('Error fetching artists:', err);
-        }
+        } catch (err) { console.error('Error fetching artists:', err); }
     };
 
     const fetchSchedule = async () => {
+        if (!currentCollective) return;
         try {
-            const { data, error } = await supabase.from('schedule_items').select('*');
+            const { data, error } = await supabase.from('schedule_items').select('*').eq('collective_id', currentCollective.id);
             if (error) throw error;
-            if (data) {
-                updateUserState('schedule', data);
-            }
-        } catch (err) {
-            console.error('Error fetching schedule:', err);
-        }
+            if (data) updateUserState('schedule', data);
+        } catch (err) { console.error('Error fetching schedule:', err); }
     };
 
     const fetchInventory = async () => {
+        if (!currentCollective) return;
         try {
-            const { data, error } = await supabase.from('inventory_items').select('*');
+            const { data, error } = await supabase.from('inventory_items').select('*').eq('collective_id', currentCollective.id);
             if (error) throw error;
             if (data) {
                 const mappedInventory = data.map((i: any) => ({
-                    id: i.id,
-                    name: i.name,
-                    quantity: i.quantity,
-                    status: i.status,
-                    responsibleId: i.responsible_id
+                    id: i.id, name: i.name, quantity: i.quantity, status: i.status, responsibleId: i.responsible_id
                 }));
                 updateUserState('inventoryItems', mappedInventory);
             }
-        } catch (err) {
-            console.error('Error fetching inventory:', err);
-        }
+        } catch (err) { console.error('Error fetching inventory:', err); }
     };
 
     const fetchFinancialData = async () => {
+        if (!currentCollective) return;
         try {
             const { data, error } = await supabase
                 .from('financial_projects')
-                .select(`*, transactions (*)`);
+                .select(`*, transactions (*)`)
+                .eq('collective_id', currentCollective.id);
             
             if (error) throw error;
-
             if (data) {
                 const mappedProjects: FinancialProject[] = data.map((p: any) => ({
-                    id: p.id,
-                    name: p.name,
-                    description: p.description,
+                    id: p.id, name: p.name, description: p.description,
                     transactions: (p.transactions || []).map((t: any) => ({
-                        id: t.id,
-                        description: t.description,
-                        amount: t.amount,
-                        type: t.type as 'income' | 'expense',
-                        date: t.date,
-                        category: t.category
+                        id: t.id, description: t.description, amount: t.amount, type: t.type as 'income' | 'expense', date: t.date, category: t.category
                     }))
                 }));
                 updateUserState('financialProjects', mappedProjects);
             }
-        } catch (err) {
-            console.error('Error fetching financial data:', err);
-        }
+        } catch (err) { console.error('Error fetching financial data:', err); }
     };
 
     // --- SUPABASE FEED & COLLAB FETCHING ---
     const fetchFeedPosts = async () => {
+        if (!currentCollective) return;
         try {
             const { data, error } = await supabase
                 .from('team_feed_posts')
-                .select(`
-                    *,
-                    author:profiles(*)
-                `)
+                .select(`*, author:profiles(*)`)
+                .eq('collective_id', currentCollective.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-
             if (data) {
                 const mappedPosts: FeedPost[] = data.map((p: any) => ({
-                    id: p.id,
-                    content: p.content,
-                    timestamp: p.created_at,
-                    author: {
-                        id: p.author?.id,
-                        name: p.author?.name || 'Desconhecido',
-                        role: p.author?.role || '',
-                        avatar: p.author?.avatar || DEFAULT_AVATAR,
-                        email: p.author?.email || ''
-                    }
+                    id: p.id, content: p.content, timestamp: p.created_at,
+                    author: { id: p.author?.id, name: p.author?.name || 'Desconhecido', role: p.author?.role || '', avatar: p.author?.avatar || DEFAULT_AVATAR, email: p.author?.email || '' }
                 }));
                 updateUserState('feedPosts', mappedPosts);
             }
-        } catch (err) {
-            console.error('Error fetching feed:', err);
-        }
+        } catch (err) { console.error('Error fetching feed:', err); }
     };
 
     const fetchTeamStatuses = async () => {
@@ -745,67 +818,46 @@ const App: React.FC = () => {
             const { data } = await supabase.from('team_statuses').select('*');
             if (data) {
                 const mappedStatuses = data.map((s: any) => ({
-                    memberId: s.member_id,
-                    status: s.status
+                    memberId: s.member_id, status: s.status
                 }));
                 updateUserState('teamStatuses', mappedStatuses);
             }
-        } catch (err) {
-            console.error('Error fetching statuses:', err);
-        }
+        } catch (err) { console.error('Error fetching statuses:', err); }
     };
 
     const fetchCollabData = async () => {
-        // Documents
+        if (!currentCollective) return;
         try {
-            const { data: docs } = await supabase.from('collective_documents').select('*');
+            const { data: docs } = await supabase.from('collective_documents').select('*').eq('collective_id', currentCollective.id);
             if (docs) {
                 const mappedDocs = docs.map((d: any) => ({
-                    id: d.id,
-                    name: d.name,
-                    fileDataUrl: d.file_data_url,
-                    fileName: d.file_name,
-                    fileType: d.file_type,
-                    uploadedAt: d.created_at,
-                    uploaderId: d.uploader_id
+                    id: d.id, name: d.name, fileDataUrl: d.file_data_url, fileName: d.file_name, fileType: d.file_type, uploadedAt: d.created_at, uploaderId: d.uploader_id
                 }));
                 updateUserState('collectiveDocuments', mappedDocs);
             }
         } catch (e) { console.error(e); }
 
-        // Meeting Minutes
         try {
-             const { data: minutes } = await supabase.from('meeting_minutes').select('*');
+             const { data: minutes } = await supabase.from('meeting_minutes').select('*').eq('collective_id', currentCollective.id);
              if (minutes) {
                  const mappedMinutes = minutes.map((m: any) => ({
-                     id: m.id,
-                     date: m.date,
-                     attendeeIds: m.attendee_ids || [],
-                     agenda: m.agenda,
-                     decisions: m.decisions
+                     id: m.id, date: m.date, attendeeIds: m.attendee_ids || [], agenda: m.agenda, decisions: m.decisions
                  }));
                  updateUserState('meetingMinutes', mappedMinutes);
              }
         } catch (e) { console.error(e); }
 
-        // Voting Topics & Options
         try {
             const { data: topics } = await supabase
                 .from('voting_topics')
-                .select(`*, options:voting_options(*)`);
+                .select(`*, options:voting_options(*)`)
+                .eq('collective_id', currentCollective.id);
             
             if (topics) {
                 const mappedTopics: VotingTopic[] = topics.map((t: any) => ({
-                    id: t.id,
-                    title: t.title,
-                    description: t.description,
-                    creatorId: t.creator_id,
-                    createdAt: t.created_at,
-                    status: t.status,
+                    id: t.id, title: t.title, description: t.description, creatorId: t.creator_id, createdAt: t.created_at, status: t.status,
                     options: (t.options || []).map((o: any) => ({
-                        id: o.id,
-                        text: o.text,
-                        voterIds: o.voter_ids || []
+                        id: o.id, text: o.text, voterIds: o.voter_ids || []
                     }))
                 }));
                 updateUserState('votingTopics', mappedTopics);
@@ -813,19 +865,15 @@ const App: React.FC = () => {
         } catch (e) { console.error(e); }
     };
     
-    // --- SUPABASE NOTEBOOKS, MEDIA, GALLERY ---
     const fetchNotebooks = async () => {
+        if (!currentCollective) return;
         try {
-            const { data } = await supabase.from('notebooks').select('*, notes(*)');
+            const { data } = await supabase.from('notebooks').select('*, notes(*)').eq('collective_id', currentCollective.id);
             if(data) {
                 const mapped = data.map((nb: any) => ({
-                    id: nb.id,
-                    name: nb.name,
+                    id: nb.id, name: nb.name,
                     notes: (nb.notes || []).map((n: any) => ({
-                        id: n.id,
-                        title: n.title,
-                        content: n.content,
-                        updatedAt: n.updated_at
+                        id: n.id, title: n.title, content: n.content, updatedAt: n.updated_at
                     }))
                 }));
                 updateUserState('notebooks', mapped);
@@ -834,16 +882,12 @@ const App: React.FC = () => {
     };
 
     const fetchMedia = async () => {
+         if (!currentCollective) return;
          try {
-            const { data } = await supabase.from('media_items').select('*');
+            const { data } = await supabase.from('media_items').select('*').eq('collective_id', currentCollective.id);
             if(data) {
                 const mapped = data.map((m: any) => ({
-                    id: m.id,
-                    title: m.title,
-                    category: m.category,
-                    fileDataUrl: m.file_data_url,
-                    fileName: m.file_name,
-                    artistId: m.artist_id
+                    id: m.id, title: m.title, category: m.category, fileDataUrl: m.file_data_url, fileName: m.file_name, artistId: m.artist_id
                 }));
                 updateUserState('mediaItems', mapped);
             }
@@ -851,18 +895,14 @@ const App: React.FC = () => {
     }
 
     const fetchAlbums = async () => {
+         if (!currentCollective) return;
          try {
-            const { data } = await supabase.from('photo_albums').select('*, photos(*)');
+            const { data } = await supabase.from('photo_albums').select('*, photos(*)').eq('collective_id', currentCollective.id);
             if(data) {
                 const mapped = data.map((a: any) => ({
-                    id: a.id,
-                    name: a.name,
-                    description: a.description,
+                    id: a.id, name: a.name, description: a.description,
                     photos: (a.photos || []).map((p: any) => ({
-                        id: p.id,
-                        dataUrl: p.data_url,
-                        caption: p.caption,
-                        fileName: p.file_name
+                        id: p.id, dataUrl: p.data_url, caption: p.caption, fileName: p.file_name
                     }))
                 }));
                 updateUserState('photoAlbums', mapped);
@@ -871,17 +911,21 @@ const App: React.FC = () => {
     }
 
 
-    // --- SUPABASE HANDLERS (CRUD) ---
+    // --- SUPABASE HANDLERS (CRUD with Collective ID) ---
 
     // Tasks
     const handleSaveTask = async (taskData: Omit<Task, 'id' | 'status'>, editingId?: string) => {
+        if (!currentCollective) return;
         try {
             if (editingId) {
                 await supabase.from('tasks').update({ title: taskData.title, description: taskData.description, due_date: taskData.dueDate, assignee_id: taskData.assigneeId || null }).eq('id', editingId);
                 logAction('UPDATE', 'Tarefa', `Editou a tarefa: ${taskData.title}`);
                 showToast('Tarefa atualizada!', 'success');
             } else {
-                await supabase.from('tasks').insert([{ title: taskData.title, description: taskData.description, due_date: taskData.dueDate, assignee_id: taskData.assigneeId || null, status: TaskStatusEnum.ToDo }]);
+                await supabase.from('tasks').insert([{ 
+                    title: taskData.title, description: taskData.description, due_date: taskData.dueDate, assignee_id: taskData.assigneeId || null, status: TaskStatusEnum.ToDo,
+                    collective_id: currentCollective.id
+                }]);
                 logAction('CREATE', 'Tarefa', `Criou nova tarefa: ${taskData.title}`);
                 showToast('Tarefa criada!', 'success');
             }
@@ -901,9 +945,15 @@ const App: React.FC = () => {
 
     // Artists
     const handleSaveArtist = async (data: any, id?: string) => {
-        const payload = { name: data.name, performance_type: data.performanceType, contact: data.contact, notes: data.notes, instagram: data.instagram, whatsapp: data.whatsapp, cpf: data.cpf, rg: data.rg, document_image: data.documentImage };
+        if (!currentCollective) return;
+        const payload = { 
+            name: data.name, performance_type: data.performanceType, contact: data.contact, notes: data.notes, instagram: data.instagram, whatsapp: data.whatsapp, cpf: data.cpf, rg: data.rg, document_image: data.documentImage,
+            collective_id: currentCollective.id
+        };
         if(id) {
-            await supabase.from('artists').update(payload).eq('id', id);
+            // Don't update collective_id on edit
+            const { collective_id, ...updatePayload } = payload;
+            await supabase.from('artists').update(updatePayload).eq('id', id);
             logAction('UPDATE', 'Artista', `Atualizou dados de: ${data.name}`);
             showToast('Artista atualizado!', 'success');
         } else {
@@ -921,12 +971,13 @@ const App: React.FC = () => {
 
     // Schedule
     const handleSaveScheduleItem = async (data: any, id?: string) => {
+        if (!currentCollective) return;
         if(id) {
             await supabase.from('schedule_items').update(data).eq('id', id);
             logAction('UPDATE', 'Cronograma', `Editou item do cronograma: ${data.time} - ${data.title}`);
             showToast('Cronograma atualizado!', 'success');
         } else {
-            await supabase.from('schedule_items').insert([data]);
+            await supabase.from('schedule_items').insert([{...data, collective_id: currentCollective.id}]);
             logAction('CREATE', 'Cronograma', `Adicionou ao cronograma: ${data.time} - ${data.title}`);
             showToast('Item adicionado ao cronograma!', 'success');
         }
@@ -940,9 +991,11 @@ const App: React.FC = () => {
 
     // Inventory
     const handleSaveInventoryItem = async (data: any, id?: string) => {
-        const payload = { name: data.name, quantity: data.quantity, status: data.status, responsible_id: data.responsibleId };
+        if (!currentCollective) return;
+        const payload = { name: data.name, quantity: data.quantity, status: data.status, responsible_id: data.responsibleId, collective_id: currentCollective.id };
         if(id) {
-            await supabase.from('inventory_items').update(payload).eq('id', id);
+            const { collective_id, ...updatePayload } = payload;
+            await supabase.from('inventory_items').update(updatePayload).eq('id', id);
             logAction('UPDATE', 'Inventário', `Atualizou item: ${data.name} (${data.quantity})`);
             showToast('Item atualizado!', 'success');
         } else {
@@ -960,12 +1013,13 @@ const App: React.FC = () => {
 
     // Finances
     const handleSaveFinancialProject = async (data: any, id?: string) => {
+        if (!currentCollective) return;
         if(id) {
             await supabase.from('financial_projects').update({ name: data.name, description: data.description }).eq('id', id);
             logAction('UPDATE', 'Financeiro', `Editou projeto: ${data.name}`);
             showToast('Projeto atualizado!', 'success');
         } else {
-            await supabase.from('financial_projects').insert([{ name: data.name, description: data.description }]);
+            await supabase.from('financial_projects').insert([{ name: data.name, description: data.description, collective_id: currentCollective.id }]);
             logAction('CREATE', 'Financeiro', `Criou projeto: ${data.name}`);
             showToast('Projeto criado!', 'success');
         }
@@ -977,6 +1031,8 @@ const App: React.FC = () => {
         showToast('Projeto excluído', 'info');
     };
     const handleSaveTransaction = async (projId: string, data: any, id?: string) => {
+        // Transactions don't strictly need collective_id if linked to project, but good practice to cascade.
+        // For now, they rely on project_id linkage.
         const payload = { project_id: projId, description: data.description, amount: data.amount, type: data.type, date: data.date, category: data.category };
         if(id) {
             await supabase.from('transactions').update(payload).eq('id', id);
@@ -996,8 +1052,8 @@ const App: React.FC = () => {
 
     // Team Hub (Feed & Status)
     const handleAddPost = async (content: string, author: Member) => {
-        if (!loggedInUser) return;
-        await supabase.from('team_feed_posts').insert([{ content, author_id: loggedInUser.id }]);
+        if (!loggedInUser || !currentCollective) return;
+        await supabase.from('team_feed_posts').insert([{ content, author_id: loggedInUser.id, collective_id: currentCollective.id }]);
         showToast('Postagem publicada!', 'success');
     };
     const handleUpdateTeamStatus = async (statusText: string) => {
@@ -1006,14 +1062,16 @@ const App: React.FC = () => {
         showToast('Status atualizado!', 'success');
     };
 
-    // Collab Clio (Docs, Minutes, Voting)
+    // Collab Clio
     const handleSaveCollectiveDocument = async (docData: any, uploaderId: string) => {
+        if (!currentCollective) return;
         await supabase.from('collective_documents').insert([{
             name: docData.name,
             file_data_url: docData.fileDataUrl, 
             file_name: docData.file.name,
             file_type: docData.file.type,
-            uploader_id: uploaderId
+            uploader_id: uploaderId,
+            collective_id: currentCollective.id
         }]);
         logAction('CREATE', 'Documentos', `Carregou documento: ${docData.name}`);
         showToast('Documento salvo!', 'success');
@@ -1027,9 +1085,11 @@ const App: React.FC = () => {
     };
 
     const handleSaveMeetingMinute = async (data: any, id?: string) => {
-        const payload = { date: data.date, attendee_ids: data.attendeeIds, agenda: data.agenda, decisions: data.decisions };
+        if (!currentCollective) return;
+        const payload = { date: data.date, attendee_ids: data.attendeeIds, agenda: data.agenda, decisions: data.decisions, collective_id: currentCollective.id };
         if(id) {
-            await supabase.from('meeting_minutes').update(payload).eq('id', id);
+            const { collective_id, ...updatePayload } = payload;
+            await supabase.from('meeting_minutes').update(updatePayload).eq('id', id);
             logAction('UPDATE', 'Reuniões', `Atualizou ata de: ${data.date}`);
             showToast('Ata atualizada!', 'success');
         } else {
@@ -1047,9 +1107,10 @@ const App: React.FC = () => {
     };
 
     const handleSaveVotingTopic = async (data: any, creatorId: string) => {
+        if (!currentCollective) return;
         const { data: topic, error } = await supabase
             .from('voting_topics')
-            .insert([{ title: data.title, description: data.description, creator_id: creatorId }])
+            .insert([{ title: data.title, description: data.description, creator_id: creatorId, collective_id: currentCollective.id }])
             .select()
             .single();
         
@@ -1065,12 +1126,9 @@ const App: React.FC = () => {
     };
 
     const handleCastVote = async (topicId: string, optionId: string, voterId: string) => {
-        // This logic is simplified. In a real app, this should be a Postgres function to be atomic.
-        // 1. Get current options for the topic
         const { data: options } = await supabase.from('voting_options').select('*').eq('topic_id', topicId);
         if (!options) return;
 
-        // 2. Remove voterId from all options of this topic
         for (const opt of options) {
             const currentVoters = opt.voter_ids || [];
             if (currentVoters.includes(voterId)) {
@@ -1079,7 +1137,6 @@ const App: React.FC = () => {
             }
         }
 
-        // 3. Add voterId to selected option
         const targetOption = options.find((o: any) => o.id === optionId);
         if (targetOption) {
             const currentVoters = targetOption.voter_ids || [];
@@ -1096,12 +1153,12 @@ const App: React.FC = () => {
     
     // --- Notebooks Handlers ---
     const handleSaveNotebook = async (name: string, editingId?: string) => {
-        if (!loggedInUser) return;
+        if (!loggedInUser || !currentCollective) return;
         if(editingId) {
              await supabase.from('notebooks').update({ name }).eq('id', editingId);
              showToast('Caderno renomeado!', 'success');
         } else {
-             await supabase.from('notebooks').insert([{ name, owner_id: loggedInUser.id }]);
+             await supabase.from('notebooks').insert([{ name, owner_id: loggedInUser.id, collective_id: currentCollective.id }]);
              showToast('Caderno criado!', 'success');
         }
     };
@@ -1112,15 +1169,9 @@ const App: React.FC = () => {
     }
 
     const handleSaveNote = async (notebookId: string, noteData: Pick<Note, 'title' | 'content'>, editingId?: string) => {
-        const payload = { 
-            notebook_id: notebookId, 
-            title: noteData.title, 
-            content: noteData.content,
-            updated_at: new Date().toISOString()
-        };
+        const payload = { notebook_id: notebookId, title: noteData.title, content: noteData.content, updated_at: new Date().toISOString() };
         if(editingId) {
              await supabase.from('notes').update(payload).eq('id', editingId);
-             // Note: We don't toast on every auto-save to avoid spam
         } else {
              await supabase.from('notes').insert([payload]);
              showToast('Nota criada!', 'success');
@@ -1134,12 +1185,10 @@ const App: React.FC = () => {
     
     // --- Media Handlers ---
     const handleSaveMediaItem = async (mediaData: Omit<MediaItem, 'id'>) => {
+        if (!currentCollective) return;
         await supabase.from('media_items').insert([{
-            title: mediaData.title,
-            category: mediaData.category,
-            file_data_url: mediaData.fileDataUrl,
-            file_name: mediaData.fileName,
-            artist_id: mediaData.artistId
+            title: mediaData.title, category: mediaData.category, file_data_url: mediaData.fileDataUrl,
+            file_name: mediaData.fileName, artist_id: mediaData.artistId, collective_id: currentCollective.id
         }]);
         logAction('CREATE', 'Mídia', `Upload de arquivo: ${mediaData.title}`);
         showToast('Mídia salva!', 'success');
@@ -1154,11 +1203,12 @@ const App: React.FC = () => {
     
     // --- Gallery Handlers ---
     const handleSavePhotoAlbum = async (albumData: Omit<PhotoAlbum, 'id' | 'photos'>, editingId?: string) => {
+        if (!currentCollective) return;
         if(editingId) {
             await supabase.from('photo_albums').update(albumData).eq('id', editingId);
             showToast('Álbum atualizado!', 'success');
         } else {
-            await supabase.from('photo_albums').insert([albumData]);
+            await supabase.from('photo_albums').insert([{...albumData, collective_id: currentCollective.id}]);
             showToast('Álbum criado!', 'success');
         }
     };
@@ -1169,12 +1219,7 @@ const App: React.FC = () => {
     }
     
     const handleAddPhotosToAlbum = async (albumId: string, photos: Omit<Photo, 'id'>[]) => {
-        const payload = photos.map(p => ({
-            album_id: albumId,
-            data_url: p.dataUrl,
-            caption: p.caption,
-            file_name: p.fileName
-        }));
+        const payload = photos.map(p => ({ album_id: albumId, data_url: p.dataUrl, caption: p.caption, file_name: p.fileName }));
         await supabase.from('photos').insert(payload);
         showToast(`${photos.length} fotos adicionadas!`, 'success');
     };
@@ -1201,21 +1246,14 @@ const App: React.FC = () => {
 
     const loadUserData = (email: string) => {
         const userDataString = localStorage.getItem(`collab-clio-data-${email}`);
-        let loadedData = { ...MOCK_INITIAL_DATA }; // Start with fresh defaults
-        
+        let loadedData = { ...MOCK_INITIAL_DATA }; 
         if(userDataString) {
             const parsedData = JSON.parse(userDataString);
-             // Merge saved data with defaults to ensure all fields exist
             loadedData = { ...loadedData, ...parsedData };
         }
-
-        // Ensure default gadgets exist if array is empty (for existing users)
         if (!loadedData.gadgets || loadedData.gadgets.length === 0) {
             loadedData.gadgets = DEFAULT_GADGETS;
         }
-        
-        // MOST DATA IS NOW HANDLED BY SUPABASE
-        // Local state is only used for Gadgets, Wallpaper
         setUserState(loadedData);
         
         const userWallpaper = localStorage.getItem(`clio-os-wallpaper-${email}`);
@@ -1224,7 +1262,6 @@ const App: React.FC = () => {
 
     const saveUserData = useCallback(() => {
         if (loggedInUser && userState) {
-            // We still save everything to local storage for the non-migrated features
             localStorage.setItem(`collab-clio-data-${loggedInUser.email}`, JSON.stringify(userState));
         }
     }, [loggedInUser, userState]);
@@ -1235,33 +1272,22 @@ const App: React.FC = () => {
 
     const handleLogin = async (email: string, password: string): Promise<boolean> => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            console.error(error);
-            return false;
-        }
+        if (error) { console.error(error); return false; }
         return true;
     };
 
     const handleSignUp = async (name: string, email: string, password: string): Promise<{ success: boolean, message: string }> => {
         const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    name: name, // Metadata for trigger if needed, or we insert manually
-                },
-                emailRedirectTo: window.location.origin,
-            }
+            email, password,
+            options: { data: { name: name }, emailRedirectTo: window.location.origin }
         });
 
         if (error) return { success: false, message: error.message };
         
         if (data.user) {
-             // Insert into profiles table
              const { error: profileError } = await supabase
                 .from('profiles')
                 .insert([{ id: data.user.id, name: name, email: email, role: 'Membro', avatar: DEFAULT_AVATAR }]);
-             
              if (profileError) console.error('Error creating profile:', profileError);
         }
 
@@ -1273,7 +1299,7 @@ const App: React.FC = () => {
     }
 
     const handleGuestLogin = () => {
-        // Guest login remains local for now
+        // Guest login bypasses collective check for now (or creates a dummy one locally)
         const guestDataString = localStorage.getItem(`collab-clio-data-${GUEST_USER_EMAIL}`);
         if (guestDataString) {
             const guestData = JSON.parse(guestDataString);
@@ -1291,18 +1317,20 @@ const App: React.FC = () => {
             setUserState(guestData);
         }
         setLoggedInUser(GUEST_USER);
+        setCurrentCollective({ id: 'guest-collective', name: 'Coletivo Exemplo', description: 'Um espaço de teste.', role: 'Admin' });
     };
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
         setLoggedInUser(null);
+        setCurrentCollective(null);
         setUserState(MOCK_INITIAL_DATA);
         setAppStates(initialAppStates);
         setActiveMobileApp(null);
     };
 
     const randomLoginWallpaper = useMemo(() => {
-        if (loggedInUser) return null; // Don't calculate if logged in
+        if (loggedInUser) return null;
         const randomIndex = Math.floor(Math.random() * wallpapers.length);
         return wallpapers[randomIndex].url;
     }, [loggedInUser]);
@@ -1318,11 +1346,9 @@ const App: React.FC = () => {
         if(!loggedInUser) return;
         const updatedUser = { ...loggedInUser, ...updatedData };
         setLoggedInUser(updatedUser);
-        handleSaveMember(updatedUser);
-        // Ideally update 'profiles' table here too
+        // Handle supabase profile update here if needed specifically
     }
     const handleChangePassword = (currentPassword: string, newPassword: string) => {
-        alert('Alteração de senha via Supabase ainda será implementada.');
         return { success: true, message: 'Simulação: Senha alterada!' };
     };
 
@@ -1411,14 +1437,24 @@ const App: React.FC = () => {
     // --- RENDER LOGIC ---
     if (loadingAuth) {
          return <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-white">
-            <p className="animate-pulse">Carregando Clio OS...</p>
+            <div className="flex flex-col items-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-400 mb-4"></div>
+                <p>Carregando Clio OS...</p>
+            </div>
          </div>
     }
 
-    if (!loggedInUser || !userState) {
+    // 1. Check Login
+    if (!loggedInUser) {
         return <LoginScreen onLogin={handleLogin} onSignUp={handleSignUpWrapper} onGuestLogin={handleGuestLogin} loginWallpaper={randomLoginWallpaper} />;
     }
+    
+    // 2. Check Collective (Onboarding)
+    if (!currentCollective) {
+        return <CollectiveOnboarding onCreateCollective={handleCreateCollective} onJoinCollective={handleJoinCollective} userAvatar={loggedInUser.avatar} userName={loggedInUser.name} />;
+    }
 
+    // 3. Render Main App
     const { members, artists, tasks, schedule, financialProjects, totalBudget, feedPosts, eventInfo, mediaItems, inventoryItems, gadgets, notebooks, photoAlbums, collectiveDocuments, meetingMinutes, votingTopics, teamStatuses, auditLogs } = userState;
     const recentlyUpdatedTaskId = null; 
 
@@ -1428,7 +1464,7 @@ const App: React.FC = () => {
         const handleSaveVoteWithCreator = (topicData: any) => handleSaveVotingTopic(topicData, loggedInUser.id);
 
         switch(modalView) {
-            case 'task': return <TaskForm onSubmit={handleAndClose(handleSaveTask)} task={editingItem} members={members} />;
+            case 'task': return <TaskForm onSubmit={handleAndClose(handleSaveTask)} task={editingItem} members={members} currentUser={loggedInUser} />; 
             case 'schedule': return <ScheduleForm onSubmit={handleAndClose(handleSaveScheduleItem)} item={editingItem} />;
             case 'artist': return <ArtistForm onSubmit={handleAndClose(handleSaveArtist)} artist={editingItem} eventInfo={eventInfo} />;
             case 'info': return <EventInfoForm onSubmit={handleAndClose(handleSaveEventInfo)} info={editingItem} />;
@@ -1442,7 +1478,7 @@ const App: React.FC = () => {
             case 'collective_document': return <CollectiveDocumentForm onSubmit={handleAndClose(handleSaveDocWithUploader)} />;
             case 'meeting_minute': return <MeetingMinuteForm onSubmit={handleAndClose(handleSaveMeetingMinute)} minute={editingItem} />;
             case 'voting_topic': return <VotingTopicForm onSubmit={handleAndClose(handleSaveVoteWithCreator)} />;
-            case 'financial_project': return <div />; // Handled inside FinanceApp logic, but referenced here for type safety
+            case 'financial_project': return <div />; 
             case 'transaction': return <TransactionForm onSubmit={handleAndClose((data, id) => handleSaveTransaction(editingItem?.projectId || selectedGadgetId, {...data, type: editingItem?.type || 'expense' }, id))} transaction={editingItem} type={editingItem?.type || 'expense'} />; 
             default: return null;
         }
@@ -1475,7 +1511,7 @@ const App: React.FC = () => {
         { name: 'tasks', title: 'Tarefas', icon: <DockAppIcon bgColorClasses="bg-green-600"><CheckSquareIcon /></DockAppIcon>, component: <KanbanBoard onOpenModal={openModal} tasks={tasks} members={members} recentlyUpdatedTaskId={recentlyUpdatedTaskId} handleDeleteTask={handleDeleteTask} handleUpdateTaskStatus={handleUpdateTaskStatus} /> },
         { name: 'schedule', title: 'Cronograma', icon: <DockAppIcon bgColorClasses="bg-orange-600"><ClockIcon /></DockAppIcon>, component: <Schedule onOpenModal={openModal} schedule={schedule} handleDeleteScheduleItem={handleDeleteScheduleItem} /> },
         { name: 'artists', title: 'Artistas', icon: <DockAppIcon bgColorClasses="bg-purple-600"><BrushIcon /></DockAppIcon>, component: <Artists onOpenModal={openModal} artists={artists} handleDeleteArtist={handleDeleteArtist} /> },
-        { name: 'team_hub', title: 'Hub da Equipe', icon: <DockAppIcon bgColorClasses="bg-teal-500"><UsersIcon /></DockAppIcon>, component: <TeamHub onOpenModal={openModal} currentUser={loggedInUser} members={members} feedPosts={feedPosts} handleAddPost={handleAddPost} teamStatuses={teamStatuses} handleUpdateTeamStatus={handleUpdateTeamStatus} /> },
+        { name: 'team_hub', title: 'Hub da Equipe', icon: <DockAppIcon bgColorClasses="bg-teal-500"><UsersIcon /></DockAppIcon>, component: <TeamHub onOpenModal={openModal} currentUser={loggedInUser} members={members} feedPosts={feedPosts} handleAddPost={handleAddPost} teamStatuses={teamStatuses} handleUpdateTeamStatus={handleUpdateTeamStatus} currentCollectiveId={currentCollective.id} /> },
         { name: 'inventory', title: 'Inventário', icon: <DockAppIcon bgColorClasses="bg-slate-600"><BoxIcon /></DockAppIcon>, component: <Inventory onOpenModal={openModal} inventoryItems={inventoryItems} members={members} handleDeleteInventoryItem={handleDeleteInventoryItem} /> },
         { name: 'info', title: 'Informações', icon: <DockAppIcon bgColorClasses="bg-indigo-600"><InfoIcon /></DockAppIcon>, component: <EventInfo onOpenModal={openModal} {...userState} /> },
         { name: 'media', title: 'Mídia', icon: <DockAppIcon bgColorClasses="bg-red-600"><ImageIcon /></DockAppIcon>, component: <MediaHub onOpenModal={() => openModal('media')} mediaItems={mediaItems} artists={artists} handleDeleteMediaItem={handleDeleteMediaItem} /> },
@@ -1492,7 +1528,6 @@ const App: React.FC = () => {
     
     const appComponents = appConfig.reduce((acc, app) => ({ ...acc, [app.name]: app.component }), {} as Record<AppName, React.ReactNode>);
 
-    // FIX: Create context value to be passed to the provider.
     const contextValue = {
         notebooks,
         handleSaveNotebook,

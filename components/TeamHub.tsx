@@ -1,8 +1,9 @@
+
 import React, { memo, useState, useEffect } from 'react';
 import type { Member, FeedPost, TeamStatus } from '../types';
 import TeamFeed from './TeamFeed';
 import Header from './Header';
-import { RefreshCwIcon } from './icons';
+import { RefreshCwIcon, ClipboardListIcon } from './icons';
 
 interface TeamHubProps {
     currentUser: Member;
@@ -12,6 +13,7 @@ interface TeamHubProps {
     handleAddPost: (content: string, author: Member) => void;
     teamStatuses: TeamStatus[];
     handleUpdateTeamStatus: (statusText: string) => void;
+    currentCollectiveId: string; // New Prop
 }
 
 const MemberProfileCard: React.FC<{ member: Member; onEdit: () => void }> = memo(({ member, onEdit }) => (
@@ -30,9 +32,10 @@ const MemberProfileCard: React.FC<{ member: Member; onEdit: () => void }> = memo
 ));
 
 
-const TeamHub: React.FC<TeamHubProps> = ({ currentUser, onOpenModal, members, feedPosts, handleAddPost, teamStatuses, handleUpdateTeamStatus }) => {
+const TeamHub: React.FC<TeamHubProps> = ({ currentUser, onOpenModal, members, feedPosts, handleAddPost, teamStatuses, handleUpdateTeamStatus, currentCollectiveId }) => {
     const [myStatusText, setMyStatusText] = useState('');
     const [statusMessage, setStatusMessage] = useState('');
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         if (currentUser && teamStatuses) {
@@ -47,11 +50,26 @@ const TeamHub: React.FC<TeamHubProps> = ({ currentUser, onOpenModal, members, fe
         setTimeout(() => setStatusMessage(''), 2000); // Clear message after 2 seconds
     };
 
+    const handleCopyId = () => {
+        navigator.clipboard.writeText(currentCollectiveId);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    }
+
     return (
         <div className="h-full flex flex-col">
             <Header
                 title="Hub da Equipe"
                 subtitle="Central de comunicação e perfis da equipe de organização."
+                action={
+                    <button 
+                        onClick={handleCopyId}
+                        className="flex items-center space-x-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm py-2 px-4 rounded-md transition border border-slate-600"
+                    >
+                        <ClipboardListIcon className="w-4 h-4" />
+                        <span>{copied ? 'Copiado!' : 'Copiar Código de Convite'}</span>
+                    </button>
+                }
             />
             <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8 space-y-8">
                 <section>
