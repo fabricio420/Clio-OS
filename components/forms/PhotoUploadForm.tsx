@@ -1,15 +1,9 @@
+
 import React, { useState, useRef } from 'react';
 import type { Photo } from '../../types';
 import { FormInput } from './FormElements';
 import { UploadCloudIcon } from '../icons';
-
-const fileToBase64 = (file: File): Promise<string> => 
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-});
+import { supabase } from '../../supabaseClient';
 
 interface PhotoUploadFormProps {
     onSubmit: (albumId: string, photos: Omit<Photo, 'id'>[]) => void;
@@ -32,11 +26,11 @@ export const PhotoUploadForm: React.FC<PhotoUploadFormProps> = ({ onSubmit, albu
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            // FIX: Explicitly type selectedFiles as File[] to fix type inference issues in reduce and map.
             const selectedFiles: File[] = Array.from(e.target.files);
+            // Increased limit since we are using Storage now, but let's keep it reasonable per batch
             const totalSize = selectedFiles.reduce((acc, file) => acc + file.size, 0);
-            if (totalSize > 20 * 1024 * 1024) { // 20MB limit for batch
-                setError('O tamanho total dos arquivos excede 20MB.');
+            if (totalSize > 50 * 1024 * 1024) { // 50MB batch limit
+                setError('O tamanho total dos arquivos excede 50MB.');
                 return;
             }
             setFiles(selectedFiles);
@@ -50,6 +44,23 @@ export const PhotoUploadForm: React.FC<PhotoUploadFormProps> = ({ onSubmit, albu
         fileInputRef.current?.click();
     };
 
+    const uploadPhoto = async (file: File): Promise<string> => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `gallery/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('clio-public')
+            .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+            .from('clio-public')
+            .getPublicUrl(fileName);
+
+        return data.publicUrl;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (files.length === 0) {
@@ -61,9 +72,9 @@ export const PhotoUploadForm: React.FC<PhotoUploadFormProps> = ({ onSubmit, albu
         try {
             const photosToUpload: Omit<Photo, 'id'>[] = await Promise.all(
                 files.map(async file => {
-                    const dataUrl = await fileToBase64(file);
+                    const dataUrl = await uploadPhoto(file);
                     return {
-                        dataUrl,
+                        dataUrl, // Stores the Supabase Public URL
                         caption,
                         fileName: file.name,
                     };
@@ -71,7 +82,8 @@ export const PhotoUploadForm: React.FC<PhotoUploadFormProps> = ({ onSubmit, albu
             );
             onSubmit(albumId, photosToUpload);
         } catch (err) {
-            setError('Falha ao processar as imagens. Tente novamente.');
+            console.error(err);
+            setError('Falha ao fazer upload das imagens. Tente novamente.');
         } finally {
             setIsUploading(false);
         }
@@ -114,7 +126,7 @@ export const PhotoUploadForm: React.FC<PhotoUploadFormProps> = ({ onSubmit, albu
                 disabled={isUploading}
                 className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition disabled:bg-slate-600"
             >
-                {isUploading ? 'Enviando...' : `Enviar ${files.length} Foto(s)`}
+                {isUploading ? 'Enviando para a Nuvem...' : `Enviar ${files.length} Foto(s)`}
             </button>
         </form>
     );

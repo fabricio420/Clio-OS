@@ -1,16 +1,9 @@
+
 import React, { useState, useRef } from 'react';
 import type { Member } from '../types';
 import { FormInput } from './forms/FormElements';
 import { ImageIcon } from './icons';
-
-// Helper function to convert file to base64
-const fileToBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-});
+import { supabase } from '../supabaseClient';
 
 interface ProfileAppProps {
     currentUser: Member;
@@ -25,6 +18,7 @@ export const ProfileApp: React.FC<ProfileAppProps> = ({ currentUser, onSaveProfi
 
     const [previewUrl, setPreviewUrl] = useState(currentUser.avatar);
     const [avatarError, setAvatarError] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [currentPassword, setCurrentPassword] = useState('');
@@ -43,6 +37,23 @@ export const ProfileApp: React.FC<ProfileAppProps> = ({ currentUser, onSaveProfi
         }
     };
 
+    const uploadAvatar = async (file: File): Promise<string> => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `avatars/${currentUser.id}-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('clio-public')
+            .upload(fileName, file, { upsert: true }); // Overwrite existing
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+            .from('clio-public')
+            .getPublicUrl(fileName);
+
+        return data.publicUrl;
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -53,15 +64,23 @@ export const ProfileApp: React.FC<ProfileAppProps> = ({ currentUser, onSaveProfi
         }
         setAvatarError('');
         setProfileMessage(null);
+        setIsUploading(true);
         
         try {
-            const base64 = await fileToBase64(file);
-            setPreviewUrl(base64);
-            onSaveProfile({ avatar: base64 });
+            // Create temporary preview
+            setPreviewUrl(URL.createObjectURL(file));
+            
+            const publicUrl = await uploadAvatar(file);
+            
+            onSaveProfile({ avatar: publicUrl });
             setProfileMessage({ type: 'success', text: 'Foto de perfil atualizada!' });
+            setPreviewUrl(publicUrl); // Set final URL
         } catch (err) {
             setAvatarError('Falha ao processar a imagem. Tente outra.');
             console.error(err);
+            setPreviewUrl(currentUser.avatar); // Revert on error
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -95,12 +114,13 @@ export const ProfileApp: React.FC<ProfileAppProps> = ({ currentUser, onSaveProfi
         <div className="p-4 md:p-8 space-y-8 text-white">
             <div className="flex items-center space-x-6">
                  <div className="relative group w-24 h-24 flex-shrink-0">
-                    <img src={previewUrl} alt={currentUser.name} className="w-24 h-24 rounded-full border-4 border-slate-600 object-cover" />
+                    <img src={previewUrl} alt={currentUser.name} className={`w-24 h-24 rounded-full border-4 border-slate-600 object-cover ${isUploading ? 'opacity-50' : ''}`} />
                     <button
                         type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        onClick={() => !isUploading && fileInputRef.current?.click()}
+                        className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
                         aria-label="Alterar foto de perfil"
+                        disabled={isUploading}
                     >
                         <ImageIcon className="w-8 h-8" />
                     </button>
@@ -116,6 +136,7 @@ export const ProfileApp: React.FC<ProfileAppProps> = ({ currentUser, onSaveProfi
                     <h2 className="text-3xl font-bold">{currentUser.name}</h2>
                     <p className="text-sky-400">{currentUser.role}</p>
                     <p className="text-sm text-slate-400">{currentUser.email}</p>
+                    {isUploading && <p className="text-xs text-lime-400 mt-1">Enviando foto...</p>}
                     {avatarError && <p className="text-red-400 text-sm mt-2">{avatarError}</p>}
                 </div>
             </div>

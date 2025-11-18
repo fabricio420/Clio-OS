@@ -1,7 +1,9 @@
+
 import React, { useState, memo } from 'react';
 import type { Artist } from '../types';
-import { MicIcon, PlusIcon, MoreVerticalIcon, WhatsappIcon, InstagramIcon, FileTextIcon } from './icons';
+import { MicIcon, PlusIcon, MoreVerticalIcon, WhatsappIcon, InstagramIcon, FileTextIcon, LockIcon } from './icons';
 import Header from './Header';
+import { supabase } from '../supabaseClient';
 
 interface ArtistsProps {
   onOpenModal: (view: 'artist', data?: Artist) => void;
@@ -15,6 +17,34 @@ const ArtistCard: React.FC<{
   onDelete: (artistId: string) => void;
 }> = memo(({ artist, onEdit, onDelete }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isLoadingDoc, setIsLoadingDoc] = useState(false);
+
+  const handleViewDocument = async () => {
+      if (!artist.documentImage) return;
+
+      setIsLoadingDoc(true);
+      try {
+          // Check if it's a legacy Base64 or Public URL (starts with http or data:)
+          if (artist.documentImage.startsWith('http') || artist.documentImage.startsWith('data:')) {
+              window.open(artist.documentImage, '_blank');
+          } else {
+              // Assume it's a path in the 'clio-private' bucket
+              const { data, error } = await supabase.storage
+                  .from('clio-private')
+                  .createSignedUrl(artist.documentImage, 60); // Valid for 60 seconds
+
+              if (error) throw error;
+              if (data?.signedUrl) {
+                  window.open(data.signedUrl, '_blank');
+              }
+          }
+      } catch (err) {
+          console.error("Erro ao abrir documento:", err);
+          alert("Não foi possível abrir o documento seguro.");
+      } finally {
+          setIsLoadingDoc(false);
+      }
+  };
 
   return (
     <div className="bg-slate-900 rounded-lg shadow-md p-6 border-t border-lime-400 relative flex flex-col">
@@ -47,10 +77,20 @@ const ArtistCard: React.FC<{
         {artist.rg && (<div><strong>RG:</strong> {artist.rg}</div>)}
         
         {artist.documentImage && (
-            <a href={artist.documentImage} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1 hover:text-lime-400 font-semibold">
-                <FileTextIcon className="h-4 w-4" />
-                <span>Ver Documento Anexado</span>
-            </a>
+            <button 
+                onClick={handleViewDocument} 
+                disabled={isLoadingDoc}
+                className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 font-semibold transition-colors disabled:opacity-50"
+            >
+                {isLoadingDoc ? (
+                    <span>Gerando link seguro...</span>
+                ) : (
+                    <>
+                        <LockIcon className="h-3 w-3" />
+                        <span>Ver Documento Seguro</span>
+                    </>
+                )}
+            </button>
         )}
 
         <div className="flex items-center justify-between pt-2">

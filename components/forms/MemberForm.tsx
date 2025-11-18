@@ -1,20 +1,15 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Member } from '../../types';
 import { FormInput } from './FormElements';
-
-const fileToBase64 = (file: File): Promise<string> => 
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-});
+import { supabase } from '../../supabaseClient';
 
 export const MemberForm: React.FC<{ onSubmit: (data: Member) => void, member: Member | null }> = ({ onSubmit, member }) => {
     const [formData, setFormData] = useState({ name: '', role: '' });
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(member?.avatar || null);
     const [error, setError] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -26,7 +21,7 @@ export const MemberForm: React.FC<{ onSubmit: (data: Member) => void, member: Me
 
     useEffect(() => {
         const currentUrl = previewUrl;
-        // Cleanup object URL if it's a blob and the component unmounts or the url changes
+        // Cleanup object URL if it's a blob
         return () => {
             if (currentUrl && currentUrl.startsWith('blob:')) {
                 URL.revokeObjectURL(currentUrl);
@@ -51,14 +46,33 @@ export const MemberForm: React.FC<{ onSubmit: (data: Member) => void, member: Me
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const uploadAvatar = async (file: File): Promise<string> => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `avatars/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('clio-public')
+            .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+            .from('clio-public')
+            .getPublicUrl(fileName);
+
+        return data.publicUrl;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!member) return;
         setError('');
+        setIsUploading(true);
+
         try {
             let avatarDataUrl = member.avatar;
             if (file) {
-                avatarDataUrl = await fileToBase64(file);
+                avatarDataUrl = await uploadAvatar(file);
             }
             onSubmit({
                 ...member,
@@ -66,7 +80,10 @@ export const MemberForm: React.FC<{ onSubmit: (data: Member) => void, member: Me
                 avatar: avatarDataUrl,
             });
         } catch (err) {
-            setError('Não foi possível carregar o arquivo de imagem.');
+            console.error(err);
+            setError('Erro ao fazer upload da imagem.');
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -101,9 +118,10 @@ export const MemberForm: React.FC<{ onSubmit: (data: Member) => void, member: Me
             
             <button
                 type="submit"
-                className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition"
+                disabled={isUploading}
+                className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition disabled:bg-slate-600"
             >
-                Salvar Alterações
+                {isUploading ? 'Salvando...' : 'Salvar Alterações'}
             </button>
         </form>
     );
