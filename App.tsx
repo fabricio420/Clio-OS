@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus, VoteOption, AuditLog, Collective } from './types';
 import { TaskStatus as TaskStatusEnum, InventoryStatus } from './types';
@@ -52,7 +46,7 @@ import { CollectiveDocumentForm } from './components/forms/CollectiveDocumentFor
 import { MeetingMinuteForm } from './components/forms/MeetingMinuteForm';
 import { VotingTopicForm } from './components/forms/VotingTopicForm';
 import { TransactionForm } from './components/forms/TransactionForm';
-import { ChevronLeftIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, MenuIcon, BarChartIcon, StickyNoteIcon, XIcon, SearchIcon } from './components/icons';
+import { ChevronLeftIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, MenuIcon, BarChartIcon, StickyNoteIcon, XIcon, SearchIcon, CloudCheckIcon } from './components/icons';
 import { AppContext } from './contexts/AppContext';
 import { supabase } from './supabaseClient';
 import Toast, { ToastType } from './components/Toast';
@@ -428,6 +422,7 @@ const App: React.FC = () => {
 
     // --- SUPABASE AUTH & COLLECTIVE CHECK ---
     useEffect(() => {
+        checkConnection();
         // Check active session
         supabase.auth.getSession().then(({ data: { session } }) => {
             setLoadingAuth(true);
@@ -452,10 +447,19 @@ const App: React.FC = () => {
         return () => subscription.unsubscribe();
     }, []);
     
+    const checkConnection = async () => {
+        const { error } = await supabase.from('profiles').select('count').limit(1);
+        if (error && error.code !== 'PGRST116') {
+            console.warn("Database connection warning:", error);
+            // We don't show a toast here to avoid spamming on startup if it's just a partial setup
+        }
+    }
+    
     // --- LOAD DATA WHEN COLLECTIVE IS SELECTED ---
     useEffect(() => {
         if (loggedInUser && currentCollective) {
             console.log("Loading data for collective:", currentCollective.name);
+            fetchEventInfo();
             fetchTasks();
             fetchArtists();
             fetchFinancialData();
@@ -478,12 +482,13 @@ const App: React.FC = () => {
 
         // Channel for general data updates filtered by collective_id
         const channel = supabase.channel(`clio_sync_${currentCollective.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchEventInfo())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchTasks())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'artists', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchArtists())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_items', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchSchedule())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchInventory())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_projects', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchFinancialData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchFinancialData()) // Transactions are children of projects, tricky to filter by collective_id directly if not on table, but typically projects are filtered.
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchFinancialData()) 
             .on('postgres_changes', { event: '*', schema: 'public', table: 'team_feed_posts', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchFeedPosts())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'team_statuses' }, () => fetchTeamStatuses())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'collective_documents', filter: `collective_id=eq.${currentCollective.id}` }, () => fetchCollabData())
@@ -535,7 +540,7 @@ const App: React.FC = () => {
                  setLoadingAuth(false);
             }
         } catch (err) {
-            console.error(err);
+            console.error("Error fetching profile:", err);
             setLoadingAuth(false);
         }
     };
@@ -562,7 +567,7 @@ const App: React.FC = () => {
                         role: first.role
                     };
                     setCurrentCollective(col);
-                    // Update event info locally to match collective name
+                    // Update event info locally to match collective name (initial state)
                     updateUserState('eventInfo', { ...userState.eventInfo, collectiveName: col.name });
                 }
             } else {
@@ -595,7 +600,14 @@ const App: React.FC = () => {
 
             if (memError) throw memError;
 
-            // 3. Set State
+            // 3. Create Default Event Record for this Collective
+            await supabase.from('events').insert([{
+                collective_id: collective.id,
+                event_name: 'Novo Evento',
+                event_date: new Date().toISOString()
+            }]);
+
+            // 4. Set State
             const newCollective: Collective = {
                 id: collective.id,
                 name: collective.name,
@@ -650,8 +662,7 @@ const App: React.FC = () => {
                 role: 'Membro'
             };
             setCurrentCollective(joinedCollective);
-            updateUserState('eventInfo', { ...userState.eventInfo, collectiveName: joinedCollective.name });
-
+            // We don't need to set eventInfo here manually, fetchEventInfo will trigger
 
         } catch (err: any) {
             console.error(err);
@@ -661,24 +672,29 @@ const App: React.FC = () => {
     
     const fetchAllProfiles = async () => {
         if (!currentCollective) return;
-        // Fetch only members of the current collective
-        const { data } = await supabase
-            .from('collective_members')
-            .select(`
-                role,
-                profiles (*)
-            `)
-            .eq('collective_id', currentCollective.id);
+        try {
+            const { data, error } = await supabase
+                .from('collective_members')
+                .select(`
+                    role,
+                    profiles (*)
+                `)
+                .eq('collective_id', currentCollective.id);
 
-        if (data) {
-            const mappedMembers = data.map((item: any) => ({
-                id: item.profiles.id,
-                name: item.profiles.name || 'Sem Nome',
-                role: item.profiles.role || item.role || 'Membro', // Use collective role if available
-                avatar: item.profiles.avatar || DEFAULT_AVATAR,
-                email: item.profiles.email || ''
-            }));
-            updateUserState('members', mappedMembers);
+            if (error) throw error;
+
+            if (data) {
+                const mappedMembers = data.map((item: any) => ({
+                    id: item.profiles.id,
+                    name: item.profiles.name || 'Sem Nome',
+                    role: item.profiles.role || item.role || 'Membro',
+                    avatar: item.profiles.avatar || DEFAULT_AVATAR,
+                    email: item.profiles.email || ''
+                }));
+                updateUserState('members', mappedMembers);
+            }
+        } catch (err: any) {
+            console.error("Error fetching profiles:", JSON.stringify(err, null, 2));
         }
     };
 
@@ -696,13 +712,14 @@ const App: React.FC = () => {
                 created_at: new Date().toISOString()
             });
         } catch (err) {
-            console.error("Error logging action:", err); // Fail silently in UI
+            console.error("Error logging action:", err); 
         }
     };
 
     const fetchAuditLogs = async () => {
         try {
-            const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
+            const { data, error } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
+            if (error) throw error;
             if (data) {
                 const mappedLogs: AuditLog[] = data.map((l: any) => ({
                     id: l.id,
@@ -716,10 +733,51 @@ const App: React.FC = () => {
                 }));
                 updateUserState('auditLogs', mappedLogs);
             }
-        } catch (err) { console.error(err); }
+        } catch (err: any) { 
+            // Silently fail for audit logs if table doesn't exist yet
+            console.warn("Audit logs fetch skipped (table might be missing)."); 
+        }
     };
 
     // --- SUPABASE DATA FETCHING (CORE - Filtered by Collective) ---
+    const fetchEventInfo = async () => {
+        if (!currentCollective) return;
+        try {
+            const { data, error } = await supabase.from('events').select('*').eq('collective_id', currentCollective.id).maybeSingle();
+            if (error) throw error;
+            if (data) {
+                const mappedInfo: EventInfoData = {
+                    eventName: data.event_name || 'Novo Evento',
+                    collectiveName: currentCollective.name,
+                    description: data.description || '',
+                    venueName: data.venue_name || '',
+                    venueAddress: data.venue_address || '',
+                    eventDate: data.event_date || new Date().toISOString(),
+                    artistGoal: data.artist_goal || 10,
+                    artTypes: data.art_types || [],
+                    hasAwards: data.has_awards || false,
+                    awardsDescription: data.awards_description || '',
+                    isCollab: data.is_collab || false,
+                    collabDescription: data.collab_description || ''
+                };
+                updateUserState('eventInfo', mappedInfo);
+            } else {
+                 // If event info doesn't exist, create it safely using UPSERT to avoid race conditions
+                 // onConflict ensures we don't duplicate if it was created in another session
+                 const { data: newEvent, error: createError } = await supabase.from('events').upsert([{
+                    collective_id: currentCollective.id,
+                    event_name: 'Novo Evento',
+                    event_date: new Date().toISOString()
+                }], { onConflict: 'collective_id' }).select().single();
+                
+                if (!createError && newEvent) {
+                     // Fetch again or set default state
+                     updateUserState('eventInfo', { ...MOCK_EVENT_INFO, collectiveName: currentCollective.name });
+                }
+            }
+        } catch (e: any) { console.error("Error fetching event info:", JSON.stringify(e, null, 2)); }
+    };
+
     const fetchTasks = async () => {
         if (!currentCollective) return;
         try {
@@ -731,7 +789,7 @@ const App: React.FC = () => {
                 }));
                 updateUserState('tasks', mappedTasks);
             }
-        } catch (err) { console.error('Error fetching tasks:', err); }
+        } catch (err: any) { console.error('Error fetching tasks:', JSON.stringify(err, null, 2)); }
     };
 
     const fetchArtists = async () => {
@@ -745,7 +803,7 @@ const App: React.FC = () => {
                 }));
                 updateUserState('artists', mappedArtists);
             }
-        } catch (err) { console.error('Error fetching artists:', err); }
+        } catch (err: any) { console.error('Error fetching artists:', JSON.stringify(err, null, 2)); }
     };
 
     const fetchSchedule = async () => {
@@ -754,7 +812,7 @@ const App: React.FC = () => {
             const { data, error } = await supabase.from('schedule_items').select('*').eq('collective_id', currentCollective.id);
             if (error) throw error;
             if (data) updateUserState('schedule', data);
-        } catch (err) { console.error('Error fetching schedule:', err); }
+        } catch (err: any) { console.error('Error fetching schedule:', JSON.stringify(err, null, 2)); }
     };
 
     const fetchInventory = async () => {
@@ -768,7 +826,7 @@ const App: React.FC = () => {
                 }));
                 updateUserState('inventoryItems', mappedInventory);
             }
-        } catch (err) { console.error('Error fetching inventory:', err); }
+        } catch (err: any) { console.error('Error fetching inventory:', JSON.stringify(err, null, 2)); }
     };
 
     const fetchFinancialData = async () => {
@@ -789,13 +847,14 @@ const App: React.FC = () => {
                 }));
                 updateUserState('financialProjects', mappedProjects);
             }
-        } catch (err) { console.error('Error fetching financial data:', err); }
+        } catch (err: any) { console.error('Error fetching financial data:', JSON.stringify(err, null, 2)); }
     };
 
     // --- SUPABASE FEED & COLLAB FETCHING ---
     const fetchFeedPosts = async () => {
         if (!currentCollective) return;
         try {
+            // Use author:profiles!author_id(*) if simple join fails, or rely on standard inferrence
             const { data, error } = await supabase
                 .from('team_feed_posts')
                 .select(`*, author:profiles(*)`)
@@ -806,53 +865,63 @@ const App: React.FC = () => {
             if (data) {
                 const mappedPosts: FeedPost[] = data.map((p: any) => ({
                     id: p.id, content: p.content, timestamp: p.created_at,
-                    author: { id: p.author?.id, name: p.author?.name || 'Desconhecido', role: p.author?.role || '', avatar: p.author?.avatar || DEFAULT_AVATAR, email: p.author?.email || '' }
+                    author: { 
+                        id: p.author?.id, 
+                        name: p.author?.name || 'Desconhecido', 
+                        role: p.author?.role || '', 
+                        avatar: p.author?.avatar || DEFAULT_AVATAR, 
+                        email: p.author?.email || '' 
+                    }
                 }));
                 updateUserState('feedPosts', mappedPosts);
             }
-        } catch (err) { console.error('Error fetching feed:', err); }
+        } catch (err: any) { console.error('Error fetching feed:', JSON.stringify(err, null, 2)); }
     };
 
     const fetchTeamStatuses = async () => {
         try {
-            const { data } = await supabase.from('team_statuses').select('*');
+            const { data, error } = await supabase.from('team_statuses').select('*');
+            if (error) throw error;
             if (data) {
                 const mappedStatuses = data.map((s: any) => ({
                     memberId: s.member_id, status: s.status
                 }));
                 updateUserState('teamStatuses', mappedStatuses);
             }
-        } catch (err) { console.error('Error fetching statuses:', err); }
+        } catch (err: any) { console.error('Error fetching statuses:', JSON.stringify(err, null, 2)); }
     };
 
     const fetchCollabData = async () => {
         if (!currentCollective) return;
         try {
-            const { data: docs } = await supabase.from('collective_documents').select('*').eq('collective_id', currentCollective.id);
+            const { data: docs, error } = await supabase.from('collective_documents').select('*').eq('collective_id', currentCollective.id);
+            if (error) throw error;
             if (docs) {
                 const mappedDocs = docs.map((d: any) => ({
                     id: d.id, name: d.name, fileDataUrl: d.file_data_url, fileName: d.file_name, fileType: d.file_type, uploadedAt: d.created_at, uploaderId: d.uploader_id
                 }));
                 updateUserState('collectiveDocuments', mappedDocs);
             }
-        } catch (e) { console.error(e); }
+        } catch (e: any) { console.error('Error fetching documents:', JSON.stringify(e, null, 2)); }
 
         try {
-             const { data: minutes } = await supabase.from('meeting_minutes').select('*').eq('collective_id', currentCollective.id);
+             const { data: minutes, error } = await supabase.from('meeting_minutes').select('*').eq('collective_id', currentCollective.id);
+             if (error) throw error;
              if (minutes) {
                  const mappedMinutes = minutes.map((m: any) => ({
                      id: m.id, date: m.date, attendeeIds: m.attendee_ids || [], agenda: m.agenda, decisions: m.decisions
                  }));
                  updateUserState('meetingMinutes', mappedMinutes);
              }
-        } catch (e) { console.error(e); }
+        } catch (e: any) { console.error('Error fetching minutes:', JSON.stringify(e, null, 2)); }
 
         try {
-            const { data: topics } = await supabase
+            const { data: topics, error } = await supabase
                 .from('voting_topics')
                 .select(`*, options:voting_options(*)`)
                 .eq('collective_id', currentCollective.id);
             
+            if (error) throw error;
             if (topics) {
                 const mappedTopics: VotingTopic[] = topics.map((t: any) => ({
                     id: t.id, title: t.title, description: t.description, creatorId: t.creator_id, createdAt: t.created_at, status: t.status,
@@ -862,13 +931,14 @@ const App: React.FC = () => {
                 }));
                 updateUserState('votingTopics', mappedTopics);
             }
-        } catch (e) { console.error(e); }
+        } catch (e: any) { console.error('Error fetching voting topics:', JSON.stringify(e, null, 2)); }
     };
     
     const fetchNotebooks = async () => {
         if (!currentCollective) return;
         try {
-            const { data } = await supabase.from('notebooks').select('*, notes(*)').eq('collective_id', currentCollective.id);
+            const { data, error } = await supabase.from('notebooks').select('*, notes(*)').eq('collective_id', currentCollective.id);
+            if (error) throw error;
             if(data) {
                 const mapped = data.map((nb: any) => ({
                     id: nb.id, name: nb.name,
@@ -878,26 +948,28 @@ const App: React.FC = () => {
                 }));
                 updateUserState('notebooks', mapped);
             }
-        } catch (err) { console.error(err); }
+        } catch (err: any) { console.error('Error fetching notebooks:', JSON.stringify(err, null, 2)); }
     };
 
     const fetchMedia = async () => {
          if (!currentCollective) return;
          try {
-            const { data } = await supabase.from('media_items').select('*').eq('collective_id', currentCollective.id);
+            const { data, error } = await supabase.from('media_items').select('*').eq('collective_id', currentCollective.id);
+            if (error) throw error;
             if(data) {
                 const mapped = data.map((m: any) => ({
                     id: m.id, title: m.title, category: m.category, fileDataUrl: m.file_data_url, fileName: m.file_name, artistId: m.artist_id
                 }));
                 updateUserState('mediaItems', mapped);
             }
-        } catch (err) { console.error(err); }
+        } catch (err: any) { console.error('Error fetching media:', JSON.stringify(err, null, 2)); }
     }
 
     const fetchAlbums = async () => {
          if (!currentCollective) return;
          try {
-            const { data } = await supabase.from('photo_albums').select('*, photos(*)').eq('collective_id', currentCollective.id);
+            const { data, error } = await supabase.from('photo_albums').select('*, photos(*)').eq('collective_id', currentCollective.id);
+            if (error) throw error;
             if(data) {
                 const mapped = data.map((a: any) => ({
                     id: a.id, name: a.name, description: a.description,
@@ -907,7 +979,7 @@ const App: React.FC = () => {
                 }));
                 updateUserState('photoAlbums', mapped);
             }
-        } catch (err) { console.error(err); }
+        } catch (err: any) { console.error('Error fetching albums:', JSON.stringify(err, null, 2)); }
     }
 
 
@@ -1228,7 +1300,35 @@ const App: React.FC = () => {
         await supabase.from('photos').delete().eq('id', photoId);
         showToast('Foto excluída', 'info');
     };
-
+    
+    // --- EVENT INFO HANDLERS (NEW) ---
+    const handleSaveEventInfo = async (infoData: EventInfoData) => {
+        if (!currentCollective) return;
+        const payload = {
+            collective_id: currentCollective.id,
+            event_name: infoData.eventName,
+            description: infoData.description,
+            venue_name: infoData.venueName,
+            venue_address: infoData.venueAddress,
+            event_date: infoData.eventDate,
+            artist_goal: infoData.artistGoal,
+            art_types: infoData.artTypes,
+            has_awards: infoData.hasAwards,
+            awards_description: infoData.awardsDescription,
+            is_collab: infoData.isCollab,
+            collab_description: infoData.collabDescription
+        };
+        // Upsert allows creating if not exists or updating if exists
+        const { error } = await supabase.from('events').upsert(payload, { onConflict: 'collective_id' });
+        if (!error) {
+             updateUserState('eventInfo', infoData);
+             showToast('Informações do evento salvas!', 'success');
+             logAction('UPDATE', 'Evento', 'Atualizou informações do evento');
+        } else {
+            console.error(error);
+            showToast('Erro ao salvar informações.', 'error');
+        }
+    }
 
     
     // Handle Global Search Keyboard Shortcut
@@ -1351,8 +1451,6 @@ const App: React.FC = () => {
     const handleChangePassword = (currentPassword: string, newPassword: string) => {
         return { success: true, message: 'Simulação: Senha alterada!' };
     };
-
-    const handleSaveEventInfo = (infoData: EventInfoData) => updateUserState('eventInfo', infoData);
     
     
      const handleAddGadget = (type: GadgetType) => {
