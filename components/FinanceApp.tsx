@@ -1,10 +1,8 @@
 
+
 import React, { useState, useMemo, memo, useRef, useEffect } from 'react';
 import type { FinancialProject, Transaction, ModalView, TransactionPeriod, Member } from '../types';
 import { PlusIcon, ChevronLeftIcon, MoreVerticalIcon, DownloadIcon, BarChartIcon, WalletIcon, FileTextIcon, PrintIcon, UsersIcon, CheckSquareIcon, SparklesIcon } from './icons';
-import Modal from './Modal';
-import { FinancialProjectForm } from './forms/FinancialProjectForm';
-import { TransactionForm } from './forms/TransactionForm';
 import Header from './Header';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -380,24 +378,21 @@ const TabButton: React.FC<{ label: string; icon: React.ReactNode; isActive: bool
 // --- MAIN APP COMPONENT ---
 
 interface FinanceAppProps {
+    onOpenModal: (view: ModalView, data?: any) => void;
     financialProjects: FinancialProject[];
-    members?: Member[]; // Added members prop
+    members?: Member[];
     handleSaveFinancialProject: (data: Omit<FinancialProject, 'id' | 'transactions'>, id?: string) => void;
     handleDeleteFinancialProject: (projectId: string) => void;
     handleSaveTransaction: (projectId: string, data: Omit<Transaction, 'id'>, id?: string) => void;
     handleDeleteTransaction: (projectId: string, transactionId: string) => void;
 }
 
-const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = [], handleSaveFinancialProject, handleDeleteFinancialProject, handleSaveTransaction, handleDeleteTransaction }) => {
+const FinanceApp: React.FC<FinanceAppProps> = ({ onOpenModal, financialProjects, members = [], handleSaveFinancialProject, handleDeleteFinancialProject, handleSaveTransaction, handleDeleteTransaction }) => {
     const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'dues'>('dashboard');
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-    const [modalView, setModalView] = useState<ModalView | null>(null);
-    const [editingItem, setEditingItem] = useState<any>(null);
-    const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense');
     const [period, setPeriod] = useState<TransactionPeriod>('all');
     const [projectMenuOpen, setProjectMenuOpen] = useState(false);
     
-    // Ref for PDF generation
     const reportRef = useRef<HTMLDivElement>(null);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
@@ -456,7 +451,6 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = []
                 t.amount.toFixed(2)
             ].join(','));
 
-        // Add BOM for Excel UTF-8 compatibility
         const csvContent = "\uFEFF" + headers.join(',') + "\n" + rows.join("\n");
         
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -473,7 +467,6 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = []
         if (!reportRef.current || !selectedProject) return;
         setIsGeneratingPdf(true);
         try {
-            // Temporarily make visible for capture but keep off-screen
             reportRef.current.style.display = 'block';
             
             const canvas = await html2canvas(reportRef.current, { 
@@ -523,23 +516,7 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = []
             }
         }
     };
-
-    const openModal = (view: ModalView, data: any = null, type?: 'income' | 'expense') => {
-        setModalView(view);
-        setEditingItem(data);
-        if (type) setTransactionType(type);
-    };
     
-    const closeModal = () => {
-        setModalView(null);
-        setEditingItem(null);
-    };
-
-    const handleSaveAndClose = (saveFn: (...args: any[]) => void) => (...args: any[]) => {
-        saveFn(...args);
-        closeModal();
-    };
-
     const handleRegisterDues = (projectId: string, memberName: string, amount: number, date: string) => {
         handleSaveTransaction(projectId, {
             description: `Contribuição - ${memberName}`,
@@ -554,7 +531,6 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = []
         <div className="h-full flex flex-col">
             {selectedProject ? (
                 <>
-                    {/* --- Hidden Report for PDF Generation --- */}
                     <div className="fixed left-[-9999px] top-0 w-[800px] bg-white text-slate-900 p-8 font-sans" ref={reportRef} style={{ display: 'none' }}>
                         <div className="border-b-2 border-slate-800 pb-4 mb-6 flex justify-between items-center">
                             <div>
@@ -609,7 +585,6 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = []
                             Documento gerado automaticamente pela plataforma Clio OS.
                         </div>
                     </div>
-                    {/* ------------------------------------------ */}
 
                     <header className="flex-shrink-0 px-4 md:px-8 pt-6">
                         <button onClick={() => setSelectedProjectId(null)} className="flex items-center space-x-2 text-sm text-sky-400 hover:text-sky-300 mb-2">
@@ -628,15 +603,15 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = []
                                     </button>
                                     {projectMenuOpen && (
                                         <div className="absolute right-0 mt-2 w-32 bg-slate-950 border border-slate-700 rounded-md shadow-lg z-10">
-                                            <button onClick={() => { openModal('financial_project', selectedProject); setProjectMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">Editar</button>
+                                            <button onClick={() => { onOpenModal('financial_project', selectedProject); setProjectMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800">Editar</button>
                                             <button onClick={() => { handleConfirmDeleteProject(selectedProject.id); setProjectMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-800">Excluir</button>
                                         </div>
                                     )}
                                 </div>
                             </div>
                             <div className="flex items-center space-x-2 self-start sm:self-center">
-                                <button onClick={() => openModal('transaction', null, 'income')} className="py-2 px-3 bg-lime-600 hover:bg-lime-700 text-white font-semibold rounded-md transition text-sm">Nova Receita</button>
-                                <button onClick={() => openModal('transaction', null, 'expense')} className="py-2 px-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md transition text-sm">Nova Despesa</button>
+                                <button onClick={() => onOpenModal('transaction', { projectId: selectedProject.id, type: 'income' })} className="py-2 px-3 bg-lime-600 hover:bg-lime-700 text-white font-semibold rounded-md transition text-sm">Nova Receita</button>
+                                <button onClick={() => onOpenModal('transaction', { projectId: selectedProject.id, type: 'expense' })} className="py-2 px-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-md transition text-sm">Nova Despesa</button>
                             </div>
                         </div>
                         <div className="grid grid-cols-3 gap-4 mb-4 text-center">
@@ -671,7 +646,7 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = []
                                     <TransactionRow 
                                         key={t.id} 
                                         transaction={t} 
-                                        onEdit={() => openModal('transaction', t, t.type)} 
+                                        onEdit={() => onOpenModal('transaction', { ...t, projectId: selectedProject.id })} 
                                         onDelete={() => handleDeleteTransaction(selectedProjectId, t.id)}
                                     />
                                 ))}
@@ -687,7 +662,7 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = []
                         title="Finanças"
                         subtitle="Gerencie os projetos financeiros e o fluxo de caixa do coletivo."
                         action={ activeTab === 'projects' && (
-                            <button onClick={() => openModal('financial_project')} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition">
+                            <button onClick={() => onOpenModal('financial_project')} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition">
                                 <PlusIcon className="h-5 w-5" />
                                 <span>Novo Projeto</span>
                             </button>
@@ -711,7 +686,7 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = []
                                             key={project.id} 
                                             project={project} 
                                             onSelect={() => setSelectedProjectId(project.id)}
-                                            onEdit={() => openModal('financial_project', project)}
+                                            onEdit={() => onOpenModal('financial_project', project)}
                                             onDelete={() => handleConfirmDeleteProject(project.id)}
                                         />
                                     ))}
@@ -733,11 +708,6 @@ const FinanceApp: React.FC<FinanceAppProps> = ({ financialProjects, members = []
                     </main>
                 </>
             )}
-
-            <Modal isOpen={!!modalView} onClose={closeModal} title={modalView === 'financial_project' ? (editingItem ? 'Editar Projeto' : 'Novo Projeto') : (editingItem ? 'Editar Transação' : 'Nova Transação')}>
-                {modalView === 'financial_project' && <FinancialProjectForm onSubmit={handleSaveAndClose((data, id) => handleSaveFinancialProject(data, id || editingItem?.id))} project={editingItem} />}
-                {modalView === 'transaction' && selectedProjectId && <TransactionForm onSubmit={handleSaveAndClose((data, id) => handleSaveTransaction(selectedProjectId, {...data, type: transactionType }, id))} transaction={editingItem} type={transactionType} />}
-            </Modal>
         </div>
     );
 }

@@ -5,13 +5,6 @@ export enum TaskStatus {
   Done = 'Concluído',
 }
 
-export interface Collective {
-  id: string;
-  name: string;
-  description?: string;
-  role?: string; // Role of the current user in this collective
-}
-
 export interface Member {
   id: string;
   name: string;
@@ -28,16 +21,6 @@ export interface Task {
   status: TaskStatus;
   assigneeId?: string;
   dueDate: string;
-  collectiveId?: string;
-}
-
-export interface TaskComment {
-  id: string;
-  taskId: string;
-  userId: string;
-  content: string;
-  createdAt: string;
-  author?: Member;
 }
 
 export interface ScheduleItem {

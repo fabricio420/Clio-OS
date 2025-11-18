@@ -1,7 +1,13 @@
 import React from 'react';
+import type { ModalView } from '../types';
 
-// Componente desativado/removido conforme solicitado.
-const ClioAI: React.FC = () => {
+interface ClioAIProps {
+    activeView: ModalView | null;
+    onDataReceived: (data: any) => void;
+}
+
+// Este componente foi desativado conforme solicitado.
+const ClioAI: React.FC<ClioAIProps> = () => {
     return null;
 };
 

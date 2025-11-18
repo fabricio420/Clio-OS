@@ -1,7 +1,13 @@
-
 import React, { useState, useRef } from 'react';
 import { FormInput } from './FormElements';
-import { supabase } from '../../supabaseClient';
+
+const fileToBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
 
 interface CollectiveDocumentFormProps {
     onSubmit: (data: { name: string, file: File, fileDataUrl: string }) => void;
@@ -11,14 +17,13 @@ export const CollectiveDocumentForm: React.FC<CollectiveDocumentFormProps> = ({ 
     const [name, setName] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [error, setError] = useState('');
-    const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
-            if (selectedFile.size > 20 * 1024 * 1024) { // 20MB limit
-                setError('O arquivo é muito grande. O limite é de 20MB.');
+            if (selectedFile.size > 10 * 1024 * 1024) { // 10MB limit
+                setError('O arquivo é muito grande. O limite é de 10MB.');
                 return;
             }
             setFile(selectedFile);
@@ -27,23 +32,6 @@ export const CollectiveDocumentForm: React.FC<CollectiveDocumentFormProps> = ({ 
             }
             setError('');
         }
-    };
-
-    const uploadDocument = async (file: File): Promise<string> => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `documents/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-            .from('clio-public')
-            .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data } = supabase.storage
-            .from('clio-public')
-            .getPublicUrl(fileName);
-
-        return data.publicUrl;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -56,22 +44,16 @@ export const CollectiveDocumentForm: React.FC<CollectiveDocumentFormProps> = ({ 
             setError('Por favor, insira um nome para o documento.');
             return;
         }
-        
         setError('');
-        setIsUploading(true);
-
         try {
-            const fileDataUrl = await uploadDocument(file);
+            const fileDataUrl = await fileToBase64(file);
             onSubmit({
                 name,
                 file,
-                fileDataUrl, // Stores Supabase URL
+                fileDataUrl,
             });
         } catch (err) {
-            console.error(err);
-            setError('Erro ao fazer upload do documento.');
-        } finally {
-            setIsUploading(false);
+            setError('Não foi possível carregar o arquivo.');
         }
     };
 
@@ -86,16 +68,10 @@ export const CollectiveDocumentForm: React.FC<CollectiveDocumentFormProps> = ({ 
                     onChange={handleFileChange}
                     className="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
-                <p className="text-xs text-slate-500 mt-1">Tipos suportados: PDF, DOCX, TXT, etc. Limite de 20MB.</p>
+                <p className="text-xs text-slate-500 mt-1">Tipos suportados: PDF, DOCX, TXT, etc. Limite de 10MB.</p>
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
-            <button 
-                type="submit" 
-                disabled={isUploading}
-                className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition disabled:bg-slate-600"
-            >
-                {isUploading ? 'Enviando...' : 'Salvar Documento'}
-            </button>
+            <button type="submit" className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition">Salvar Documento</button>
         </form>
     );
 };

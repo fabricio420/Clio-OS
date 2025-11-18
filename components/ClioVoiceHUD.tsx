@@ -1,7 +1,13 @@
 import React from 'react';
 
-// Componente desativado/removido conforme solicitado.
-const ClioVoiceHUD: React.FC = () => {
+interface ClioVoiceHUDProps {
+  isOpen: boolean;
+  onClose: () => void;
+  actions: any;
+}
+
+// Este componente foi desativado conforme solicitado.
+const ClioVoiceHUD: React.FC<ClioVoiceHUDProps> = () => {
   return null;
 };
 

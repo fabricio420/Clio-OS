@@ -1,6 +1,6 @@
 import React from 'react';
 
-// Componente desativado/removido conforme solicitado.
+// Este componente foi desativado conforme solicitado.
 const AskClioApp: React.FC = () => {
     return null;
 };

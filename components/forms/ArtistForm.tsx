@@ -1,9 +1,9 @@
 
+
 import React, { useState, useEffect } from 'react';
 import type { Artist, EventInfoData } from '../../types';
 import { FormInput } from './FormElements';
 import { UploadCloudIcon, XIcon } from '../icons';
-import { supabase } from '../../supabaseClient';
 
 interface ArtistFormProps {
     onSubmit: (data: any, id?: string) => void;
@@ -11,12 +11,19 @@ interface ArtistFormProps {
     eventInfo: EventInfoData;
 }
 
+const fileToBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+});
+
 export const ArtistForm: React.FC<ArtistFormProps> = ({ onSubmit, artist, eventInfo }) => {
     const [formData, setFormData] = useState({ name: '', performanceType: '', contact: '', notes: '', instagram: '', whatsapp: '', cpf: '', rg: '' });
     const [documentImageFile, setDocumentImageFile] = useState<File | null>(null);
-    const [documentPath, setDocumentPath] = useState<string | null>(null);
+    const [documentImagePreview, setDocumentImagePreview] = useState<string | null>(null);
     const [error, setError] = useState('');
-    const [isUploading, setIsUploading] = useState(false);
     
     useEffect(() => { 
         if (artist) {
@@ -31,7 +38,7 @@ export const ArtistForm: React.FC<ArtistFormProps> = ({ onSubmit, artist, eventI
                 rg: artist.rg || '',
             });
             if (artist.documentImage) {
-                setDocumentPath(artist.documentImage);
+                setDocumentImagePreview(artist.documentImage);
             }
         }
     }, [artist]);
@@ -41,56 +48,36 @@ export const ArtistForm: React.FC<ArtistFormProps> = ({ onSubmit, artist, eventI
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                setError('A imagem é muito grande. O limite é 5MB.');
+            if (file.size > 2 * 1024 * 1024) { // 2MB limit
+                setError('A imagem é muito grande. O limite é 2MB.');
                 return;
             }
             setError('');
             setDocumentImageFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setDocumentImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
         }
     };
 
     const handleRemoveImage = () => {
         setDocumentImageFile(null);
-        setDocumentPath(null);
-    };
-
-    const uploadPrivateDoc = async (file: File): Promise<string> => {
-        const fileExt = file.name.split('.').pop();
-        // Use a random name but keep extension
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `docs/${fileName}`;
-
-        // Upload to clio-private bucket
-        const { error: uploadError } = await supabase.storage
-            .from('clio-private')
-            .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        return filePath; // We save the PATH, not the URL, for private files
+        setDocumentImagePreview(null);
     };
     
     const handleSubmit = async (e: React.FormEvent) => { 
         e.preventDefault(); 
-        setIsUploading(true);
-        setError('');
-
-        try {
-            let finalDocumentPath = documentPath;
-
-            if (documentImageFile) {
-                finalDocumentPath = await uploadPrivateDoc(documentImageFile);
-            }
-
-            const finalData = { ...formData, documentImage: finalDocumentPath || undefined };
-            onSubmit(finalData, artist?.id); 
-        } catch (err) {
-            console.error(err);
-            setError('Erro ao enviar o documento. Tente novamente.');
-        } finally {
-            setIsUploading(false);
+        let documentImageDataUrl = artist?.documentImage || undefined;
+        if (documentImageFile) {
+            documentImageDataUrl = await fileToBase64(documentImageFile);
+        } else if (!documentImagePreview) {
+             documentImageDataUrl = undefined;
         }
+
+        const finalData = { ...formData, documentImage: documentImageDataUrl };
+        onSubmit(finalData, artist?.id); 
     };
     
     return (
@@ -109,22 +96,17 @@ export const ArtistForm: React.FC<ArtistFormProps> = ({ onSubmit, artist, eventI
             <FormInput label="RG" name="rg" placeholder="00.000.000-0" value={formData.rg} onChange={handleChange} />
             
             <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Documento (RG/CPF) - Armazenamento Seguro</label>
-                {documentPath && !documentImageFile ? (
-                     <div className="flex items-center justify-between p-3 bg-slate-700 rounded-lg border border-slate-600">
-                        <span className="text-sm text-slate-300 truncate">Documento Anexado (Seguro)</span>
-                        <button type="button" onClick={handleRemoveImage} className="text-red-400 hover:text-red-300"><XIcon className="w-4 h-4" /></button>
-                    </div>
-                ) : documentImageFile ? (
-                    <div className="flex items-center justify-between p-3 bg-slate-700 rounded-lg border border-slate-600">
-                        <span className="text-sm text-lime-300 truncate">Arquivo selecionado: {documentImageFile.name}</span>
-                        <button type="button" onClick={handleRemoveImage} className="text-red-400 hover:text-red-300"><XIcon className="w-4 h-4" /></button>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Documento (Foto)</label>
+                {documentImagePreview ? (
+                     <div className="relative h-32 w-full rounded-lg overflow-hidden border border-slate-600">
+                        <img src={documentImagePreview} alt="Preview" className="w-full h-full object-contain" />
+                        <button type="button" onClick={handleRemoveImage} className="absolute top-1 right-1 bg-black/50 rounded-full p-1 text-white hover:bg-red-500"><XIcon className="w-4 h-4" /></button>
                     </div>
                 ) : (
                     <label className="h-24 border-2 border-dashed border-slate-500 rounded-lg flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:bg-slate-700/50 hover:border-sky-400">
                          <UploadCloudIcon className="w-8 h-8 mb-1" />
-                         <p className="text-xs">Clique para enviar foto do documento</p>
-                         <input type="file" onChange={handleFileChange} accept="image/*, application/pdf" className="hidden" />
+                         <p className="text-xs">Clique para enviar</p>
+                         <input type="file" onChange={handleFileChange} accept="image/*" className="hidden" />
                     </label>
                 )}
             </div>
@@ -133,13 +115,7 @@ export const ArtistForm: React.FC<ArtistFormProps> = ({ onSubmit, artist, eventI
             
             {error && <p className="text-red-400 text-sm text-center bg-red-900/50 p-2 rounded-md">{error}</p>}
 
-            <button 
-                type="submit" 
-                disabled={isUploading}
-                className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition disabled:bg-slate-600"
-            >
-                {isUploading ? 'Enviando e Salvando...' : 'Salvar Artista'}
-            </button>
+            <button type="submit" className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition">Salvar</button>
         </form>
     );
 };
