@@ -135,7 +135,7 @@ export interface TeamStatus {
   status: string;
 }
 
-export type GadgetType = 'analog_clock' | 'countdown' | 'quick_note' | 'financial_summary' | 'team_status';
+export type GadgetType = 'analog_clock' | 'countdown' | 'quick_note' | 'financial_summary' | 'team_status' | 'weather';
 
 export interface GadgetData {
     content?: string;

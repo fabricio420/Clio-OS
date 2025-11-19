@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
@@ -15,22 +15,40 @@
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
             },
+            animation: {
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            }
           },
         },
       }
     </script>
     <script>
-      // Shim for libraries that expect 'global' to exist (common in Node.js modules ported to browser)
       window.global = window;
     </script>
     <style>
+      /* Modern Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1); 
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2); 
+      }
+
       .abnt-editor {
         font-family: Arial, sans-serif;
         font-size: 12pt;
         line-height: 1.5;
         text-align: justify;
         padding: 1rem 1.5rem;
-        color: #cbd5e1; /* slate-300 */
+        color: #e2e8f0; /* slate-200 for better contrast on glass */
         white-space: pre-wrap;
       }
       .abnt-editor:focus {
@@ -38,20 +56,20 @@
       }
       .abnt-editor p {
         text-indent: 1.25cm;
-        margin-bottom: 0.5em; /* Espaçamento entre parágrafos */
+        margin-bottom: 0.5em;
       }
       .abnt-editor:empty::before {
           content: 'Comece a escrever sua nota aqui...';
-          color: #64748b; /* slate-500 */
+          color: #94a3b8;
           pointer-events: none;
       }
       .quick-note-editor:empty::before {
           content: 'Comece a escrever...';
-          color: #94a3b8; /* slate-400 */
+          color: #94a3b8; 
           pointer-events: none;
       }
       .animated-gradient {
-        background: linear-gradient(-45deg, #0f172a, #1e3a8a, #3b82f6, #22d3ee);
+        background: linear-gradient(-45deg, #020617, #1e1b4b, #172554, #0f172a);
         background-size: 400% 400%;
         animation: gradient 15s ease infinite;
       }
@@ -59,6 +77,14 @@
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
+      }
+      
+      /* Glass utility for consistency */
+      .glass-panel {
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
     </style>
   <script type="importmap">
@@ -74,7 +100,7 @@
 }
 </script>
 </head>
-  <body class="bg-slate-900 text-white overflow-hidden">
+  <body class="bg-slate-950 text-slate-100 overflow-hidden antialiased selection:bg-sky-500/30 selection:text-sky-200">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

@@ -1,12 +1,8 @@
-
-
-
 import React from 'react';
 
 export const DockAppIcon: React.FC<{ children: React.ReactNode, bgColorClasses: string }> = ({ children, bgColorClasses }) => (
-    <div className={`w-full h-full rounded-[18px] flex items-center justify-center text-white shadow-lg ${bgColorClasses}`}>
-        {/* FIX: Cast children to a ReactElement that accepts a className prop to resolve typing issue. */}
-        {React.cloneElement(children as React.ReactElement<{ className?: string }>, { className: "w-9 h-9" })}
+    <div className={`w-full h-full rounded-2xl flex items-center justify-center text-white shadow-lg ring-1 ring-white/10 ${bgColorClasses} bg-opacity-90 backdrop-blur-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-${bgColorClasses.split('-')[1]}-500/30`}>
+        {React.cloneElement(children as React.ReactElement<{ className?: string }>, { className: "w-7 h-7 drop-shadow-md" })}
     </div>
 );
 
@@ -85,6 +81,43 @@ export const ChevronRightIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export const MoonIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+    </svg>
+);
+
+export const SunIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2" />
+        <path d="M12 20v2" />
+        <path d="m4.93 4.93 1.41 1.41" />
+        <path d="m17.66 17.66 1.41 1.41" />
+        <path d="M2 12h2" />
+        <path d="M20 12h2" />
+        <path d="m6.34 17.66-1.41 1.41" />
+        <path d="m19.07 4.93-1.41 1.41" />
+    </svg>
+);
+
+export const CloudIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+    </svg>
+);
+
+export const CloudRainIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+        <path d="M16 14v6" />
+        <path d="M8 14v6" />
+        <path d="M12 16v6" />
+    </svg>
+);
+
+export const WindIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
+        <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
+        <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
     </svg>
 );
 
@@ -263,13 +296,13 @@ export const FileTextIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export const ClioAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-        <rect width="64" height="64" rx="14" fill="url(#paint0_linear_101_2)"/>
+        <rect width="64" height="64" rx="16" fill="url(#paint0_linear_101_2)"/>
         <path d="M38.75 22.5C41.5 23.1667 43.5 25.1 43.5 28C43.5 32 40.5 35.5 35.75 35.5C31 35.5 28.25 33.5 26.75 30.5" stroke="white" strokeWidth="4" strokeLinecap="round"/>
         <path d="M26 43C28.1667 42.1667 31.6 40.3 32.5 37.5" stroke="white" strokeWidth="4" strokeLinecap="round"/>
         <defs>
         <linearGradient id="paint0_linear_101_2" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#2563EB"/>
-        <stop offset="1" stopColor="#3B82F6"/>
+        <stop stopColor="#3B82F6"/>
+        <stop offset="1" stopColor="#1D4ED8"/>
         </linearGradient>
         </defs>
     </svg>

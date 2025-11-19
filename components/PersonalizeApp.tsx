@@ -1,7 +1,6 @@
 
-
 import React, { useRef, useState, useMemo } from 'react';
-import { ImageIcon, StickyNoteIcon, UploadCloudIcon, BarChartIcon, UsersIcon, RadioIcon, PowerIcon, GlobeIcon, DatabaseIcon } from './icons';
+import { ImageIcon, StickyNoteIcon, UploadCloudIcon, BarChartIcon, UsersIcon, RadioIcon, PowerIcon, GlobeIcon, DatabaseIcon, RefreshCwIcon, CloudIcon } from './icons';
 import type { GadgetType, MediaItem, PhotoAlbum, CollectiveDocument } from '../types';
 
 interface PersonalizeAppProps {
@@ -127,7 +126,7 @@ const PersonalizeApp: React.FC<PersonalizeAppProps> = ({ currentWallpaper, onSet
                     <div className="p-8">
                         <h2 className="text-3xl font-bold text-lime-400 mb-2">Papel de Parede</h2>
                         <p className="text-slate-400 mb-6 max-w-2xl">
-                            Altere a aparência da sua área de trabalho. Escolha uma imagem da galeria, envie a sua própria ou restaure para o padrão.
+                            Altere a aparência da sua área de trabalho. Escolha uma imagem da galeria para fixar ou ative o modo aleatório.
                         </p>
 
                         <h3 className="text-lg font-semibold text-white mb-3">Pré-visualização</h3>
@@ -171,9 +170,10 @@ const PersonalizeApp: React.FC<PersonalizeAppProps> = ({ currentWallpaper, onSet
                             </button>
                             <button
                                 onClick={onResetWallpaper}
-                                className="flex-1 py-3 px-6 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-md transition"
+                                className="flex-1 flex items-center justify-center gap-2 py-3 px-6 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-md transition"
                             >
-                                Restaurar Padrão
+                                <RefreshCwIcon className="h-5 w-5" />
+                                Ativar Modo Aleatório
                             </button>
                         </div>
                         <p className="text-xs text-slate-500 mt-4 max-w-2xl">Tamanho máximo do arquivo: 5MB.</p>
@@ -222,6 +222,12 @@ const PersonalizeApp: React.FC<PersonalizeAppProps> = ({ currentWallpaper, onSet
                                 <div className="p-4 bg-teal-500/20 w-full h-full flex flex-col items-center justify-center">
                                     <UsersIcon className="w-10 h-10 text-teal-400 mb-2"/>
                                     <p className="text-xs text-slate-400 text-center">Veja o que a equipe está fazendo.</p>
+                                </div>
+                            </GadgetPreviewCard>
+                            <GadgetPreviewCard title="Clima do Evento" onAdd={() => handleAddGadget('weather')}>
+                                <div className="p-4 bg-blue-500/20 w-full h-full flex flex-col items-center justify-center">
+                                    <CloudIcon className="w-10 h-10 text-blue-400 mb-2"/>
+                                    <p className="text-xs text-slate-400 text-center">Previsão e alertas.</p>
                                 </div>
                             </GadgetPreviewCard>
                         </div>

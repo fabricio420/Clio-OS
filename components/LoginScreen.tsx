@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ClioAppIcon, MailIcon, LockIcon, UserIcon } from './icons';
 
@@ -11,12 +10,12 @@ interface LoginScreenProps {
 
 const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement> & {icon: React.ReactNode}> = ({icon, ...props}) => (
     <div className="relative">
-        <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+        <span className="absolute inset-y-0 left-0 flex items-center pl-4">
             {icon}
         </span>
         <input 
             {...props}
-            className="w-full bg-slate-900/50 text-white p-3 pl-10 rounded-lg border border-slate-600 focus:ring-2 focus:ring-lime-400 focus:border-lime-400 transition placeholder:text-slate-400"
+            className="w-full bg-black/40 text-white p-3.5 pl-12 rounded-xl border border-white/10 focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition placeholder:text-slate-500 backdrop-blur-sm"
         />
     </div>
 );
@@ -91,9 +90,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
               setError(message);
           } else {
               setSuccessMessage(message);
-              // Limpar campos sensíveis
               setPassword('');
-              // Transição automática após sucesso
               setTimeout(() => {
                   switchView('login');
               }, 2000);
@@ -110,8 +107,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
       setTimeout(() => {
           setView(newView);
           setError('');
-          setSuccessMessage(''); // Limpa mensagem de sucesso ao trocar manualmente
-          // Mantemos o email preenchido se o usuário acabou de cadastrar para facilitar o login
+          setSuccessMessage('');
           if (newView === 'signup') {
             setName('');
             setEmail('');
@@ -126,23 +122,23 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
         className={`flex items-center justify-center h-screen w-screen p-4 relative ${!loginWallpaper ? 'animated-gradient' : 'bg-cover bg-center'}`}
         style={loginWallpaper ? { backgroundImage: `url(${loginWallpaper})` } : {}}
     >
-      {loginWallpaper && <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>}
-      <div className="relative w-full max-w-sm mx-auto">
+      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"></div>
+      
+      <div className="relative w-full max-w-md mx-auto z-10">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold text-white" style={{ textShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
+          <h1 className="text-6xl font-bold text-white tracking-tight drop-shadow-lg" style={{ textShadow: '0 0 30px rgba(14, 165, 233, 0.3)' }}>
             Clio OS
           </h1>
-          <p className="text-slate-300 mt-2 text-lg">O sistema operacional para coletivos culturais</p>
+          <p className="text-sky-200/80 mt-3 text-lg font-medium tracking-wide">Sistema Operacional Cultural</p>
         </div>
 
-        <div className="bg-black/20 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-white/20">
-            <div className={`transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+        <div className="bg-slate-900/60 backdrop-blur-2xl p-8 md:p-10 rounded-[2rem] shadow-2xl border border-white/10 ring-1 ring-white/5">
+            <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                 {view === 'login' ? (
-                    <form onSubmit={handleLoginSubmit} className="space-y-4">
+                    <form onSubmit={handleLoginSubmit} className="space-y-5">
                         
-                        {/* Se viemos de um cadastro com sucesso, mostramos aqui */}
                         {successMessage && (
-                            <div className="bg-lime-500/20 border border-lime-500 text-lime-200 p-3 rounded-lg text-sm text-center mb-4">
+                            <div className="bg-lime-500/20 border border-lime-500/50 text-lime-200 p-3 rounded-xl text-sm text-center mb-4 font-medium">
                                 {successMessage}
                             </div>
                         )}
@@ -150,60 +146,60 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
                         <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@coletivo.com" disabled={isLoading} />
                         <InputField icon={<LockIcon className="h-5 w-5 text-slate-400"/>} name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" disabled={isLoading} />
                         
-                        <div className="flex items-center">
-                        <input id="remember-me" name="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-slate-500 bg-slate-700 text-blue-500 focus:ring-blue-500" />
-                        <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-300">Lembrar-me</label>
+                        <div className="flex items-center pl-1">
+                            <input id="remember-me" name="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
+                            <label htmlFor="remember-me" className="ml-3 block text-sm text-slate-300">Manter conectado</label>
                         </div>
                         
-                        {error && <p className="text-red-400 text-sm text-center bg-red-900/50 p-2 rounded-md">{error}</p>}
+                        {error && <p className="text-red-300 text-sm text-center bg-red-500/10 border border-red-500/20 p-3 rounded-xl">{error}</p>}
 
-                        <div className="space-y-4 pt-2">
-                            <button type="submit" disabled={isLoading} className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-sky-500/30 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
-                                {isLoading ? 'Entrando...' : 'Iniciar Sessão'}
+                        <div className="space-y-4 pt-3">
+                            <button type="submit" disabled={isLoading} className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                                {isLoading ? 'Acessando...' : 'Entrar'}
                             </button>
-                            <div className="relative flex items-center">
-                                <div className="flex-grow border-t border-slate-600"></div>
-                                <span className="flex-shrink mx-4 text-xs text-slate-400">OU</span>
-                                <div className="flex-grow border-t border-slate-600"></div>
+                            <div className="relative flex items-center py-2">
+                                <div className="flex-grow border-t border-white/10"></div>
+                                <span className="flex-shrink mx-4 text-xs text-slate-500 uppercase tracking-widest">ou</span>
+                                <div className="flex-grow border-t border-white/10"></div>
                             </div>
                             <button
                                 type="button"
                                 onClick={onGuestLogin}
                                 disabled={isLoading}
-                                className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-all shadow-lg disabled:opacity-50"
+                                className="w-full py-3.5 px-4 bg-white/5 hover:bg-white/10 border border-white/5 text-slate-200 font-semibold rounded-xl transition-all disabled:opacity-50"
                             >
-                                Entrar como Deusa Clio
+                                Entrar como Visitante
                             </button>
                         </div>
-                        <p className="text-center text-sm text-slate-400 pt-2">
-                            Não tem uma conta?{' '}
-                            <button type="button" onClick={() => switchView('signup')} className="font-semibold text-lime-400 hover:text-lime-300">Crie uma agora</button>
+                        <p className="text-center text-sm text-slate-400 pt-4">
+                            Não tem acesso?{' '}
+                            <button type="button" onClick={() => switchView('signup')} className="font-semibold text-sky-400 hover:text-sky-300 transition-colors">Cadastre-se</button>
                         </p>
                     </form>
                 ) : (
-                    <form onSubmit={handleSignUpSubmit} className="space-y-4">
-                        <h2 className="text-xl font-bold text-center text-white">Criar Nova Conta</h2>
+                    <form onSubmit={handleSignUpSubmit} className="space-y-5">
+                        <h2 className="text-2xl font-bold text-center text-white mb-6">Nova Conta</h2>
                         
                         {successMessage && (
-                            <div className="bg-lime-500/20 border border-lime-500 text-lime-200 p-3 rounded-lg text-sm text-center mb-4 animate-pulse">
+                            <div className="bg-lime-500/20 border border-lime-500/50 text-lime-200 p-3 rounded-xl text-sm text-center mb-4 font-medium">
                                 {successMessage}
                             </div>
                         )}
 
-                        <InputField icon={<UserIcon className="h-5 w-5 text-slate-400"/>} name="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Maria da Silva" disabled={isLoading} />
-                        <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email-signup" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maria@coletivo.com" disabled={isLoading} />
-                        <InputField icon={<LockIcon className="h-5 w-5 text-slate-400"/>} name="password-signup" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" disabled={isLoading} />
+                        <InputField icon={<UserIcon className="h-5 w-5 text-slate-400"/>} name="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu Nome" disabled={isLoading} />
+                        <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email-signup" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" disabled={isLoading} />
+                        <InputField icon={<LockIcon className="h-5 w-5 text-slate-400"/>} name="password-signup" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha (min. 6 chars)" disabled={isLoading} />
                         
-                        {error && <p className="text-red-400 text-sm text-center bg-red-900/50 p-2 rounded-md">{error}</p>}
+                        {error && <p className="text-red-300 text-sm text-center bg-red-500/10 border border-red-500/20 p-3 rounded-xl">{error}</p>}
                         
-                        <div>
-                            <button type="submit" disabled={isLoading || !!successMessage} className="w-full py-3 px-4 bg-gradient-to-r from-lime-600 to-green-500 hover:from-lime-700 hover:to-green-600 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-lime-500/30 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
-                                {isLoading ? 'Criando conta...' : successMessage ? 'Sucesso!' : 'Cadastrar'}
+                        <div className="pt-2">
+                            <button type="submit" disabled={isLoading || !!successMessage} className="w-full py-3.5 px-4 bg-gradient-to-r from-lime-600 to-emerald-500 hover:from-lime-500 hover:to-emerald-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-lime-500/20 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isLoading ? 'Criando...' : successMessage ? 'Sucesso!' : 'Criar Conta'}
                             </button>
                         </div>
-                        <p className="text-center text-sm text-slate-400 pt-2">
-                            Já tem uma conta?{' '}
-                            <button type="button" onClick={() => switchView('login')} className="font-semibold text-lime-400 hover:text-lime-300">Faça o login</button>
+                        <p className="text-center text-sm text-slate-400 pt-4">
+                            Já possui conta?{' '}
+                            <button type="button" onClick={() => switchView('login')} className="font-semibold text-sky-400 hover:text-sky-300 transition-colors">Fazer Login</button>
                         </p>
                     </form>
                 )}

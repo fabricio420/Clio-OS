@@ -77,23 +77,23 @@ const AppWindow: React.FC<AppWindowProps> = ({ title, isOpen, onClose, onMinimiz
     return (
         <div
             ref={windowRef}
-            className={`fixed top-0 left-0 w-[95vw] h-[90vh] max-w-7xl bg-slate-800 rounded-lg shadow-2xl flex flex-col border border-white/10 z-20 transition-opacity duration-200 ${hasBeenPositioned ? 'opacity-100' : 'opacity-0'}`}
+            className={`fixed top-0 left-0 w-[95vw] h-[90vh] max-w-7xl bg-slate-900/85 backdrop-blur-2xl rounded-2xl shadow-2xl flex flex-col border border-white/10 z-20 transition-opacity duration-200 ${hasBeenPositioned ? 'opacity-100' : 'opacity-0'}`}
             style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
         >
             <div
-                className={`h-9 bg-slate-700/80 backdrop-blur-sm flex-shrink-0 flex items-center justify-between px-3 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                className={`h-11 bg-white/5 border-b border-white/5 rounded-t-2xl flex-shrink-0 flex items-center justify-between px-4 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                 onMouseDown={handleMouseDown}
             >
-                <div className="flex items-center gap-2">
-                    <button onClick={onClose} className="w-3.5 h-3.5 bg-red-500 rounded-full hover:bg-red-600 focus:outline-none"></button>
-                    <button onClick={onMinimize} className="w-3.5 h-3.5 bg-yellow-500 rounded-full hover:bg-yellow-600 focus:outline-none"></button>
-                    <div className="w-3.5 h-3.5 bg-green-500 rounded-full opacity-50 cursor-not-allowed"></div>
+                <div className="flex items-center gap-2 group">
+                    <button onClick={onClose} className="w-3.5 h-3.5 bg-red-500/80 rounded-full hover:bg-red-500 focus:outline-none transition-colors shadow-inner"></button>
+                    <button onClick={onMinimize} className="w-3.5 h-3.5 bg-yellow-500/80 rounded-full hover:bg-yellow-500 focus:outline-none transition-colors shadow-inner"></button>
+                    <div className="w-3.5 h-3.5 bg-green-500/80 rounded-full shadow-inner"></div>
                 </div>
-                <span className="text-sm text-white/80 font-medium select-none">{title}</span>
+                <span className="text-sm text-white/70 font-medium select-none tracking-wide">{title}</span>
                 <div className="w-16"></div>
             </div>
 
-            <div className="flex-grow bg-slate-800 relative overflow-y-auto">
+            <div className="flex-grow relative overflow-y-auto rounded-b-2xl">
                  {children}
             </div>
         </div>

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus, VoteOption, AuditLog } from './types';
 import { TaskStatus as TaskStatusEnum, InventoryStatus } from './types';
@@ -18,6 +17,7 @@ import CountdownGadget from './components/gadgets/CountdownGadget';
 import QuickNoteGadget from './components/gadgets/QuickNoteGadget';
 import FinancialSummaryGadget from './components/gadgets/FinancialSummaryGadget';
 import TeamStatusGadget from './components/gadgets/TeamStatusGadget';
+import WeatherGadget from './components/gadgets/WeatherGadget';
 import Dashboard from './components/Dashboard';
 import KanbanBoard from './components/kanban/KanbanBoard';
 import Schedule from './components/Schedule';
@@ -47,7 +47,7 @@ import { MeetingMinuteForm } from './components/forms/MeetingMinuteForm';
 import { VotingTopicForm } from './components/forms/VotingTopicForm';
 import { TransactionForm } from './components/forms/TransactionForm';
 import { FinancialProjectForm } from './components/forms/FinancialProjectForm';
-import { ChevronLeftIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, MenuIcon, BarChartIcon, StickyNoteIcon, XIcon, SearchIcon } from './components/icons';
+import { ChevronLeftIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, MenuIcon, BarChartIcon, StickyNoteIcon, XIcon, SearchIcon, CloudIcon } from './components/icons';
 import { AppContext } from './contexts/AppContext';
 import { supabase } from './supabaseClient';
 import Toast, { ToastType } from './components/Toast';
@@ -305,6 +305,7 @@ const GadgetSelectorModal: React.FC<{ isOpen: boolean, onClose: () => void, onSe
          { type: 'quick_note', label: 'Nota', icon: <StickyNoteIcon className="w-6 h-6 text-yellow-400" /> },
          { type: 'financial_summary', label: 'Finanças', icon: <BarChartIcon className="w-6 h-6 text-emerald-400" /> },
          { type: 'team_status', label: 'Equipe', icon: <UsersIcon className="w-6 h-6 text-teal-400" /> },
+         { type: 'weather', label: 'Clima', icon: <CloudIcon className="w-6 h-6 text-blue-400" /> },
     ];
 
     return (
@@ -864,7 +865,7 @@ const App: React.FC = () => {
                         id: p.id,
                         dataUrl: p.data_url,
                         caption: p.caption,
-                        fileName: p.file_name
+                        file_name: p.file_name
                     }))
                 }));
                 updateUserState('photoAlbums', mapped);
@@ -1308,6 +1309,12 @@ const App: React.FC = () => {
         const randomIndex = Math.floor(Math.random() * wallpapers.length);
         return wallpapers[randomIndex].url;
     }, [loggedInUser]);
+    
+    // Generate a random wallpaper for the session if the user hasn't selected one
+    const sessionRandomWallpaper = useMemo(() => {
+        const randomIndex = Math.floor(Math.random() * wallpapers.length);
+        return wallpapers[randomIndex].url;
+    }, []);
 
     // --- GENERIC STATE UPDATE HANDLER (Local) ---
     const updateUserState = (key: keyof typeof MOCK_INITIAL_DATA, value: any) => {
@@ -1498,7 +1505,7 @@ const App: React.FC = () => {
         { name: 'collab_clio', title: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon>, component: <CollabClioApp onOpenModal={openModal} currentUser={loggedInUser} {...userState} handleDeleteCollectiveDocument={handleDeleteCollectiveDocument} handleDeleteMeetingMinute={handleDeleteMeetingMinute} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} /> },
         { name: 'browser', title: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon>, component: <BrowserApp /> },
         { name: 'profile', title: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon>, component: <ProfileApp currentUser={loggedInUser} onSaveProfile={handleSaveProfile} onChangePassword={handleChangePassword} /> },
-        { name: 'personalize', title: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon>, component: <PersonalizeApp currentWallpaper={wallpaperImage || DEFAULT_WALLPAPER} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} wallpapers={wallpapers} mediaItems={mediaItems} photoAlbums={photoAlbums} collectiveDocuments={collectiveDocuments} /> },
+        { name: 'personalize', title: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon>, component: <PersonalizeApp currentWallpaper={wallpaperImage || sessionRandomWallpaper} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} wallpapers={wallpapers} mediaItems={mediaItems} photoAlbums={photoAlbums} collectiveDocuments={collectiveDocuments} /> },
     ];
     
     const appComponents = appConfig.reduce((acc, app) => ({ ...acc, [app.name]: app.component }), {} as Record<AppName, React.ReactNode>);
@@ -1539,6 +1546,7 @@ const App: React.FC = () => {
                     {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
                     {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
                     {gadget.type === 'team_status' && <TeamStatusGadget />}
+                    {gadget.type === 'weather' && <WeatherGadget />}
                  </div>
              </MobileGadgetWrapper>
         )
@@ -1548,7 +1556,7 @@ const App: React.FC = () => {
         <AppContext.Provider value={contextValue}>
             <div 
                 className="h-[100dvh] w-screen font-sans bg-cover bg-center overflow-hidden"
-                style={{ backgroundImage: `url(${wallpaperImage || DEFAULT_WALLPAPER})` }}
+                style={{ backgroundImage: `url(${wallpaperImage || sessionRandomWallpaper})` }}
             >
                  <div className="absolute inset-0 bg-slate-900/30"></div>
                  
@@ -1567,7 +1575,7 @@ const App: React.FC = () => {
                 {isMobile ? (
                     <div className="h-full w-full overflow-hidden flex flex-col relative bg-slate-900">
                         {/* Static Background for Mobile */}
-                        <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${wallpaperImage || DEFAULT_WALLPAPER})` }}></div>
+                        <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${wallpaperImage || sessionRandomWallpaper})` }}></div>
 
                         <div className="relative z-10 flex flex-col h-full">
                            {activeMobileApp ? (
@@ -1698,6 +1706,7 @@ const App: React.FC = () => {
                                 {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
                                 {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
                                 {gadget.type === 'team_status' && <TeamStatusGadget />}
+                                {gadget.type === 'weather' && <WeatherGadget />}
                             </GadgetWrapper>
                         ))}
 

@@ -18,7 +18,6 @@ const GadgetWrapper: React.FC<GadgetWrapperProps> = ({ gadget, children, onClose
     const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
         const ignoredTags = ['INPUT', 'TEXTAREA', 'SELECT'];
-        // Do not start dragging if clicking an interactive element or an editable area
         if (ignoredTags.includes(target.tagName) || target.closest('button') || target.isContentEditable) {
             return;
         }
@@ -36,7 +35,6 @@ const GadgetWrapper: React.FC<GadgetWrapperProps> = ({ gadget, children, onClose
         const newX = e.clientX - dragOffset.current.x;
         const newY = e.clientY - dragOffset.current.y;
 
-        // Bounding box logic
         const parentRect = wrapperRef.current.parentElement?.getBoundingClientRect();
         if (parentRect) {
             const elRect = wrapperRef.current.getBoundingClientRect();
@@ -50,7 +48,6 @@ const GadgetWrapper: React.FC<GadgetWrapperProps> = ({ gadget, children, onClose
 
     const handleMouseUp = useCallback(() => {
         if (isDragging) {
-             // We need to read the final position from the state for the callback
             setPosition(currentPosition => {
                 onPositionChange(gadget.id, currentPosition);
                 return currentPosition;
@@ -81,13 +78,13 @@ const GadgetWrapper: React.FC<GadgetWrapperProps> = ({ gadget, children, onClose
     return (
         <div
             ref={wrapperRef}
-            className={`fixed top-0 left-0 bg-slate-800/60 backdrop-blur-lg rounded-xl shadow-2xl border border-white/10 text-white transition-all duration-300 ease-out z-10 group ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className={`fixed top-0 left-0 bg-slate-900/60 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 text-white transition-all duration-200 ease-out z-10 group ring-1 ring-black/20 ${isDragging ? 'cursor-grabbing scale-[1.02]' : 'cursor-grab'}`}
             style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
             onMouseDown={handleMouseDown}
         >
             <button
                 onClick={() => onClose(gadget.id)}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                className="absolute -top-3 -right-3 w-7 h-7 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg hover:bg-red-600 z-20 hover:scale-110"
                 aria-label="Fechar gadget"
             >
                 <XIcon className="w-4 h-4" />
