@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
     PowerIcon, WalletIcon, BrushIcon, BookMarkedIcon, HomeIcon,
@@ -14,18 +13,18 @@ interface DockIconProps {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
+  onHover: (label: string | null) => void;
   disabled?: boolean;
 }
 
-const DockIcon: React.FC<DockIconProps> = ({ icon, label, onClick, disabled }) => (
+const DockIcon: React.FC<DockIconProps> = ({ icon, label, onClick, onHover, disabled }) => (
     <div className="relative flex flex-col items-center group flex-shrink-0">
-        <span className="absolute bottom-full mb-2 px-2 py-1 text-xs text-white bg-black/70 rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-            {label}
-        </span>
         <button
             onClick={onClick}
+            onMouseEnter={() => onHover(label)}
+            onMouseLeave={() => onHover(null)}
             disabled={disabled}
-            className="w-12 h-12 md:w-16 md:h-16 flex items-center justify-center transition-all duration-200 ease-out transform group-hover:-translate-y-2 group-hover:scale-110 disabled:opacity-50 disabled:hover:transform-none"
+            className="w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-200 ease-out transform group-hover:-translate-y-2 group-hover:scale-110 disabled:opacity-50 disabled:hover:transform-none"
             aria-label={label}
         >
             {icon}
@@ -51,7 +50,9 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
     const [time, setTime] = useState(new Date());
     const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [hoveredAppLabel, setHoveredAppLabel] = useState<string | null>(null);
     const userMenuRef = useRef<HTMLDivElement>(null);
+    const dockRef = useRef<HTMLElement>(null);
 
     useEffect(() => {
         const timer = setInterval(() => setTime(new Date()), 1000 * 60); // update every minute
@@ -70,6 +71,20 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, [userMenuRef]);
+
+    // Horizontal Scroll on Mouse Wheel for Dock
+    useEffect(() => {
+        const dockElement = dockRef.current;
+        if (dockElement) {
+            const onWheel = (e: WheelEvent) => {
+                if (e.deltaY === 0) return;
+                e.preventDefault();
+                dockElement.scrollLeft += e.deltaY;
+            };
+            dockElement.addEventListener('wheel', onWheel, { passive: false });
+            return () => dockElement.removeEventListener('wheel', onWheel);
+        }
+    }, []);
 
     const formattedTime = time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 
@@ -172,12 +187,29 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
             {/* Empty Desktop Area */}
             <main className="flex-1 pointer-events-none"></main>
 
+            {/* Floating App Label */}
+            <div className="flex justify-center pb-2 z-30 pointer-events-none">
+                <div 
+                    className={`
+                        px-4 py-1.5 bg-slate-800/80 text-white text-sm font-medium rounded-full 
+                        backdrop-blur-md border border-white/10 shadow-lg
+                        transition-all duration-200 transform 
+                        ${hoveredAppLabel ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'}
+                    `}
+                >
+                    {hoveredAppLabel || '...'}
+                </div>
+            </div>
+
             {/* Dock */}
-            <footer className="w-full flex justify-center pb-2 z-20 px-2">
-                <nav className="flex items-end justify-start md:justify-center gap-1 md:gap-2 h-16 md:h-20 p-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl max-w-[98vw] overflow-x-auto no-scrollbar">
+            <footer className="w-full flex justify-center pb-2 z-20 px-2 pointer-events-none">
+                <nav 
+                    ref={dockRef}
+                    className="pointer-events-auto flex items-end justify-start lg:justify-center gap-1 sm:gap-2 h-16 sm:h-20 lg:h-24 p-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl max-w-[98vw] overflow-x-auto no-scrollbar scroll-smooth"
+                >
                     {dockApps.map((app, index) => {
                         if ('type' in app && app.type === 'separator') {
-                            return <div key={`sep-${index}`} className="h-8 md:h-12 w-px bg-white/20 self-center flex-shrink-0 mx-1" />;
+                            return <div key={`sep-${index}`} className="h-8 sm:h-12 w-px bg-white/20 self-center flex-shrink-0 mx-1" />;
                         }
                         const { id, label, icon, disabled } = app as { id: AppName, label: string, icon: React.ReactNode, disabled?: boolean };
                         return (
@@ -187,6 +219,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
                                 label={label}
                                 disabled={disabled}
                                 onClick={() => !disabled && onAppClick(id)}
+                                onHover={setHoveredAppLabel}
                              />
                         )
                     })}

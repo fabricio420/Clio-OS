@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, memo, useRef, useEffect } from 'react';
 import type { FinancialProject, Transaction, ModalView, TransactionPeriod, Member } from '../types';
 import { PlusIcon, ChevronLeftIcon, MoreVerticalIcon, DownloadIcon, BarChartIcon, WalletIcon, FileTextIcon, PrintIcon, UsersIcon, CheckSquareIcon, SparklesIcon } from './icons';

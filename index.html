@@ -19,6 +19,10 @@
         },
       }
     </script>
+    <script>
+      // Shim for libraries that expect 'global' to exist (common in Node.js modules ported to browser)
+      window.global = window;
+    </script>
     <style>
       .abnt-editor {
         font-family: Arial, sans-serif;
@@ -63,8 +67,8 @@
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
-    "jspdf": "https://cdn.skypack.dev/jspdf",
-    "html2canvas": "https://cdn.skypack.dev/html2canvas",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "html2canvas": "https://esm.sh/html2canvas@1.4.1",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
   }
 }

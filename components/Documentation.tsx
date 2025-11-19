@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { HomeIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, MenuIcon, SparklesIcon } from './icons';
+import { HomeIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, MenuIcon, SparklesIcon, LifeBuoyIcon } from './icons';
 
 const DocSection: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
   <section className="bg-slate-900 p-6 rounded-lg shadow-md mb-8 border-t border-lime-400">
@@ -142,32 +142,32 @@ const sections = [
   },
   {
     id: 'collab_clio',
-    title: 'Collab Clio (Governança)',
+    title: 'Collab Clio (Governança & Memória)',
     icon: <BriefcaseIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'governança, atas, votação, democracia, documentos, estatuto',
+    keywords: 'governança, atas, votação, democracia, documentos, estatuto, auditoria, log',
     content: (
       <>
         <p>Ferramentas para uma gestão horizontal, transparente e democrática.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Votações Digitais:</strong> Tome decisões difíceis de forma justa. Crie enquetes sobre temas do coletivo e registre os votos de cada membro. O sistema calcula e arquiva o resultado.</li>
-          <li><strong>Memória Institucional (Atas):</strong> Registre o que foi decidido nas reuniões. Pautas, presentes e encaminhamentos ficam salvos para consulta futura, acabando com o "disse me disse".</li>
-          <li><strong>Acervo de Documentos:</strong> Centralize editais, estatutos, planilhas mestras e contratos em um local seguro e acessível a todos.</li>
+          <li><strong>Votações Digitais:</strong> Tome decisões difíceis de forma justa. Crie enquetes, acompanhe o voto da maioria e encerre votações para registrar o resultado final.</li>
+          <li><strong>Memória Institucional (Auditoria):</strong> A aba "Memória" registra automaticamente quem fez o quê no sistema (criou tarefa, apagou documento, etc.), garantindo transparência total.</li>
+          <li><strong>Atas de Reunião:</strong> Registre pautas e decisões. O sistema vincula os participantes presentes para facilitar a conferência de quórum.</li>
         </ul>
       </>
     )
   },
   {
     id: 'finances',
-    title: 'Finanças & Transparência',
+    title: 'Finanças & Contribuições',
     icon: <WalletIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'dinheiro, caixa, orçamento, gastos, receitas, projetos, csv',
+    keywords: 'dinheiro, caixa, orçamento, gastos, receitas, projetos, csv, mensalidade, contribuição',
     content: (
       <>
-        <p>Profissionalize a gestão da grana. Controle rigoroso para garantir a sustentabilidade do projeto.</p>
+        <p>Gestão profissional dos recursos do coletivo.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Gestão por Projetos (Caixas):</strong> Crie centros de custo separados (ex: "Verba Edital", "Bar do Sarau", "Caixinha Colaborativa") para não misturar as contas.</li>
-          <li><strong>Fluxo de Caixa:</strong> Lance cada centavo que entra e sai. Categorize gastos (Transporte, Cachê, Divulgação) para gerar gráficos automáticos.</li>
-          <li><strong>Prestação de Contas:</strong> Filtre extratos por período e exporte tudo para planilhas (CSV) com um clique, facilitando relatórios para editais.</li>
+          <li><strong>Projetos & Caixas:</strong> Separe o dinheiro por projeto (ex: "Edital 2024", "Bar do Evento") para não misturar as contas.</li>
+          <li><strong>Gestão de Contribuições:</strong> Acompanhe visualmente quem já pagou a mensalidade ou contribuição voluntária do mês na aba "Contribuições".</li>
+          <li><strong>Relatórios:</strong> Gere PDFs automáticos de prestação de contas ou exporte tabelas CSV para planilhas externas.</li>
         </ul>
       </>
     )
@@ -250,15 +250,16 @@ const sections = [
   },
   {
     id: 'personalize',
-    title: 'Personalização & Gadgets',
+    title: 'Personalização & Sistema',
     icon: <BrushIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'customização, wallpaper, widgets, área de trabalho',
+    keywords: 'customização, wallpaper, widgets, área de trabalho, armazenamento, disco',
     content: (
       <>
-        <p>O Clio OS é seu. Deixe-o com a cara do seu coletivo.</p>
+        <p>Gerencie a aparência e a saúde técnica do seu Clio OS.</p>
         <ul className="list-disc pl-5 space-y-2">
           <li><strong>Identidade Visual:</strong> Troque o papel de parede por fotos do seu evento ou artes personalizadas.</li>
-          <li><strong>Gadgets Produtivos:</strong> Adicione widgets flutuantes na área de trabalho: Relógio, Contagem Regressiva, Post-its, Resumo Financeiro e Status da Equipe.</li>
+          <li><strong>Gadgets Produtivos:</strong> Adicione widgets flutuantes na área de trabalho: Relógio, Contagem Regressiva, Post-its e Resumos.</li>
+          <li><strong>Monitoramento de Armazenamento:</strong> Na aba "Sistema" do app Personalizar, verifique quanto espaço o coletivo está usando na nuvem para não estourar a cota.</li>
         </ul>
       </>
     )
@@ -291,15 +292,32 @@ const sections = [
   },
   {
     id: 'mobile',
-    title: 'Clio Mobile',
+    title: 'Clio Mobile & Gestos',
     icon: <MenuIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'celular, smartphone, app, touch',
+    keywords: 'celular, smartphone, app, touch, swipe, gestos',
     content: (
       <>
-        <p>Toda a potência do Clio OS, otimizada para a tela do seu celular.</p>
+        <p>O Clio OS foi desenhado para ser usado com uma mão só no celular, através de gestos intuitivos.</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Interface Touch:</strong> Gestos intuitivos de deslizar para acessar o menu de apps (gaveta) e o centro de controle.</li>
-          <li><strong>Widgets Móveis:</strong> Organize seus gadgets em páginas deslizantes na tela inicial do celular.</li>
+          <li><strong>Navegação Lateral:</strong> Deslize para a direita ou esquerda na tela inicial para alternar entre páginas de gadgets.</li>
+          <li><strong>Centro de Controle:</strong> Deslize de baixo para cima (swipe up) no meio da tela para ver o calendário rápido e notificações.</li>
+          <li><strong>Gaveta de Apps:</strong> O botão central do menu abre todos os apps. Deslize de cima para baixo na gaveta para fechá-la rapidamente.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: 'support',
+    title: 'Suporte & Ajuda',
+    icon: <LifeBuoyIcon className="h-6 w-6 text-red-400" />,
+    keywords: 'ajuda, suporte, erro, bug, contato',
+    content: (
+      <>
+        <p>Encontrou um bug ou precisa de ajuda?</p>
+        <ul className="list-disc pl-5 space-y-2">
+            <li><strong>Erros de Carregamento:</strong> Se o app não carregar, tente atualizar a página (F5). Limpar o cache do navegador também pode ajudar.</li>
+            <li><strong>Dados não Salvando:</strong> Verifique sua conexão com a internet. O ícone de "Nuvem" no topo da tela deve estar verde.</li>
+            <li><strong>Fale Conosco:</strong> Entre em contato com o administrador do sistema ou reporte issues no repositório do projeto.</li>
         </ul>
       </>
     )
