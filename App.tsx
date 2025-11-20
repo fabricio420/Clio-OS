@@ -517,10 +517,6 @@ const App: React.FC = () => {
                 .eq('id', userId)
                 .single();
             
-            if (error && error.code !== 'PGRST116') {
-                console.error('Error fetching profile:', error);
-            }
-
             if (data) {
                 const user: Member = {
                     id: data.id,
@@ -530,12 +526,10 @@ const App: React.FC = () => {
                     avatar: data.avatar || DEFAULT_AVATAR
                 };
                 setLoggedInUser(user);
-                // Load generic local data for other components (legacy support)
                 loadUserData(email);
-                // Fetch all profiles to populate members list
                 fetchAllProfiles();
             } else {
-                 // Profile doesn't exist, create one based on Auth user
+                 // Profile doesn't exist in DB (maybe signed up before table existed), create it now
                  const newUser: Member = {
                     id: userId,
                     email: email,
@@ -543,8 +537,22 @@ const App: React.FC = () => {
                     role: 'Membro',
                     avatar: DEFAULT_AVATAR
                 };
-                 setLoggedInUser(newUser);
-                 loadUserData(email);
+                 
+                 const { error: insertError } = await supabase.from('profiles').insert([{ 
+                     id: userId, 
+                     name: newUser.name, 
+                     email: newUser.email, 
+                     role: newUser.role, 
+                     avatar: newUser.avatar 
+                 }]);
+
+                 if (!insertError) {
+                     setLoggedInUser(newUser);
+                     loadUserData(email);
+                     fetchAllProfiles();
+                 } else {
+                     console.error("Error auto-creating profile:", insertError);
+                 }
             }
         } catch (err) {
             console.error(err);
@@ -1530,7 +1538,8 @@ const App: React.FC = () => {
         tasks,
         schedule,
         inventoryItems,
-        collectiveDocuments
+        collectiveDocuments,
+        auditLogs // Added this
     };
 
     // Mobile Gadget Rendering Logic
@@ -1588,7 +1597,7 @@ const App: React.FC = () => {
                                     <h1 className="font-bold text-md text-white truncate max-w-[50%]">{appConfig.find(a => a.name === activeMobileApp)?.title}</h1>
                                     <div className="w-16"></div> {/* Spacer */}
                                 </header>
-                                <main className="flex-1 overflow-y-auto bg-slate-800/70 backdrop-blur-lg pb-safe">
+                                <main className="flex-1 overflow-y-auto bg-slate-800/90 backdrop-blur-lg relative z-0 pb-20">
                                     {appComponents[activeMobileApp]}
                                 </main>
                             </>

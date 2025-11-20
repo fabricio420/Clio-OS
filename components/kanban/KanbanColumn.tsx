@@ -1,3 +1,4 @@
+
 import React, { useState, memo } from 'react';
 import type { Task, TaskStatus, Member } from '../../types';
 import TaskCard from './TaskCard';
@@ -50,7 +51,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, members, rece
       onDrop={handleDrop}
     >
       <h3 className="text-lg font-semibold text-white mb-4">{title} ({tasks.length})</h3>
-      <div className="space-y-4 h-auto md:h-[calc(100vh-250px)] overflow-y-auto pr-2">
+      <div className="space-y-4 h-auto md:h-[calc(100vh-250px)] overflow-visible md:overflow-y-auto pr-2">
         {tasks.map(task => (
           <TaskCard 
             key={task.id} 

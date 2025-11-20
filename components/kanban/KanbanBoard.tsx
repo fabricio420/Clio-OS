@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { Task, TaskStatus as TaskStatusEnum, Member } from '../../types';
 import { TaskStatus } from '../../types';
@@ -37,7 +38,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOpenModal, tasks, members, 
         }
       />
       <div className="flex-1 px-4 md:px-8 pb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
+        <div className="flex flex-col md:grid md:grid-cols-3 gap-6 h-auto md:h-full">
           {columns.map(status => (
             <KanbanColumn
               key={status}

@@ -2,6 +2,7 @@
 import React, { createContext, useContext } from 'react';
 import type {
     Artist,
+    AuditLog,
     CollectiveDocument,
     EventInfoData,
     FinancialProject,
@@ -36,6 +37,7 @@ export interface AppContextType {
     schedule: ScheduleItem[];
     inventoryItems: InventoryItem[];
     collectiveDocuments: CollectiveDocument[];
+    auditLogs: AuditLog[];
 }
 
 export const AppContext = createContext<AppContextType | null>(null);

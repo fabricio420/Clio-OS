@@ -17,21 +17,22 @@ interface DockIconProps {
 }
 
 const DockIcon: React.FC<DockIconProps> = ({ icon, label, onClick, onHover, disabled }) => (
-    <div className="relative flex flex-col items-center group flex-shrink-0">
-        <button
-            onClick={onClick}
-            onMouseEnter={() => onHover(label)}
-            onMouseLeave={() => onHover(null)}
-            disabled={disabled}
-            className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex items-center justify-center transition-all duration-300 ease-out transform group-hover:-translate-y-4 group-hover:scale-110 disabled:opacity-50 disabled:hover:transform-none pb-1"
-            aria-label={label}
-        >
+    <button
+        onClick={onClick}
+        onMouseEnter={() => onHover(label)}
+        // Removed onMouseLeave here to prevent flickering. The container handles clearing.
+        disabled={disabled}
+        className="group relative w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 flex-shrink-0 flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-4 hover:scale-125 focus:outline-none active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:hover:translate-y-0"
+        aria-label={label}
+    >
+        {/* Icon Container with inner glow on hover */}
+        <div className="w-full h-full transition-all duration-300 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] rounded-2xl relative z-10">
             {icon}
-        </button>
-        <span className="absolute -bottom-8 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-xs text-white bg-black/60 backdrop-blur-md px-2 py-1 rounded-md pointer-events-none whitespace-nowrap border border-white/10">
-            {label}
-        </span>
-    </div>
+        </div>
+        
+        {/* Reflection Dot (Visual Polish) */}
+        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-white/60 rounded-full opacity-0 group-hover:opacity-100 blur-[1px] transition-all duration-300 delay-75 scale-0 group-hover:scale-100"></div>
+    </button>
 );
 
 
@@ -52,7 +53,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
     const [time, setTime] = useState(new Date());
     const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-    const [hoveredAppLabel, setHoveredAppLabel] = useState<string | null>(null); // Kept state for future use or removal, currently handled by CSS group-hover in DockIcon
+    const [hoveredAppLabel, setHoveredAppLabel] = useState<string | null>(null);
     const userMenuRef = useRef<HTMLDivElement>(null);
     const dockRef = useRef<HTMLElement>(null);
 
@@ -79,8 +80,11 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
         if (dockElement) {
             const onWheel = (e: WheelEvent) => {
                 if (e.deltaY === 0) return;
-                e.preventDefault();
-                dockElement.scrollLeft += e.deltaY;
+                // Only prevent default if we can actually scroll (on small screens)
+                if (window.innerWidth < 1024) {
+                    e.preventDefault();
+                    dockElement.scrollLeft += e.deltaY;
+                }
             };
             dockElement.addEventListener('wheel', onWheel, { passive: false });
             return () => dockElement.removeEventListener('wheel', onWheel);
@@ -116,7 +120,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
     return (
         <div className="absolute inset-0 flex flex-col overflow-hidden">
              {/* Top Glass Bar */}
-            <header className="absolute top-0 left-0 right-0 h-8 bg-black/20 backdrop-blur-lg border-b border-white/5 flex items-center justify-between px-4 text-sm text-white/90 z-30 shadow-sm">
+            <header className="absolute top-0 left-0 right-0 h-8 bg-black/20 backdrop-blur-lg border-b border-white/5 flex items-center justify-between px-4 text-sm text-white/90 z-30 shadow-sm transition-all hover:bg-black/30">
                 <div className="flex-1 flex justify-start items-center gap-4">
                    <button 
                         onClick={onOpenSearch}
@@ -134,7 +138,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
                         className="hover:bg-white/10 p-1.5 rounded-lg transition-colors flex items-center gap-2 group"
                         title="Status do Sistema"
                     >
-                        <CloudCheckIcon className="w-4 h-4 text-lime-400 drop-shadow-[0_0_5px_rgba(132,204,22,0.5)]" />
+                        <CloudCheckIcon className="w-4 h-4 text-lime-400 drop-shadow-[0_0_8px_rgba(132,204,22,0.6)]" />
                         <span className="text-xs font-medium text-slate-300 group-hover:text-white hidden md:inline">Clio Cloud</span>
                     </button>
                 </div>
@@ -152,7 +156,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
                 <div className="flex-1 flex items-center justify-end">
                     <div className="relative" ref={userMenuRef}>
                         <button onClick={() => setIsUserMenuOpen(prev => !prev)} className="flex items-center gap-3 p-1 rounded-full hover:bg-white/10 transition-colors pr-3 border border-transparent hover:border-white/5">
-                            <img src={user.avatar} alt={user.name} className="w-6 h-6 rounded-full border border-white/20" />
+                            <img src={user.avatar} alt={user.name} className="w-6 h-6 rounded-full border border-white/20 shadow-sm" />
                             <span className="hidden sm:inline text-xs font-medium">{user.name}</span>
                         </button>
                         
@@ -196,14 +200,25 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
             <main className="flex-1 pointer-events-none"></main>
 
             {/* Floating Dock Container */}
-            <footer className="w-full flex justify-center pb-6 z-20 px-4 pointer-events-none">
+            <footer className="w-full flex flex-col items-center justify-end pb-6 z-50 px-4 pointer-events-none fixed bottom-0 left-0 right-0">
+                
+                 {/* Central Label - Appears above the dock when hovering */}
+                 <div className={`
+                    mb-5 px-6 py-2 rounded-full bg-slate-900/60 backdrop-blur-xl border border-white/10 text-white text-sm font-medium tracking-wide shadow-[0_10px_30px_rgba(0,0,0,0.5)]
+                    transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform origin-bottom select-none
+                    ${hoveredAppLabel ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-90'}
+                `}>
+                    {hoveredAppLabel || <span className="opacity-0">Placeholder</span>}
+                </div>
+
                 <nav 
                     ref={dockRef}
-                    className="pointer-events-auto flex items-center justify-start lg:justify-center gap-2 h-20 sm:h-24 px-4 bg-slate-900/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] max-w-[95vw] overflow-x-auto no-scrollbar scroll-smooth ring-1 ring-white/5"
+                    className="pointer-events-auto flex items-center justify-start lg:justify-center gap-3 sm:gap-4 px-6 py-4 bg-slate-900/40 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] max-w-[92vw] overflow-x-auto lg:overflow-visible no-scrollbar transition-all hover:bg-slate-900/50"
+                    onMouseLeave={() => setHoveredAppLabel(null)}
                 >
                     {dockApps.map((app, index) => {
                         if ('type' in app && app.type === 'separator') {
-                            return <div key={`sep-${index}`} className="h-10 w-[1px] bg-white/10 self-center flex-shrink-0 mx-2 rounded-full" />;
+                            return <div key={`sep-${index}`} className="h-8 w-[1px] bg-white/10 self-center flex-shrink-0 mx-1 rounded-full" />;
                         }
                         const { id, label, icon, disabled } = app as { id: AppName, label: string, icon: React.ReactNode, disabled?: boolean };
                         return (

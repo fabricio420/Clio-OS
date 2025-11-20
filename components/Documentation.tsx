@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { HomeIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, MenuIcon, SparklesIcon, LifeBuoyIcon } from './icons';
+import { HomeIcon, CheckSquareIcon, ClockIcon, MicIcon, UsersIcon, ImageIcon, SearchIcon, BoxIcon, FileTextIcon, WalletIcon, BriefcaseIcon, BrushIcon, BookMarkedIcon, GlobeIcon, UserIcon, MenuIcon, SparklesIcon, LifeBuoyIcon, DatabaseIcon } from './icons';
 
 const DocSection: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
   <section className="bg-slate-900 p-6 rounded-lg shadow-md mb-8 border-t border-lime-400">
@@ -26,6 +26,47 @@ const sections = [
       <>
         <p>O <strong>Clio OS</strong> é o sistema operacional definitivo para coletivos culturais. Focado na colaboração humana e na eficiência da produção, ele centraliza a comunicação, o financeiro e a governança democrática do seu sarau.</p>
         <p>Esta plataforma foi desenhada para eliminar planilhas dispersas e conversas perdidas no WhatsApp, criando um fluxo de trabalho profissional e transparente.</p>
+      </>
+    )
+  },
+  {
+    id: 'tech',
+    title: 'Referência Técnica & Banco de Dados',
+    icon: <DatabaseIcon className="h-6 w-6 text-emerald-400" />,
+    keywords: 'banco de dados, sql, tabelas, esquema, técnico, supabase',
+    content: (
+      <>
+        <p>Este sistema opera com um banco de dados SQL em tempo real via Supabase. Abaixo estão as principais estruturas de dados que conectam o coletivo:</p>
+        
+        <h4 className="text-lg font-bold text-white mt-4">1. Núcleo de Pessoas (`profiles`)</h4>
+        <ul className="list-disc pl-5 text-sm">
+             <li>Armazena todos os membros da equipe.</li>
+             <li>Sincronizado com o sistema de login (Auth).</li>
+             <li>Dados: Nome, Função, Avatar e E-mail.</li>
+        </ul>
+
+        <h4 className="text-lg font-bold text-white mt-4">2. Produção (`tasks`, `schedule`, `artists`)</h4>
+        <ul className="list-disc pl-5 text-sm">
+             <li><strong>Tarefas:</strong> Gerenciadas via Kanban. Possuem status (A Fazer, Em Andamento, Concluído) e responsáveis.</li>
+             <li><strong>Cronograma:</strong> Define a linha do tempo do evento (hora, atividade, responsável).</li>
+             <li><strong>Artistas:</strong> Banco de dados de casting com contatos, documentos e links sociais.</li>
+        </ul>
+
+        <h4 className="text-lg font-bold text-white mt-4">3. Financeiro (`financial_projects`, `transactions`)</h4>
+        <ul className="list-disc pl-5 text-sm">
+             <li>O sistema separa finanças por "Projetos" (ex: Sarau Edição 1, Edital X).</li>
+             <li>Transações são vinculadas a um projeto e categorizadas como Receita ou Despesa.</li>
+        </ul>
+
+        <h4 className="text-lg font-bold text-white mt-4">4. Colaboração (`collective_documents`, `voting_topics`)</h4>
+        <ul className="list-disc pl-5 text-sm">
+             <li>Documentos são armazenados como Base64 (texto) para acesso rápido.</li>
+             <li>Votações registram IDs de quem votou para garantir 1 voto por pessoa.</li>
+        </ul>
+        
+        <div className="mt-4 p-3 bg-slate-800 rounded border border-slate-700 text-xs font-mono text-sky-300">
+            Status: Conectado ao Supabase Realtime. As alterações são refletidas instantaneamente para todos os usuários online.
+        </div>
       </>
     )
   },
