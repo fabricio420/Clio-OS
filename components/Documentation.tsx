@@ -21,11 +21,11 @@ const sections = [
     id: 'intro',
     title: 'Bem-vindo ao Clio OS',
     icon: <GlobeIcon className="h-6 w-6 text-sky-400" />,
-    keywords: 'introdução, boas vindas, visão geral, cultura, produção',
+    keywords: 'introdução, boas vindas, visão geral, cultura, produção, coletivos',
     content: (
       <>
         <p>O <strong>Clio OS</strong> é o sistema operacional definitivo para coletivos culturais. Focado na colaboração humana e na eficiência da produção, ele centraliza a comunicação, o financeiro e a governança democrática do seu sarau.</p>
-        <p>Esta plataforma foi desenhada para eliminar planilhas dispersas e conversas perdidas no WhatsApp, criando um fluxo de trabalho profissional e transparente.</p>
+        <p><strong>Agora Multi-Coletivo:</strong> O sistema permite que múltiplos grupos existam independentemente. Ao fazer login, você entra na "Sede Virtual" específica do seu coletivo, garantindo que seus dados, tarefas e finanças sejam visíveis apenas para os seus colaboradores.</p>
       </>
     )
   },
@@ -33,39 +33,40 @@ const sections = [
     id: 'tech',
     title: 'Referência Técnica & Banco de Dados',
     icon: <DatabaseIcon className="h-6 w-6 text-emerald-400" />,
-    keywords: 'banco de dados, sql, tabelas, esquema, técnico, supabase',
+    keywords: 'banco de dados, sql, tabelas, esquema, técnico, supabase, collective_id',
     content: (
       <>
         <p>Este sistema opera com um banco de dados SQL em tempo real via Supabase. Abaixo estão as principais estruturas de dados que conectam o coletivo:</p>
         
-        <h4 className="text-lg font-bold text-white mt-4">1. Núcleo de Pessoas (`profiles`)</h4>
+        <h4 className="text-lg font-bold text-white mt-4">1. Arquitetura de Coletivos (`collective_id`)</h4>
         <ul className="list-disc pl-5 text-sm">
-             <li>Armazena todos os membros da equipe.</li>
+             <li><strong>Isolamento de Dados:</strong> Todas as tabelas (tarefas, artistas, finanças) possuem uma coluna `collective_id`.</li>
+             <li>Isso garante que o Coletivo A não veja os dados do Coletivo B, mesmo estando no mesmo banco de dados (Multi-Tenancy).</li>
+             <li>O acesso é controlado via código de convite na entrada.</li>
+        </ul>
+
+        <h4 className="text-lg font-bold text-white mt-4">2. Núcleo de Pessoas (`profiles`)</h4>
+        <ul className="list-disc pl-5 text-sm">
+             <li>Armazena todos os membros da plataforma.</li>
              <li>Sincronizado com o sistema de login (Auth).</li>
              <li>Dados: Nome, Função, Avatar e E-mail.</li>
         </ul>
 
-        <h4 className="text-lg font-bold text-white mt-4">2. Produção (`tasks`, `schedule`, `artists`)</h4>
+        <h4 className="text-lg font-bold text-white mt-4">3. Produção (`tasks`, `schedule`, `artists`)</h4>
         <ul className="list-disc pl-5 text-sm">
              <li><strong>Tarefas:</strong> Gerenciadas via Kanban. Possuem status (A Fazer, Em Andamento, Concluído) e responsáveis.</li>
              <li><strong>Cronograma:</strong> Define a linha do tempo do evento (hora, atividade, responsável).</li>
              <li><strong>Artistas:</strong> Banco de dados de casting com contatos, documentos e links sociais.</li>
         </ul>
 
-        <h4 className="text-lg font-bold text-white mt-4">3. Financeiro (`financial_projects`, `transactions`)</h4>
+        <h4 className="text-lg font-bold text-white mt-4">4. Financeiro (`financial_projects`, `transactions`)</h4>
         <ul className="list-disc pl-5 text-sm">
              <li>O sistema separa finanças por "Projetos" (ex: Sarau Edição 1, Edital X).</li>
-             <li>Transações são vinculadas a um projeto e categorizadas como Receita ou Despesa.</li>
-        </ul>
-
-        <h4 className="text-lg font-bold text-white mt-4">4. Colaboração (`collective_documents`, `voting_topics`)</h4>
-        <ul className="list-disc pl-5 text-sm">
-             <li>Documentos são armazenados como Base64 (texto) para acesso rápido.</li>
-             <li>Votações registram IDs de quem votou para garantir 1 voto por pessoa.</li>
+             <li>Transações são vinculadas a um projeto e a um coletivo.</li>
         </ul>
         
         <div className="mt-4 p-3 bg-slate-800 rounded border border-slate-700 text-xs font-mono text-sky-300">
-            Status: Conectado ao Supabase Realtime. As alterações são refletidas instantaneamente para todos os usuários online.
+            Status: Conectado ao Supabase Realtime. As alterações são refletidas instantaneamente para todos os membros do seu coletivo online.
         </div>
       </>
     )
@@ -79,10 +80,10 @@ const sections = [
       <>
         <p>Maximize seu uso do Clio OS com estas dicas rápidas:</p>
         <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Compartilhe o Código:</strong> Para adicionar novos membros, basta passar o "Código do Coletivo" (visível na criação ou configurações) para que eles entrem na mesma área de trabalho.</li>
           <li><strong>Foco no Dashboard:</strong> Comece o dia olhando as "Tarefas Pendentes" no Dashboard para saber exatamente o que priorizar.</li>
           <li><strong>Status da Equipe:</strong> Mantenha seu status atualizado no "Hub da Equipe". Isso evita interrupções desnecessárias quando você estiver focado.</li>
           <li><strong>Centralize Arquivos:</strong> Sempre que receber a logo de um apoiador ou foto de um artista, suba imediatamente no "Hub de Mídia" para não perder no histórico de chat.</li>
-          <li><strong>Use o Cronograma:</strong> No dia do evento, use o app Cronograma no celular para acompanhar o minuto-a-minuto em tempo real.</li>
         </ul>
       </>
     )
@@ -97,7 +98,7 @@ const sections = [
         <p>Encontre qualquer coisa no sistema instantaneamente sem tirar as mãos do teclado.</p>
         <ul className="list-disc pl-5 space-y-2">
           <li><strong>Atalho Rápido:</strong> Pressione <code>Ctrl + K</code> (ou <code>Cmd + K</code> no Mac) em qualquer lugar para abrir a busca.</li>
-          <li><strong>Busca Universal:</strong> Localize membros da equipe, tarefas específicas, artistas, itens de inventário ou projetos financeiros.</li>
+          <li><strong>Busca Universal:</strong> Localize membros da equipe, tarefas específicas, artistas, itens de inventário ou projetos financeiros dentro do seu coletivo atual.</li>
           <li><strong>Navegação:</strong> Use as setas do teclado para navegar e <code>Enter</code> para abrir o item diretamente.</li>
         </ul>
       </>

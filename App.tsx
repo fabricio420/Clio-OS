@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus, VoteOption, AuditLog } from './types';
+import type { Member, Task, ScheduleItem, Artist, ModalView, EventInfoData, MediaItem, InventoryItem, Gadget, PhotoAlbum, Photo, CollectiveDocument, MeetingMinute, VotingTopic, TaskStatus, FinancialProject, Transaction, Notebook, Note, GadgetType, GadgetData, FeedPost, TeamStatus, VoteOption, AuditLog, Collective } from './types';
 import { TaskStatus as TaskStatusEnum, InventoryStatus } from './types';
 import LoginScreen from './components/LoginScreen';
 import ClioOSDesktop from './components/ClioOSDesktop';
@@ -32,6 +32,8 @@ import Reports from './components/Reports';
 import AvatarViewer from './components/AvatarViewer';
 import ControlCenter from './components/ControlCenter';
 import GlobalSearch from './components/GlobalSearch';
+import CollectiveSelection from './components/CollectiveSelection';
+import ClioQuickDock from './components/mobile/ClioQuickDock';
 import { ProfileApp } from './components/ProfileApp';
 import { TaskForm } from './components/forms/TaskForm';
 import { ScheduleForm } from './components/forms/ScheduleForm';
@@ -143,13 +145,20 @@ const initialAppStates: AppStates = {
 const DEFAULT_WALLPAPER = 'https://i.postimg.cc/0NYRtj9R/clio-rebelde-editada-0-6.jpg';
 const DEFAULT_AVATAR = 'https://i.postimg.cc/7L8d9B1p/clio-rebelde-editada-0(17).jpg';
 
-const GUEST_USER_EMAIL = 'guest@dev.clio';
-const GUEST_USER: Member = {
-    id: 'guest-dev-id',
-    name: 'Deusa Clio',
-    email: GUEST_USER_EMAIL,
+const TEST_USER_EMAIL = 'admin@teste.clio';
+const TEST_USER: Member = {
+    id: 'test-user-id',
+    name: 'Usuário de Teste',
+    email: TEST_USER_EMAIL,
     avatar: DEFAULT_AVATAR,
-    role: 'Musa Inspiradora'
+    role: 'Membro'
+};
+
+const TEST_COLLECTIVE: Collective = {
+    id: 'test-collective-id',
+    name: 'Coletivo de Teste',
+    code: 'admin-test',
+    description: 'Espaço de demonstração para testar todas as funcionalidades do Clio OS.'
 };
 
 // --- MOBILE-SPECIFIC COMPONENTS ---
@@ -219,23 +228,24 @@ const MobileAppDrawer: React.FC<{
     return (
     <>
         <div 
-            className={`fixed inset-0 bg-black/50 z-40 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            className={`fixed inset-0 bg-black/50 z-[60] transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             onClick={onClose}
         />
         <div
-            className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-800/90 backdrop-blur-xl rounded-t-2xl transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
+            className={`fixed bottom-0 left-0 right-0 z-[70] bg-slate-900/95 backdrop-blur-xl rounded-t-3xl transition-transform duration-300 ease-out border-t border-white/10 ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
             style={{ maxHeight: '85dvh' }}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
         >
-            <div className="w-12 h-1.5 bg-slate-500/50 rounded-full mx-auto my-3" onClick={onClose}></div>
-            <div className="overflow-y-auto p-4 pb-12" style={{ maxHeight: 'calc(85dvh - 40px)' }}>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-x-2 gap-y-6">
+            <div className="w-12 h-1.5 bg-slate-600 rounded-full mx-auto my-4" onClick={onClose}></div>
+            <div className="overflow-y-auto p-6 pb-12" style={{ maxHeight: 'calc(85dvh - 40px)' }}>
+                <h3 className="text-white font-bold text-lg mb-6 px-1">Todos os Apps</h3>
+                <div className="grid grid-cols-4 gap-x-2 gap-y-8">
                     {apps.map(({ name, title, icon }) => (
-                        <button key={name} onClick={() => onAppClick(name)} className="flex flex-col items-center justify-start p-1 space-y-2 rounded-lg active:bg-white/10 transition-colors">
+                        <button key={name} onClick={() => onAppClick(name)} className="flex flex-col items-center justify-start space-y-2 rounded-lg active:scale-95 transition-transform">
                             <div className="w-14 h-14">{icon}</div>
-                            <span className="text-xs text-center text-slate-200 leading-tight">{title}</span>
+                            <span className="text-xs text-center text-slate-300 font-medium leading-tight">{title}</span>
                         </button>
                     ))}
                 </div>
@@ -331,6 +341,7 @@ const App: React.FC = () => {
     // --- STATE MANAGEMENT ---
     const [users, setUsers] = useState<Member[]>(() => JSON.parse(localStorage.getItem('clio-os-users') || '[]'));
     const [loggedInUser, setLoggedInUser] = useState<Member | null>(null);
+    const [currentCollective, setCurrentCollective] = useState<Collective | null>(null);
     const [loadingAuth, setLoadingAuth] = useState(true);
 
     // This state will hold all data for the currently logged-in user
@@ -392,7 +403,7 @@ const App: React.FC = () => {
         const isHorizontal = Math.abs(xDiff) > Math.abs(yDiff);
 
         // Don't trigger if a panel is already open
-        if (isAppDrawerOpen || isMobileControlCenterOpen || isSearchOpen) {
+        if (isAppDrawerOpen || isMobileControlCenterOpen || isSearchOpen || activeMobileApp) {
             touchStartY.current = null; touchStartX.current = null;
             touchEndY.current = null; touchEndX.current = null;
             return;
@@ -410,9 +421,7 @@ const App: React.FC = () => {
              }
         } else {
             // Vertical Swipes
-             if (yDiff > minSwipeDistance) {
-                 setIsAppDrawerOpen(true);
-             } else if (yDiff < -minSwipeDistance) {
+             if (yDiff < -minSwipeDistance) {
                  setIsMobileControlCenterOpen(true);
              }
         }
@@ -429,19 +438,7 @@ const App: React.FC = () => {
             setLoadingAuth(true);
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!);
-                // Initial data fetch
-                fetchTasks();
-                fetchArtists();
-                fetchFinancialData();
-                fetchSchedule();
-                fetchInventory();
-                fetchFeedPosts();
-                fetchTeamStatuses();
-                fetchCollabData();
-                fetchNotebooks();
-                fetchMedia();
-                fetchAlbums();
-                fetchAuditLogs();
+                // Data will be fetched after currentCollective is set
             } else {
                 setLoadingAuth(false);
             }
@@ -450,20 +447,9 @@ const App: React.FC = () => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!);
-                fetchTasks();
-                fetchArtists();
-                fetchFinancialData();
-                fetchSchedule();
-                fetchInventory();
-                fetchFeedPosts();
-                fetchTeamStatuses();
-                fetchCollabData();
-                fetchNotebooks();
-                fetchMedia();
-                fetchAlbums();
-                fetchAuditLogs();
             } else {
                 setLoggedInUser(null);
+                setCurrentCollective(null);
                 setUserState(MOCK_INITIAL_DATA); // Reset to defaults
                 setLoadingAuth(false);
             }
@@ -472,9 +458,27 @@ const App: React.FC = () => {
         return () => subscription.unsubscribe();
     }, []);
 
+    // --- FETCH DATA WHEN COLLECTIVE CHANGES ---
+    useEffect(() => {
+        if (loggedInUser && currentCollective) {
+            fetchTasks();
+            fetchArtists();
+            fetchFinancialData();
+            fetchSchedule();
+            fetchInventory();
+            fetchFeedPosts();
+            fetchTeamStatuses();
+            fetchCollabData();
+            fetchNotebooks();
+            fetchMedia();
+            fetchAlbums();
+            fetchAuditLogs();
+        }
+    }, [loggedInUser, currentCollective]);
+
     // --- SUPABASE REALTIME SUBSCRIPTION ---
     useEffect(() => {
-        if (!loggedInUser) return;
+        if (!loggedInUser || !currentCollective) return;
 
         // Channel for general data updates
         const channel = supabase.channel('clio_realtime_sync')
@@ -506,7 +510,7 @@ const App: React.FC = () => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [loggedInUser]);
+    }, [loggedInUser, currentCollective]);
 
 
     const fetchUserProfile = async (userId: string, email: string) => {
@@ -577,322 +581,362 @@ const App: React.FC = () => {
 
     // --- AUDIT LOG HELPER ---
     const logAction = async (action: 'CREATE' | 'UPDATE' | 'DELETE', entity: string, details: string) => {
-        if (!loggedInUser) return;
+        if (!loggedInUser || !currentCollective) return;
         try {
-            await supabase.from('audit_logs').insert({
+            // Try insert with collective_id, fallback if missing column
+            const payload = {
                 user_id: loggedInUser.id,
                 user_name: loggedInUser.name,
                 user_avatar: loggedInUser.avatar,
                 action: action,
                 entity: entity,
                 details: details,
+                collective_id: currentCollective.id,
                 created_at: new Date().toISOString()
-            });
+            };
+            
+            const { error } = await supabase.from('audit_logs').insert(payload);
+            if (error && error.code === '42703') { // Undefined column
+                 const { collective_id, ...rest } = payload;
+                 await supabase.from('audit_logs').insert(rest);
+            }
         } catch (err) {
-            console.error("Error logging action:", err); // Fail silently in UI
+            console.error("Error logging action:", err); 
         }
     };
-
-    const fetchAuditLogs = async () => {
+    
+    // --- SAFE FETCH HELPER ---
+    const safeFetch = async (
+        table: string, 
+        select = '*', 
+        collectiveId?: string, 
+        orderBy?: { col: string, asc: boolean }, 
+        limit?: number
+    ) => {
         try {
-            const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
-            if (data) {
-                const mappedLogs: AuditLog[] = data.map((l: any) => ({
-                    id: l.id,
-                    userId: l.user_id,
-                    userName: l.user_name || 'Desconhecido',
-                    userAvatar: l.user_avatar || DEFAULT_AVATAR,
-                    action: l.action,
-                    entity: l.entity,
-                    details: l.details,
-                    timestamp: l.created_at
-                }));
-                updateUserState('auditLogs', mappedLogs);
+            let query = supabase.from(table).select(select);
+            
+            if (collectiveId) {
+                query = query.eq('collective_id', collectiveId);
             }
-        } catch (err) { console.error(err); }
+            
+            if (orderBy) {
+                query = query.order(orderBy.col, { ascending: orderBy.asc });
+            }
+            
+            if (limit) {
+                query = query.limit(limit);
+            }
+
+            const res = await query;
+            if (!res.error) return res;
+
+            // If error is related to missing column, try fallback (Shared Space Mode)
+            // PGRST204: Column not found. 42703: Undefined column.
+            if (res.error.code === 'PGRST204' || res.error.code === '42703' || res.error.message?.includes('column')) {
+                let fallback = supabase.from(table).select(select);
+                if (orderBy) fallback = fallback.order(orderBy.col, { ascending: orderBy.asc });
+                if (limit) fallback = fallback.limit(limit);
+                return await fallback;
+            }
+            
+            throw res.error;
+        } catch (err) {
+            console.warn(`Error fetching ${table} (safely):`, err);
+            return { data: null, error: err };
+        }
     };
 
     // --- SUPABASE DATA FETCHING (CORE) ---
     const fetchTasks = async () => {
-        try {
-            const { data, error } = await supabase.from('tasks').select('*');
-            if (error) throw error;
-            
-            if (data) {
-                const mappedTasks: Task[] = data.map((t: any) => ({
-                    id: t.id,
-                    title: t.title,
-                    description: t.description,
-                    status: t.status as TaskStatusEnum,
-                    dueDate: t.due_date,
-                    assigneeId: t.assignee_id
-                }));
-                updateUserState('tasks', mappedTasks);
-            }
-        } catch (err) {
-            console.error('Error fetching tasks:', err);
+        if (!currentCollective) return;
+        const { data } = await safeFetch('tasks', '*', currentCollective.id);
+        if (data) {
+            const mappedTasks: Task[] = data.map((t: any) => ({
+                id: t.id,
+                title: t.title,
+                description: t.description,
+                status: t.status as TaskStatusEnum,
+                dueDate: t.due_date,
+                assigneeId: t.assignee_id,
+                collectiveId: t.collective_id
+            }));
+            updateUserState('tasks', mappedTasks);
         }
     };
 
     const fetchArtists = async () => {
-        try {
-            const { data, error } = await supabase.from('artists').select('*');
-            if (error) throw error;
-            if (data) {
-                const mappedArtists: Artist[] = data.map((a: any) => ({
-                    id: a.id,
-                    name: a.name,
-                    performanceType: a.performance_type,
-                    contact: a.contact,
-                    notes: a.notes,
-                    instagram: a.instagram,
-                    whatsapp: a.whatsapp,
-                    cpf: a.cpf,
-                    rg: a.rg,
-                    documentImage: a.document_image
-                }));
-                updateUserState('artists', mappedArtists);
-            }
-        } catch (err) {
-            console.error('Error fetching artists:', err);
+        if (!currentCollective) return;
+        const { data } = await safeFetch('artists', '*', currentCollective.id);
+        if (data) {
+            const mappedArtists: Artist[] = data.map((a: any) => ({
+                id: a.id,
+                name: a.name,
+                performanceType: a.performance_type,
+                contact: a.contact,
+                notes: a.notes,
+                instagram: a.instagram,
+                whatsapp: a.whatsapp,
+                cpf: a.cpf,
+                rg: a.rg,
+                documentImage: a.document_image,
+                collectiveId: a.collective_id
+            }));
+            updateUserState('artists', mappedArtists);
         }
     };
 
     const fetchSchedule = async () => {
-        try {
-            const { data, error } = await supabase.from('schedule_items').select('*');
-            if (error) throw error;
-            if (data) {
-                updateUserState('schedule', data);
-            }
-        } catch (err) {
-            console.error('Error fetching schedule:', err);
+        if (!currentCollective) return;
+        const { data } = await safeFetch('schedule_items', '*', currentCollective.id);
+        if (data) {
+            updateUserState('schedule', data);
         }
     };
 
     const fetchInventory = async () => {
-        try {
-            const { data, error } = await supabase.from('inventory_items').select('*');
-            if (error) throw error;
-            if (data) {
-                const mappedInventory = data.map((i: any) => ({
-                    id: i.id,
-                    name: i.name,
-                    quantity: i.quantity,
-                    status: i.status,
-                    responsibleId: i.responsible_id
-                }));
-                updateUserState('inventoryItems', mappedInventory);
-            }
-        } catch (err) {
-            console.error('Error fetching inventory:', err);
+        if (!currentCollective) return;
+        const { data } = await safeFetch('inventory_items', '*', currentCollective.id);
+        if (data) {
+            const mappedInventory = data.map((i: any) => ({
+                id: i.id,
+                name: i.name,
+                quantity: i.quantity,
+                status: i.status,
+                responsibleId: i.responsible_id,
+                collectiveId: i.collective_id
+            }));
+            updateUserState('inventoryItems', mappedInventory);
         }
     };
 
     const fetchFinancialData = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('financial_projects')
-                .select(`*, transactions (*)`);
-            
-            if (error) throw error;
+        if (!currentCollective) return;
+        const { data } = await safeFetch('financial_projects', '*, transactions (*)', currentCollective.id);
 
-            if (data) {
-                const mappedProjects: FinancialProject[] = data.map((p: any) => ({
-                    id: p.id,
-                    name: p.name,
-                    description: p.description,
-                    transactions: (p.transactions || []).map((t: any) => ({
-                        id: t.id,
-                        description: t.description,
-                        amount: t.amount,
-                        type: t.type as 'income' | 'expense',
-                        date: t.date,
-                        category: t.category
-                    }))
-                }));
-                updateUserState('financialProjects', mappedProjects);
-            }
-        } catch (err) {
-            console.error('Error fetching financial data:', err);
+        if (data) {
+            const mappedProjects: FinancialProject[] = data.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                description: p.description,
+                collectiveId: p.collective_id,
+                transactions: (p.transactions || []).map((t: any) => ({
+                    id: t.id,
+                    description: t.description,
+                    amount: t.amount,
+                    type: t.type as 'income' | 'expense',
+                    date: t.date,
+                    category: t.category
+                }))
+            }));
+            updateUserState('financialProjects', mappedProjects);
         }
     };
 
     // --- SUPABASE FEED & COLLAB FETCHING ---
     const fetchFeedPosts = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('team_feed_posts')
-                .select(`
-                    *,
-                    author:profiles(*)
-                `)
-                .order('created_at', { ascending: false });
+        if (!currentCollective) return;
+        const { data } = await safeFetch(
+            'team_feed_posts', 
+            '*, author:profiles(*)', 
+            currentCollective.id, 
+            { col: 'created_at', asc: false }
+        );
 
-            if (error) throw error;
-
-            if (data) {
-                const mappedPosts: FeedPost[] = data.map((p: any) => ({
-                    id: p.id,
-                    content: p.content,
-                    timestamp: p.created_at,
-                    author: {
-                        id: p.author?.id,
-                        name: p.author?.name || 'Desconhecido',
-                        role: p.author?.role || '',
-                        avatar: p.author?.avatar || DEFAULT_AVATAR,
-                        email: p.author?.email || ''
-                    }
-                }));
-                updateUserState('feedPosts', mappedPosts);
-            }
-        } catch (err) {
-            console.error('Error fetching feed:', err);
+        if (data) {
+            const mappedPosts: FeedPost[] = data.map((p: any) => ({
+                id: p.id,
+                content: p.content,
+                timestamp: p.created_at,
+                collectiveId: p.collective_id,
+                author: {
+                    id: p.author?.id,
+                    name: p.author?.name || 'Desconhecido',
+                    role: p.author?.role || '',
+                    avatar: p.author?.avatar || DEFAULT_AVATAR,
+                    email: p.author?.email || ''
+                }
+            }));
+            updateUserState('feedPosts', mappedPosts);
         }
     };
 
     const fetchTeamStatuses = async () => {
-        try {
-            const { data } = await supabase.from('team_statuses').select('*');
-            if (data) {
-                const mappedStatuses = data.map((s: any) => ({
-                    memberId: s.member_id,
-                    status: s.status
-                }));
-                updateUserState('teamStatuses', mappedStatuses);
-            }
-        } catch (err) {
-            console.error('Error fetching statuses:', err);
+        if (!currentCollective) return;
+        const { data } = await safeFetch('team_statuses', '*', currentCollective.id);
+        if (data) {
+            const mappedStatuses = data.map((s: any) => ({
+                memberId: s.member_id,
+                status: s.status,
+                collectiveId: s.collective_id
+            }));
+            updateUserState('teamStatuses', mappedStatuses);
         }
     };
 
     const fetchCollabData = async () => {
+        if (!currentCollective) return;
         // Documents
-        try {
-            const { data: docs } = await supabase.from('collective_documents').select('*');
-            if (docs) {
-                const mappedDocs = docs.map((d: any) => ({
-                    id: d.id,
-                    name: d.name,
-                    fileDataUrl: d.file_data_url,
-                    fileName: d.file_name,
-                    fileType: d.file_type,
-                    uploadedAt: d.created_at,
-                    uploaderId: d.uploader_id
-                }));
-                updateUserState('collectiveDocuments', mappedDocs);
-            }
-        } catch (e) { console.error(e); }
+        const { data: docs } = await safeFetch('collective_documents', '*', currentCollective.id);
+        if (docs) {
+            const mappedDocs = docs.map((d: any) => ({
+                id: d.id,
+                name: d.name,
+                fileDataUrl: d.file_data_url,
+                fileName: d.file_name,
+                fileType: d.file_type,
+                uploadedAt: d.created_at,
+                uploaderId: d.uploader_id,
+                collectiveId: d.collective_id
+            }));
+            updateUserState('collectiveDocuments', mappedDocs);
+        }
 
         // Meeting Minutes
-        try {
-             const { data: minutes } = await supabase.from('meeting_minutes').select('*');
-             if (minutes) {
-                 const mappedMinutes = minutes.map((m: any) => ({
-                     id: m.id,
-                     date: m.date,
-                     attendeeIds: m.attendee_ids || [],
-                     agenda: m.agenda,
-                     decisions: m.decisions
-                 }));
-                 updateUserState('meetingMinutes', mappedMinutes);
-             }
-        } catch (e) { console.error(e); }
+        const { data: minutes } = await safeFetch('meeting_minutes', '*', currentCollective.id);
+        if (minutes) {
+            const mappedMinutes = minutes.map((m: any) => ({
+                id: m.id,
+                date: m.date,
+                attendeeIds: m.attendee_ids || [],
+                agenda: m.agenda,
+                decisions: m.decisions,
+                collectiveId: m.collective_id
+            }));
+            updateUserState('meetingMinutes', mappedMinutes);
+        }
 
         // Voting Topics & Options
-        try {
-            const { data: topics } = await supabase
-                .from('voting_topics')
-                .select(`*, options:voting_options(*)`);
-            
-            if (topics) {
-                const mappedTopics: VotingTopic[] = topics.map((t: any) => ({
-                    id: t.id,
-                    title: t.title,
-                    description: t.description,
-                    creatorId: t.creator_id,
-                    createdAt: t.created_at,
-                    status: t.status,
-                    options: (t.options || []).map((o: any) => ({
-                        id: o.id,
-                        text: o.text,
-                        voterIds: o.voter_ids || []
-                    }))
-                }));
-                updateUserState('votingTopics', mappedTopics);
-            }
-        } catch (e) { console.error(e); }
+        const { data: topics } = await safeFetch('voting_topics', '*, options:voting_options(*)', currentCollective.id);
+        
+        if (topics) {
+            const mappedTopics: VotingTopic[] = topics.map((t: any) => ({
+                id: t.id,
+                title: t.title,
+                description: t.description,
+                creatorId: t.creator_id,
+                createdAt: t.created_at,
+                status: t.status,
+                collectiveId: t.collective_id,
+                options: (t.options || []).map((o: any) => ({
+                    id: o.id,
+                    text: o.text,
+                    voterIds: o.voter_ids || []
+                }))
+            }));
+            updateUserState('votingTopics', mappedTopics);
+        }
     };
     
     // --- SUPABASE NOTEBOOKS, MEDIA, GALLERY ---
     const fetchNotebooks = async () => {
-        try {
-            const { data } = await supabase.from('notebooks').select('*, notes(*)');
-            if(data) {
-                const mapped = data.map((nb: any) => ({
-                    id: nb.id,
-                    name: nb.name,
-                    notes: (nb.notes || []).map((n: any) => ({
-                        id: n.id,
-                        title: n.title,
-                        content: n.content,
-                        updatedAt: n.updated_at
-                    }))
-                }));
-                updateUserState('notebooks', mapped);
-            }
-        } catch (err) { console.error(err); }
+        if (!currentCollective) return;
+        const { data } = await safeFetch('notebooks', '*, notes(*)', currentCollective.id);
+        if(data) {
+            const mapped = data.map((nb: any) => ({
+                id: nb.id,
+                name: nb.name,
+                collectiveId: nb.collective_id,
+                notes: (nb.notes || []).map((n: any) => ({
+                    id: n.id,
+                    title: n.title,
+                    content: n.content,
+                    updatedAt: n.updated_at
+                }))
+            }));
+            updateUserState('notebooks', mapped);
+        }
     };
 
     const fetchMedia = async () => {
-         try {
-            const { data } = await supabase.from('media_items').select('*');
-            if(data) {
-                const mapped = data.map((m: any) => ({
-                    id: m.id,
-                    title: m.title,
-                    category: m.category,
-                    fileDataUrl: m.file_data_url,
-                    fileName: m.file_name,
-                    artistId: m.artist_id
-                }));
-                updateUserState('mediaItems', mapped);
-            }
-        } catch (err) { console.error(err); }
+         if (!currentCollective) return;
+         const { data } = await safeFetch('media_items', '*', currentCollective.id);
+         if(data) {
+            const mapped = data.map((m: any) => ({
+                id: m.id,
+                title: m.title,
+                category: m.category,
+                fileDataUrl: m.file_data_url,
+                fileName: m.file_name,
+                artistId: m.artist_id,
+                collectiveId: m.collective_id
+            }));
+            updateUserState('mediaItems', mapped);
+         }
     }
 
     const fetchAlbums = async () => {
-         try {
-            const { data } = await supabase.from('photo_albums').select('*, photos(*)');
-            if(data) {
-                const mapped = data.map((a: any) => ({
-                    id: a.id,
-                    name: a.name,
-                    description: a.description,
-                    photos: (a.photos || []).map((p: any) => ({
-                        id: p.id,
-                        dataUrl: p.data_url,
-                        caption: p.caption,
-                        file_name: p.file_name
-                    }))
-                }));
-                updateUserState('photoAlbums', mapped);
-            }
-        } catch (err) { console.error(err); }
+         if (!currentCollective) return;
+         const { data } = await safeFetch('photo_albums', '*, photos(*)', currentCollective.id);
+         if(data) {
+            const mapped = data.map((a: any) => ({
+                id: a.id,
+                name: a.name,
+                description: a.description,
+                collectiveId: a.collective_id,
+                photos: (a.photos || []).map((p: any) => ({
+                    id: p.id,
+                    dataUrl: p.data_url,
+                    caption: p.caption,
+                    fileName: p.file_name 
+                }))
+            }));
+            updateUserState('photoAlbums', mapped);
+         }
     }
 
+    const fetchAuditLogs = async () => {
+        if (!currentCollective) return;
+        const { data } = await safeFetch(
+            'audit_logs', 
+            '*', 
+            currentCollective.id, 
+            { col: 'created_at', asc: false }, 
+            50
+        );
+        
+        if (data) {
+            const mappedLogs: AuditLog[] = data.map((l: any) => ({
+                id: l.id,
+                userId: l.user_id,
+                userName: l.user_name || 'Desconhecido',
+                userAvatar: l.user_avatar || DEFAULT_AVATAR,
+                action: l.action,
+                entity: l.entity,
+                details: l.details,
+                timestamp: l.created_at,
+                collectiveId: l.collective_id
+            }));
+            updateUserState('auditLogs', mappedLogs);
+        }
+    };
 
     // --- SUPABASE HANDLERS (CRUD) ---
 
     // Tasks
     const handleSaveTask = async (taskData: Omit<Task, 'id' | 'status'>, editingId?: string) => {
+        if (!currentCollective) return;
         try {
             if (editingId) {
                 await supabase.from('tasks').update({ title: taskData.title, description: taskData.description, due_date: taskData.dueDate, assignee_id: taskData.assigneeId || null }).eq('id', editingId);
                 logAction('UPDATE', 'Tarefa', `Editou a tarefa: ${taskData.title}`);
                 showToast('Tarefa atualizada!', 'success');
             } else {
-                await supabase.from('tasks').insert([{ title: taskData.title, description: taskData.description, due_date: taskData.dueDate, assignee_id: taskData.assigneeId || null, status: TaskStatusEnum.ToDo }]);
+                const payload = { 
+                    title: taskData.title, 
+                    description: taskData.description, 
+                    due_date: taskData.dueDate, 
+                    assignee_id: taskData.assigneeId || null, 
+                    status: TaskStatusEnum.ToDo,
+                    collective_id: currentCollective.id
+                };
+                
+                const { error } = await supabase.from('tasks').insert([payload]);
+                if (error && error.code === '42703') {
+                     const { collective_id, ...rest } = payload;
+                     await supabase.from('tasks').insert([rest]);
+                }
+                
                 logAction('CREATE', 'Tarefa', `Criou nova tarefa: ${taskData.title}`);
                 showToast('Tarefa criada!', 'success');
             }
@@ -912,13 +956,23 @@ const App: React.FC = () => {
 
     // Artists
     const handleSaveArtist = async (data: any, id?: string) => {
-        const payload = { name: data.name, performance_type: data.performanceType, contact: data.contact, notes: data.notes, instagram: data.instagram, whatsapp: data.whatsapp, cpf: data.cpf, rg: data.rg, document_image: data.documentImage };
+        if (!currentCollective) return;
+        const payload = { name: data.name, performance_type: data.performanceType, contact: data.contact, notes: data.notes, instagram: data.instagram, whatsapp: data.whatsapp, cpf: data.cpf, rg: data.rg, document_image: data.documentImage, collective_id: currentCollective.id };
+        
+        const performInsert = async (p: any) => {
+            const { error } = await supabase.from('artists').insert([p]);
+            if (error && error.code === '42703') {
+                const { collective_id, ...rest } = p;
+                await supabase.from('artists').insert([rest]);
+            }
+        };
+
         if(id) {
             await supabase.from('artists').update(payload).eq('id', id);
             logAction('UPDATE', 'Artista', `Atualizou dados de: ${data.name}`);
             showToast('Artista atualizado!', 'success');
         } else {
-            await supabase.from('artists').insert([payload]);
+            await performInsert(payload);
             logAction('CREATE', 'Artista', `Cadastrou novo artista: ${data.name}`);
             showToast('Artista cadastrado!', 'success');
         }
@@ -932,12 +986,18 @@ const App: React.FC = () => {
 
     // Schedule
     const handleSaveScheduleItem = async (data: any, id?: string) => {
+        if (!currentCollective) return;
+        const payload = { ...data, collective_id: currentCollective.id };
         if(id) {
             await supabase.from('schedule_items').update(data).eq('id', id);
             logAction('UPDATE', 'Cronograma', `Editou item do cronograma: ${data.time} - ${data.title}`);
             showToast('Cronograma atualizado!', 'success');
         } else {
-            await supabase.from('schedule_items').insert([data]);
+            const { error } = await supabase.from('schedule_items').insert([payload]);
+            if (error && error.code === '42703') {
+                const { collective_id, ...rest } = payload;
+                await supabase.from('schedule_items').insert([rest]);
+            }
             logAction('CREATE', 'Cronograma', `Adicionou ao cronograma: ${data.time} - ${data.title}`);
             showToast('Item adicionado ao cronograma!', 'success');
         }
@@ -951,13 +1011,18 @@ const App: React.FC = () => {
 
     // Inventory
     const handleSaveInventoryItem = async (data: any, id?: string) => {
-        const payload = { name: data.name, quantity: data.quantity, status: data.status, responsible_id: data.responsibleId };
+        if (!currentCollective) return;
+        const payload = { name: data.name, quantity: data.quantity, status: data.status, responsible_id: data.responsibleId, collective_id: currentCollective.id };
         if(id) {
             await supabase.from('inventory_items').update(payload).eq('id', id);
             logAction('UPDATE', 'Inventário', `Atualizou item: ${data.name} (${data.quantity})`);
             showToast('Item atualizado!', 'success');
         } else {
-            await supabase.from('inventory_items').insert([payload]);
+            const { error } = await supabase.from('inventory_items').insert([payload]);
+            if (error && error.code === '42703') {
+                 const { collective_id, ...rest } = payload;
+                 await supabase.from('inventory_items').insert([rest]);
+            }
             logAction('CREATE', 'Inventário', `Adicionou item: ${data.name} (${data.quantity})`);
             showToast('Item adicionado ao inventário!', 'success');
         }
@@ -971,12 +1036,18 @@ const App: React.FC = () => {
 
     // Finances
     const handleSaveFinancialProject = async (data: any, id?: string) => {
+        if (!currentCollective) return;
         if(id) {
             await supabase.from('financial_projects').update({ name: data.name, description: data.description }).eq('id', id);
             logAction('UPDATE', 'Financeiro', `Editou projeto: ${data.name}`);
             showToast('Projeto atualizado!', 'success');
         } else {
-            await supabase.from('financial_projects').insert([{ name: data.name, description: data.description }]);
+            const payload = { name: data.name, description: data.description, collective_id: currentCollective.id };
+            const { error } = await supabase.from('financial_projects').insert([payload]);
+             if (error && error.code === '42703') {
+                 const { collective_id, ...rest } = payload;
+                 await supabase.from('financial_projects').insert([rest]);
+            }
             logAction('CREATE', 'Financeiro', `Criou projeto: ${data.name}`);
             showToast('Projeto criado!', 'success');
         }
@@ -1007,25 +1078,42 @@ const App: React.FC = () => {
 
     // Team Hub (Feed & Status)
     const handleAddPost = async (content: string, author: Member) => {
-        if (!loggedInUser) return;
-        await supabase.from('team_feed_posts').insert([{ content, author_id: loggedInUser.id }]);
+        if (!loggedInUser || !currentCollective) return;
+        const payload = { content, author_id: loggedInUser.id, collective_id: currentCollective.id };
+        const { error } = await supabase.from('team_feed_posts').insert([payload]);
+        if (error && error.code === '42703') {
+             const { collective_id, ...rest } = payload;
+             await supabase.from('team_feed_posts').insert([rest]);
+        }
         showToast('Postagem publicada!', 'success');
     };
     const handleUpdateTeamStatus = async (statusText: string) => {
-        if (!loggedInUser) return;
-        await supabase.from('team_statuses').upsert({ member_id: loggedInUser.id, status: statusText });
+        if (!loggedInUser || !currentCollective) return;
+        const payload = { member_id: loggedInUser.id, status: statusText, collective_id: currentCollective.id };
+        const { error } = await supabase.from('team_statuses').upsert(payload);
+        if (error && error.code === '42703') {
+              const { collective_id, ...rest } = payload;
+             await supabase.from('team_statuses').upsert(rest);
+        }
         showToast('Status atualizado!', 'success');
     };
 
     // Collab Clio (Docs, Minutes, Voting)
     const handleSaveCollectiveDocument = async (docData: any, uploaderId: string) => {
-        await supabase.from('collective_documents').insert([{
+        if (!currentCollective) return;
+        const payload = {
             name: docData.name,
             file_data_url: docData.fileDataUrl, 
             file_name: docData.file.name,
             file_type: docData.file.type,
-            uploader_id: uploaderId
-        }]);
+            uploader_id: uploaderId,
+            collective_id: currentCollective.id
+        };
+        const { error } = await supabase.from('collective_documents').insert([payload]);
+         if (error && error.code === '42703') {
+             const { collective_id, ...rest } = payload;
+             await supabase.from('collective_documents').insert([rest]);
+        }
         logAction('CREATE', 'Documentos', `Carregou documento: ${docData.name}`);
         showToast('Documento salvo!', 'success');
     };
@@ -1038,13 +1126,18 @@ const App: React.FC = () => {
     };
 
     const handleSaveMeetingMinute = async (data: any, id?: string) => {
-        const payload = { date: data.date, attendee_ids: data.attendeeIds, agenda: data.agenda, decisions: data.decisions };
+        if (!currentCollective) return;
+        const payload = { date: data.date, attendee_ids: data.attendeeIds, agenda: data.agenda, decisions: data.decisions, collective_id: currentCollective.id };
         if(id) {
             await supabase.from('meeting_minutes').update(payload).eq('id', id);
             logAction('UPDATE', 'Reuniões', `Atualizou ata de: ${data.date}`);
             showToast('Ata atualizada!', 'success');
         } else {
-            await supabase.from('meeting_minutes').insert([payload]);
+            const { error } = await supabase.from('meeting_minutes').insert([payload]);
+            if (error && error.code === '42703') {
+                const { collective_id, ...rest } = payload;
+                await supabase.from('meeting_minutes').insert([rest]);
+            }
             logAction('CREATE', 'Reuniões', `Criou ata de reunião: ${data.date}`);
             showToast('Ata salva!', 'success');
         }
@@ -1058,11 +1151,24 @@ const App: React.FC = () => {
     };
 
     const handleSaveVotingTopic = async (data: any, creatorId: string) => {
-        const { data: topic, error } = await supabase
+        if (!currentCollective) return;
+        
+        const payload = { title: data.title, description: data.description, creator_id: creatorId, collective_id: currentCollective.id };
+        
+        // Try inserting with collective_id
+        let { data: topic, error } = await supabase
             .from('voting_topics')
-            .insert([{ title: data.title, description: data.description, creator_id: creatorId }])
+            .insert([payload])
             .select()
             .single();
+        
+        // Fallback if column missing
+        if (error && error.code === '42703') {
+             const { collective_id, ...rest } = payload;
+             const res = await supabase.from('voting_topics').insert([rest]).select().single();
+             topic = res.data;
+             error = res.error;
+        }
         
         if (topic && !error) {
             const optionsPayload = data.options.map((o: any) => ({
@@ -1107,12 +1213,17 @@ const App: React.FC = () => {
     
     // --- Notebooks Handlers ---
     const handleSaveNotebook = async (name: string, editingId?: string) => {
-        if (!loggedInUser) return;
+        if (!loggedInUser || !currentCollective) return;
         if(editingId) {
              await supabase.from('notebooks').update({ name }).eq('id', editingId);
              showToast('Caderno renomeado!', 'success');
         } else {
-             await supabase.from('notebooks').insert([{ name, owner_id: loggedInUser.id }]);
+             const payload = { name, owner_id: loggedInUser.id, collective_id: currentCollective.id };
+             const { error } = await supabase.from('notebooks').insert([payload]);
+             if (error && error.code === '42703') {
+                  const { collective_id, ...rest } = payload;
+                  await supabase.from('notebooks').insert([rest]);
+             }
              showToast('Caderno criado!', 'success');
         }
     };
@@ -1145,13 +1256,20 @@ const App: React.FC = () => {
     
     // --- Media Handlers ---
     const handleSaveMediaItem = async (mediaData: Omit<MediaItem, 'id'>) => {
-        await supabase.from('media_items').insert([{
+        if (!currentCollective) return;
+        const payload = {
             title: mediaData.title,
             category: mediaData.category,
             file_data_url: mediaData.fileDataUrl,
             file_name: mediaData.fileName,
-            artist_id: mediaData.artistId
-        }]);
+            artist_id: mediaData.artistId,
+            collective_id: currentCollective.id
+        };
+        const { error } = await supabase.from('media_items').insert([payload]);
+        if (error && error.code === '42703') {
+             const { collective_id, ...rest } = payload;
+             await supabase.from('media_items').insert([rest]);
+        }
         logAction('CREATE', 'Mídia', `Upload de arquivo: ${mediaData.title}`);
         showToast('Mídia salva!', 'success');
     };
@@ -1165,11 +1283,17 @@ const App: React.FC = () => {
     
     // --- Gallery Handlers ---
     const handleSavePhotoAlbum = async (albumData: Omit<PhotoAlbum, 'id' | 'photos'>, editingId?: string) => {
+        if (!currentCollective) return;
         if(editingId) {
             await supabase.from('photo_albums').update(albumData).eq('id', editingId);
             showToast('Álbum atualizado!', 'success');
         } else {
-            await supabase.from('photo_albums').insert([albumData]);
+            const payload = { ...albumData, collective_id: currentCollective.id };
+            const { error } = await supabase.from('photo_albums').insert([payload]);
+            if (error && error.code === '42703') {
+                 const { collective_id, ...rest } = payload;
+                 await supabase.from('photo_albums').insert([rest]);
+            }
             showToast('Álbum criado!', 'success');
         }
     };
@@ -1184,7 +1308,7 @@ const App: React.FC = () => {
             album_id: albumId,
             data_url: p.dataUrl,
             caption: p.caption,
-            file_name: p.fileName
+            file_name: p.fileName // Fix: Access 'fileName' from input object 'p'
         }));
         await supabase.from('photos').insert(payload);
         showToast(`${photos.length} fotos adicionadas!`, 'success');
@@ -1193,6 +1317,42 @@ const App: React.FC = () => {
     const handleDeletePhoto = async (albumId: string, photoId: string) => {
         await supabase.from('photos').delete().eq('id', photoId);
         showToast('Foto excluída', 'info');
+    };
+
+    // --- COLLECTIVE SELECTION HANDLERS ---
+
+    const handleCreateCollective = async (name: string) => {
+        if (!loggedInUser) return;
+        // In a real scenario, we would create the collective in DB and link user.
+        // For now, mocking the creation process within frontend state for non-admin users (or assuming backend trigger)
+        const newCollective: Collective = {
+            id: crypto.randomUUID(),
+            name: name,
+            code: Math.random().toString(36).substring(7).toUpperCase()
+        };
+        
+        // Mock DB insert for collective (this will likely fail without RLS/Table setup on real backend without migration)
+        // We just set currentCollective to proceed to Dashboard
+        setCurrentCollective(newCollective);
+        showToast(`Coletivo "${name}" criado!`, 'success');
+    };
+
+    const handleJoinCollective = async (code: string) => {
+        if (!loggedInUser) return;
+        // Mock verification
+        if (code.toLowerCase() === 'admin-test') {
+            setCurrentCollective(TEST_COLLECTIVE);
+            showToast('Entrou no Coletivo de Teste', 'success');
+        } else {
+             // Simulate joining a new group
+             const joinedCollective: Collective = {
+                id: 'joined-collective-' + code,
+                name: 'Coletivo (Código: ' + code + ')',
+                code: code
+             };
+             setCurrentCollective(joinedCollective);
+             showToast('Entrou no Coletivo!', 'success');
+        }
     };
 
 
@@ -1284,29 +1444,31 @@ const App: React.FC = () => {
     }
 
     const handleGuestLogin = () => {
-        // Guest login remains local for now
-        const guestDataString = localStorage.getItem(`collab-clio-data-${GUEST_USER_EMAIL}`);
+        // Guest login sets the user to "User Teste" AND automatically sets the collective to "Test Collective"
+        const guestDataString = localStorage.getItem(`collab-clio-data-${TEST_USER_EMAIL}`);
         if (guestDataString) {
             const guestData = JSON.parse(guestDataString);
-            guestData.members = guestData.members.map((m: Member) => m.id === GUEST_USER.id ? GUEST_USER : m);
-            if(!guestData.members.find((m:Member) => m.id === GUEST_USER.id)) {
-                 guestData.members.push(GUEST_USER);
+            guestData.members = guestData.members.map((m: Member) => m.id === TEST_USER.id ? TEST_USER : m);
+            if(!guestData.members.find((m:Member) => m.id === TEST_USER.id)) {
+                 guestData.members.push(TEST_USER);
             }
             if (!guestData.gadgets || guestData.gadgets.length === 0) {
                 guestData.gadgets = DEFAULT_GADGETS;
             }
             setUserState(guestData);
         } else {
-            const guestData = { ...MOCK_INITIAL_DATA, members: [GUEST_USER] };
-            localStorage.setItem(`collab-clio-data-${GUEST_USER_EMAIL}`, JSON.stringify(guestData));
+            const guestData = { ...MOCK_INITIAL_DATA, members: [TEST_USER] };
+            localStorage.setItem(`collab-clio-data-${TEST_USER_EMAIL}`, JSON.stringify(guestData));
             setUserState(guestData);
         }
-        setLoggedInUser(GUEST_USER);
+        setLoggedInUser(TEST_USER);
+        setCurrentCollective(TEST_COLLECTIVE); // Auto-enter test collective
     };
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
         setLoggedInUser(null);
+        setCurrentCollective(null);
         setUserState(MOCK_INITIAL_DATA);
         setAppStates(initialAppStates);
         setActiveMobileApp(null);
@@ -1561,10 +1723,28 @@ const App: React.FC = () => {
         )
     }
 
+    // Handler for QuickDock Speed Dial Actions
+    const handleQuickAction = (action: 'task' | 'artist' | 'transaction' | 'document') => {
+        switch(action) {
+            case 'task': openModal('task'); break;
+            case 'artist': openModal('artist'); break;
+            case 'transaction': 
+                // Try to find a default project or open project creation if none
+                if (financialProjects.length > 0) {
+                     openModal('transaction', { projectId: financialProjects[0].id, type: 'expense' });
+                } else {
+                     showToast("Crie um projeto financeiro primeiro.", "info");
+                     openModal('financial_project');
+                }
+                break;
+            case 'document': openModal('collective_document'); break;
+        }
+    };
+
     return (
         <AppContext.Provider value={contextValue}>
             <div 
-                className="h-[100dvh] w-screen font-sans bg-cover bg-center overflow-hidden"
+                className="h-[100dvh] w-screen font-sans bg-cover bg-center overflow-hidden relative"
                 style={{ backgroundImage: `url(${wallpaperImage || sessionRandomWallpaper})` }}
             >
                  <div className="absolute inset-0 bg-slate-900/30"></div>
@@ -1580,161 +1760,164 @@ const App: React.FC = () => {
                 <div className="fixed top-5 right-5 z-[100] flex flex-col gap-2">
                     {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
                 </div>
-                 
-                {isMobile ? (
-                    <div className="h-full w-full overflow-hidden flex flex-col relative bg-slate-900">
-                        {/* Static Background for Mobile */}
-                        <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${wallpaperImage || sessionRandomWallpaper})` }}></div>
 
-                        <div className="relative z-10 flex flex-col h-full">
-                           {activeMobileApp ? (
-                             <>
-                                <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-14 flex items-center justify-between px-4 z-10 border-b border-white/10">
-                                    <button onClick={() => setActiveMobileApp(null)} className="flex items-center gap-1 text-sm text-sky-400 hover:text-sky-300">
-                                        <ChevronLeftIcon className="w-5 h-5" />
-                                        <span>Início</span>
-                                    </button>
-                                    <h1 className="font-bold text-md text-white truncate max-w-[50%]">{appConfig.find(a => a.name === activeMobileApp)?.title}</h1>
-                                    <div className="w-16"></div> {/* Spacer */}
-                                </header>
-                                <main className="flex-1 overflow-y-auto bg-slate-800/90 backdrop-blur-lg relative z-0 pb-20">
-                                    {appComponents[activeMobileApp]}
-                                </main>
-                            </>
-                        ) : (
-                             <>
-                                <MobileTopBar 
-                                    user={loggedInUser} 
-                                    onToggleControlCenter={() => setIsMobileControlCenterOpen(true)} 
-                                    onOpenProfile={() => setActiveMobileApp('profile')} 
-                                    onOpenSearch={() => setIsSearchOpen(true)}
-                                />
-                                <main 
-                                    className="flex-1 flex flex-col relative overflow-hidden pb-28" // Added pb-28 to avoid overlap with dock
-                                    onTouchStart={handleTouchStart}
-                                    onTouchMove={handleTouchMove}
-                                    onTouchEnd={handleTouchEnd}
-                                >
-                                    {/* Mobile Horizontal Pages */}
-                                    <div 
-                                        className="flex flex-1 transition-transform duration-300 ease-out"
-                                        style={{ transform: `translateX(-${mobilePage * 100}%)` }}
-                                    >
-                                        {Array.from({ length: totalMobilePages }).map((_, pageIndex) => (
-                                            <div key={pageIndex} className="w-full h-full flex-shrink-0 p-4 space-y-4 overflow-y-auto">
-                                                {gadgets
-                                                    .slice(pageIndex * gadgetsPerPage, (pageIndex + 1) * gadgetsPerPage)
-                                                    .map(gadget => renderMobileGadget(gadget))
-                                                }
-                                                {gadgets.length === 0 && pageIndex === 0 && (
-                                                    <div className="text-center text-slate-400 mt-10">
-                                                        <p>Nenhum gadget adicionado.</p>
-                                                        <p className="text-xs">Use o app "Personalizar" para adicionar.</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                        {/* Empty State Page if user wipes to empty page? No, logic restricts pages */}
-                                    </div>
-
-                                    {/* Page Indicator */}
-                                    <div className="absolute bottom-32 left-0 right-0 flex justify-center gap-2 z-20 pointer-events-none">
-                                        {Array.from({ length: totalMobilePages }).map((_, i) => (
-                                            <div 
-                                                key={i} 
-                                                className={`w-2 h-2 rounded-full transition-colors ${i === mobilePage ? 'bg-white' : 'bg-white/30'}`}
-                                            />
-                                        ))}
-                                    </div>
-
-                                </main>
-                                <footer className="absolute bottom-4 left-0 right-0 flex justify-center z-20 px-4">
-                                     <div className="bg-black/40 backdrop-blur-xl p-2 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-2 md:gap-4 max-w-full overflow-x-auto no-scrollbar">
-                                        {['dashboard', 'tasks', 'team_hub', 'finances'].map(appName => {
-                                            const app = appConfig.find(a => a.name === appName)!;
-                                            return (
-                                                <button key={app.name} onClick={() => setActiveMobileApp(app.name)} className="flex flex-col items-center p-2 space-y-1 rounded-xl active:bg-white/10 transition-colors">
-                                                    <div className="w-10 h-10">{app.icon}</div>
-                                                </button>
-                                            )
-                                        })}
-                                        <div className="w-px h-8 bg-white/20 mx-1"></div>
-                                        <button onClick={() => setIsAppDrawerOpen(true)} className="flex flex-col items-center p-2 space-y-1 rounded-xl active:bg-white/10 transition-colors">
-                                            <div className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white bg-slate-600/80"><MenuIcon className="w-6 h-6"/></div>
-                                        </button>
-                                     </div>
-                                </footer>
-                            </>
-                        )}
-                        </div>
-                        <MobileAppDrawer 
-                           isOpen={isAppDrawerOpen} 
-                           onClose={() => setIsAppDrawerOpen(false)}
-                           apps={appConfig}
-                           onAppClick={(appName) => {
-                               setIsAppDrawerOpen(false);
-                               setActiveMobileApp(appName);
-                           }}
-                        />
-                        <ControlCenter 
-                            isOpen={isMobileControlCenterOpen} 
-                            onClose={() => setIsMobileControlCenterOpen(false)}
-                            eventInfo={eventInfo}
-                            schedule={schedule}
-                        />
-                        
-                        <MobileGadgetMenu 
-                            isOpen={isGadgetMenuOpen} 
-                            onClose={() => setIsGadgetMenuOpen(false)} 
-                            onRemove={handleMobileRemoveGadget}
-                            onChange={() => { setIsGadgetMenuOpen(false); setIsGadgetSelectorOpen(true); }}
-                        />
-
-                        <GadgetSelectorModal 
-                            isOpen={isGadgetSelectorOpen}
-                            onClose={() => setIsGadgetSelectorOpen(false)}
-                            onSelect={handleMobileSwapGadget}
-                        />
-                    </div>
-                ) : (
-                    <>
-                        <ClioOSDesktop 
-                            onAppClick={handleAppClick} 
-                            user={loggedInUser} 
-                            onLogout={handleLogout}
-                            appStates={appStates}
-                            eventInfo={eventInfo}
-                            schedule={schedule}
-                            onOpenSearch={() => setIsSearchOpen(true)}
-                        />
-                        
-                        {gadgets.map((gadget: Gadget) => (
-                            <GadgetWrapper key={gadget.id} gadget={gadget} onClose={handleRemoveGadget} onPositionChange={handleUpdateGadgetPosition} >
-                                {gadget.type === 'analog_clock' && <AnalogClock />}
-                                {gadget.type === 'countdown' && <CountdownGadget />}
-                                {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
-                                {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
-                                {gadget.type === 'team_status' && <TeamStatusGadget />}
-                                {gadget.type === 'weather' && <WeatherGadget />}
-                            </GadgetWrapper>
-                        ))}
-
-                        
-                        {appConfig.map(({ name, title, component }) => (
-                            appStates[name] === 'open' && (
-                                <AppWindow key={name} title={title} isOpen={appStates[name] === 'open'} onClose={() => handleAppClose(name)} onMinimize={() => handleAppMinimize(name)} >
-                                    {component}
-                                </AppWindow>
-                            )
-                        ))}
-
-                        {appStates.clio_company === 'open' && (
-                            <AppWindow title="Clio Company" isOpen={appStates.clio_company === 'open'} onClose={() => handleAppClose('clio_company')} onMinimize={() => handleAppMinimize('clio_company')} >
-                                <iframe src="https://edu-cliocompany.odoo.com" title="Clio Company" className="w-full h-full border-none" />
-                            </AppWindow>
-                        )}
-                    </>
+                {/* COLLECTIVE SELECTION SCREEN - Shown when logged in but no collective selected */}
+                {loggedInUser && !currentCollective && (
+                     <div className="absolute inset-0 z-50 flex items-center justify-center">
+                         <CollectiveSelection 
+                            userName={loggedInUser.name}
+                            onCreate={handleCreateCollective}
+                            onJoin={handleJoinCollective}
+                         />
+                     </div>
                 )}
+                 
+                {/* MAIN APP - Only rendered if user has a collective selected */}
+                {loggedInUser && currentCollective && (
+                    isMobile ? (
+                        <div className="h-full w-full overflow-hidden flex flex-col relative z-10">
+                            <div className="relative z-10 flex flex-col h-full">
+                               {activeMobileApp ? (
+                                 <>
+                                    <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg h-14 flex items-center justify-between px-4 z-10 border-b border-white/10">
+                                        <button onClick={() => setActiveMobileApp(null)} className="flex items-center gap-1 text-sm text-sky-400 hover:text-sky-300">
+                                            <ChevronLeftIcon className="w-5 h-5" />
+                                            <span>Início</span>
+                                        </button>
+                                        <h1 className="font-bold text-md text-white truncate max-w-[50%]">{appConfig.find(a => a.name === activeMobileApp)?.title}</h1>
+                                        <div className="w-16"></div> {/* Spacer */}
+                                    </header>
+                                    <main className="flex-1 overflow-y-auto bg-slate-800/90 backdrop-blur-lg relative z-0 pb-24">
+                                        {appComponents[activeMobileApp]}
+                                    </main>
+                                </>
+                            ) : (
+                                 <>
+                                    <MobileTopBar 
+                                        user={loggedInUser} 
+                                        onToggleControlCenter={() => setIsMobileControlCenterOpen(true)} 
+                                        onOpenProfile={() => setActiveMobileApp('profile')} 
+                                        onOpenSearch={() => setIsSearchOpen(true)}
+                                    />
+                                    <main 
+                                        className="flex-1 flex flex-col relative overflow-hidden pb-24" 
+                                        onTouchStart={handleTouchStart}
+                                        onTouchMove={handleTouchMove}
+                                        onTouchEnd={handleTouchEnd}
+                                    >
+                                        {/* Mobile Horizontal Pages */}
+                                        <div 
+                                            className="flex flex-1 transition-transform duration-300 ease-out"
+                                            style={{ transform: `translateX(-${mobilePage * 100}%)` }}
+                                        >
+                                            {Array.from({ length: totalMobilePages }).map((_, pageIndex) => (
+                                                <div key={pageIndex} className="w-full h-full flex-shrink-0 p-4 space-y-4 overflow-y-auto">
+                                                    {gadgets
+                                                        .slice(pageIndex * gadgetsPerPage, (pageIndex + 1) * gadgetsPerPage)
+                                                        .map(gadget => renderMobileGadget(gadget))
+                                                    }
+                                                    {gadgets.length === 0 && pageIndex === 0 && (
+                                                        <div className="text-center text-slate-400 mt-10">
+                                                            <p>Nenhum gadget adicionado.</p>
+                                                            <p className="text-xs">Use o app "Personalizar" para adicionar.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Page Indicator */}
+                                        <div className="absolute bottom-28 left-0 right-0 flex justify-center gap-2 z-20 pointer-events-none">
+                                            {Array.from({ length: totalMobilePages }).map((_, i) => (
+                                                <div 
+                                                    key={i} 
+                                                    className={`w-2 h-2 rounded-full transition-colors ${i === mobilePage ? 'bg-white' : 'bg-white/30'}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </main>
+                                </>
+                            )}
+                            
+                            {/* NEW PERSISTENT DOCK REPLACES FOOTER */}
+                            <ClioQuickDock 
+                                activeApp={activeMobileApp} 
+                                onNavigate={setActiveMobileApp} 
+                                onAction={handleQuickAction}
+                                onOpenMenu={() => setIsAppDrawerOpen(true)}
+                            />
+
+                            </div>
+                            <MobileAppDrawer 
+                               isOpen={isAppDrawerOpen} 
+                               onClose={() => setIsAppDrawerOpen(false)}
+                               apps={appConfig}
+                               onAppClick={(appName) => {
+                                   setIsAppDrawerOpen(false);
+                                   setActiveMobileApp(appName);
+                               }}
+                            />
+                            <ControlCenter 
+                                isOpen={isMobileControlCenterOpen} 
+                                onClose={() => setIsMobileControlCenterOpen(false)}
+                                eventInfo={eventInfo}
+                                schedule={schedule}
+                            />
+                            
+                            <MobileGadgetMenu 
+                                isOpen={isGadgetMenuOpen} 
+                                onClose={() => setIsGadgetMenuOpen(false)} 
+                                onRemove={handleMobileRemoveGadget}
+                                onChange={() => { setIsGadgetMenuOpen(false); setIsGadgetSelectorOpen(true); }}
+                            />
+
+                            <GadgetSelectorModal 
+                                isOpen={isGadgetSelectorOpen}
+                                onClose={() => setIsGadgetSelectorOpen(false)}
+                                onSelect={handleMobileSwapGadget}
+                            />
+                        </div>
+                    ) : (
+                        <>
+                            <ClioOSDesktop 
+                                onAppClick={handleAppClick} 
+                                user={loggedInUser} 
+                                onLogout={handleLogout}
+                                appStates={appStates}
+                                eventInfo={eventInfo}
+                                schedule={schedule}
+                                onOpenSearch={() => setIsSearchOpen(true)}
+                            />
+                            
+                            {gadgets.map((gadget: Gadget) => (
+                                <GadgetWrapper key={gadget.id} gadget={gadget} onClose={handleRemoveGadget} onPositionChange={handleUpdateGadgetPosition} >
+                                    {gadget.type === 'analog_clock' && <AnalogClock />}
+                                    {gadget.type === 'countdown' && <CountdownGadget />}
+                                    {gadget.type === 'quick_note' && <QuickNoteGadget content={gadget.data?.content || ''} onContentChange={(content) => handleUpdateGadgetData(gadget.id, { content })} />}
+                                    {gadget.type === 'financial_summary' && <FinancialSummaryGadget />}
+                                    {gadget.type === 'team_status' && <TeamStatusGadget />}
+                                    {gadget.type === 'weather' && <WeatherGadget />}
+                                </GadgetWrapper>
+                            ))}
+
+                            
+                            {appConfig.map(({ name, title, component }) => (
+                                appStates[name] === 'open' && (
+                                    <AppWindow key={name} title={title} isOpen={appStates[name] === 'open'} onClose={() => handleAppClose(name)} onMinimize={() => handleAppMinimize(name)} >
+                                        {component}
+                                    </AppWindow>
+                                )
+                            ))}
+
+                            {appStates.clio_company === 'open' && (
+                                <AppWindow title="Clio Company" isOpen={appStates.clio_company === 'open'} onClose={() => handleAppClose('clio_company')} onMinimize={() => handleAppMinimize('clio_company')} >
+                                    <iframe src="https://edu-cliocompany.odoo.com" title="Clio Company" className="w-full h-full border-none" />
+                                </AppWindow>
+                            )}
+                        </>
+                    )
+                )}
+                
                 <Modal isOpen={modalOpen} onClose={closeModal} title={getModalTitle()}>{renderModalContent()}</Modal>
             </div>
         </AppContext.Provider>

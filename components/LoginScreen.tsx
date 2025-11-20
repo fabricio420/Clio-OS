@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ClioAppIcon, MailIcon, LockIcon, UserIcon } from './icons';
 
@@ -51,6 +52,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
     e.preventDefault();
     setError('');
     setIsLoading(true);
+
+    // Admin/Test Account Bypass Logic
+    if (email === 'admin' && password === 'admin') {
+        setTimeout(() => {
+             onGuestLogin();
+             setIsLoading(false);
+        }, 500); // Small delay for UX feel
+        return;
+    }
+
     try {
         const result = onLogin(email, password);
         const success = result instanceof Promise ? await result : result;
@@ -143,8 +154,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
                             </div>
                         )}
 
-                        <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@coletivo.com" disabled={isLoading} />
-                        <InputField icon={<LockIcon className="h-5 w-5 text-slate-400"/>} name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" disabled={isLoading} />
+                        {/* Changed type from email to text to allow 'admin' username login */}
+                        <InputField icon={<MailIcon className="h-5 w-5 text-slate-400"/>} name="email" type="text" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail ou Usuário" disabled={isLoading} />
+                        <InputField icon={<LockIcon className="h-5 w-5 text-slate-400"/>} name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha" disabled={isLoading} />
                         
                         <div className="flex items-center pl-1">
                             <input id="remember-me" name="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900" />
@@ -156,19 +168,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onSignUp, onGuestLog
                         <div className="space-y-4 pt-3">
                             <button type="submit" disabled={isLoading} className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
                                 {isLoading ? 'Acessando...' : 'Entrar'}
-                            </button>
-                            <div className="relative flex items-center py-2">
-                                <div className="flex-grow border-t border-white/10"></div>
-                                <span className="flex-shrink mx-4 text-xs text-slate-500 uppercase tracking-widest">ou</span>
-                                <div className="flex-grow border-t border-white/10"></div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={onGuestLogin}
-                                disabled={isLoading}
-                                className="w-full py-3.5 px-4 bg-white/5 hover:bg-white/10 border border-white/5 text-slate-200 font-semibold rounded-xl transition-all disabled:opacity-50"
-                            >
-                                Entrar como Visitante
                             </button>
                         </div>
                         <p className="text-center text-sm text-slate-400 pt-4">

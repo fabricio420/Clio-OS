@@ -5,6 +5,13 @@ export enum TaskStatus {
   Done = 'Concluído',
 }
 
+export interface Collective {
+  id: string;
+  name: string;
+  code: string; // Used for sharing/joining
+  description?: string;
+}
+
 export interface Member {
   id: string;
   name: string;
@@ -12,6 +19,7 @@ export interface Member {
   role: string;
   email: string;
   password?: string;
+  collectiveId?: string;
 }
 
 export interface Task {
@@ -21,6 +29,7 @@ export interface Task {
   status: TaskStatus;
   assigneeId?: string;
   dueDate: string;
+  collectiveId?: string;
 }
 
 export interface ScheduleItem {
@@ -29,6 +38,7 @@ export interface ScheduleItem {
   title: string;
   description: string;
   responsible: string;
+  collectiveId?: string;
 }
 
 export interface Artist {
@@ -42,6 +52,7 @@ export interface Artist {
   cpf?: string;
   rg?: string;
   documentImage?: string;
+  collectiveId?: string;
 }
 
 export interface FeedPost {
@@ -49,6 +60,7 @@ export interface FeedPost {
   author: Member;
   content: string;
   timestamp: string;
+  collectiveId?: string;
 }
 
 export interface EventInfoData {
@@ -64,6 +76,7 @@ export interface EventInfoData {
     awardsDescription: string;
     isCollab: boolean;
     collabDescription: string;
+    collectiveId?: string;
 }
 
 export interface MediaItem {
@@ -73,6 +86,7 @@ export interface MediaItem {
   fileDataUrl: string;
   fileName: string;
   artistId?: string;
+  collectiveId?: string;
 }
 
 export enum InventoryStatus {
@@ -87,6 +101,7 @@ export interface InventoryItem {
     quantity: number;
     status: InventoryStatus;
     responsibleId?: string;
+    collectiveId?: string;
 }
 
 export type TransactionType = 'income' | 'expense';
@@ -115,6 +130,7 @@ export interface FinancialProject {
   name: string;
   description: string;
   transactions: Transaction[];
+  collectiveId?: string;
 }
 
 export interface Note {
@@ -128,11 +144,13 @@ export interface Notebook {
   id: string;
   name: string;
   notes: Note[];
+  collectiveId?: string;
 }
 
 export interface TeamStatus {
   memberId: string;
   status: string;
+  collectiveId?: string;
 }
 
 export type GadgetType = 'analog_clock' | 'countdown' | 'quick_note' | 'financial_summary' | 'team_status' | 'weather';
@@ -146,6 +164,7 @@ export interface Gadget {
   type: GadgetType;
   position: { x: number; y: number };
   data?: GadgetData;
+  collectiveId?: string;
 }
 
 export type TransactionPeriod = 'all' | 'month' | 'week';
@@ -162,6 +181,7 @@ export interface PhotoAlbum {
   name: string;
   description: string;
   photos: Photo[];
+  collectiveId?: string;
 }
 
 export interface CollectiveDocument {
@@ -172,6 +192,7 @@ export interface CollectiveDocument {
   fileType: string;
   uploadedAt: string;
   uploaderId: string;
+  collectiveId?: string;
 }
 
 export interface MeetingMinute {
@@ -180,6 +201,7 @@ export interface MeetingMinute {
   attendeeIds: string[];
   agenda: string; // Can be simple text or markdown/html
   decisions: string; // Can be simple text or markdown/html
+  collectiveId?: string;
 }
 
 export interface VoteOption {
@@ -196,6 +218,7 @@ export interface VotingTopic {
   creatorId: string;
   createdAt: string; // ISO string
   status: 'open' | 'closed';
+  collectiveId?: string;
 }
 
 export interface AuditLog {
@@ -207,6 +230,7 @@ export interface AuditLog {
     entity: string;
     details: string;
     timestamp: string;
+    collectiveId?: string;
 }
 
 export type ModalView = 'task' | 'schedule' | 'artist' | 'info' | 'media' | 'inventory' | 'member' | 'avatar_viewer' | 'financial_project' | 'transaction' | 'notebook' | 'photo_album' | 'photo' | 'collective_document' | 'meeting_minute' | 'voting_topic' | 'profile';
