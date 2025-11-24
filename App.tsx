@@ -438,7 +438,6 @@ const App: React.FC = () => {
             setLoadingAuth(true);
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!);
-                // Data will be fetched after currentCollective is set
             } else {
                 setLoadingAuth(false);
             }
@@ -532,6 +531,7 @@ const App: React.FC = () => {
                 setLoggedInUser(user);
                 loadUserData(email);
                 fetchAllProfiles();
+                checkUserMembership(userId); // Check if they are already in a collective
             } else {
                  // Profile doesn't exist in DB (maybe signed up before table existed), create it now
                  const newUser: Member = {
@@ -554,6 +554,7 @@ const App: React.FC = () => {
                      setLoggedInUser(newUser);
                      loadUserData(email);
                      fetchAllProfiles();
+                     checkUserMembership(userId);
                  } else {
                      console.error("Error auto-creating profile:", insertError);
                  }
@@ -564,6 +565,34 @@ const App: React.FC = () => {
             setLoadingAuth(false);
         }
     };
+    
+    const checkUserMembership = async (userId: string) => {
+        try {
+            // Check if user is linked to any collective
+            const { data, error } = await supabase
+                .from('collective_members')
+                .select('collective_id, collectives(*)')
+                .eq('member_id', userId)
+                .single(); // For now, assuming user belongs to one collective. If multiple, this needs array handling.
+
+            if (data && data.collectives) {
+                const c = data.collectives as any;
+                const loadedCollective: Collective = {
+                    id: c.id,
+                    name: c.name,
+                    code: c.code,
+                    description: c.description
+                };
+                setCurrentCollective(loadedCollective);
+                updateUserState('eventInfo', { ...MOCK_EVENT_INFO, collectiveName: c.name, eventName: `Evento de ${c.name}` });
+            } else {
+                setCurrentCollective(null); // Will trigger selection screen
+            }
+        } catch (err) {
+            console.error("Error checking membership:", err);
+            setCurrentCollective(null);
+        }
+    }
     
     const fetchAllProfiles = async () => {
         const { data } = await supabase.from('profiles').select('*');
@@ -583,7 +612,6 @@ const App: React.FC = () => {
     const logAction = async (action: 'CREATE' | 'UPDATE' | 'DELETE', entity: string, details: string) => {
         if (!loggedInUser || !currentCollective) return;
         try {
-            // Try insert with collective_id, fallback if missing column
             const payload = {
                 user_id: loggedInUser.id,
                 user_name: loggedInUser.name,
@@ -1323,35 +1351,82 @@ const App: React.FC = () => {
 
     const handleCreateCollective = async (name: string) => {
         if (!loggedInUser) return;
-        // In a real scenario, we would create the collective in DB and link user.
-        // For now, mocking the creation process within frontend state for non-admin users (or assuming backend trigger)
-        const newCollective: Collective = {
-            id: crypto.randomUUID(),
-            name: name,
-            code: Math.random().toString(36).substring(7).toUpperCase()
-        };
-        
-        // Mock DB insert for collective (this will likely fail without RLS/Table setup on real backend without migration)
-        // We just set currentCollective to proceed to Dashboard
-        setCurrentCollective(newCollective);
-        showToast(`Coletivo "${name}" criado!`, 'success');
+        try {
+            // Generate a simple 6-char unique code
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            
+            const payload = { 
+                name: name, 
+                code: code,
+                owner_id: loggedInUser.id
+            };
+
+            const { data: collective, error } = await supabase.from('collectives').insert([payload]).select().single();
+            
+            if (error) throw error;
+
+            // Add creator as member
+            if (collective) {
+                await supabase.from('collective_members').insert([{
+                    collective_id: collective.id,
+                    member_id: loggedInUser.id,
+                    role: 'Admin'
+                }]);
+                
+                setCurrentCollective({
+                    id: collective.id,
+                    name: collective.name,
+                    code: collective.code,
+                    description: collective.description
+                });
+                showToast(`Coletivo "${name}" criado com sucesso!`, 'success');
+                updateUserState('eventInfo', { ...MOCK_EVENT_INFO, collectiveName: name, eventName: `Evento de ${name}` });
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao criar coletivo.', 'error');
+        }
     };
 
     const handleJoinCollective = async (code: string) => {
         if (!loggedInUser) return;
-        // Mock verification
-        if (code.toLowerCase() === 'admin-test') {
-            setCurrentCollective(TEST_COLLECTIVE);
-            showToast('Entrou no Coletivo de Teste', 'success');
-        } else {
-             // Simulate joining a new group
-             const joinedCollective: Collective = {
-                id: 'joined-collective-' + code,
-                name: 'Coletivo (Código: ' + code + ')',
-                code: code
-             };
-             setCurrentCollective(joinedCollective);
-             showToast('Entrou no Coletivo!', 'success');
+        try {
+            // 1. Find collective by code
+            const { data: collective, error } = await supabase.from('collectives').select('*').eq('code', code).single();
+            
+            if (error || !collective) {
+                showToast('Coletivo não encontrado com este código.', 'error');
+                return;
+            }
+
+            // 2. Add user to collective_members
+            const { error: joinError } = await supabase.from('collective_members').insert([{
+                collective_id: collective.id,
+                member_id: loggedInUser.id,
+                role: 'Membro'
+            }]);
+
+            if (joinError) {
+                if (joinError.code === '23505') { // Unique violation
+                     showToast('Você já faz parte deste coletivo!', 'info');
+                } else {
+                     throw joinError;
+                }
+            } else {
+                showToast(`Bem-vindo ao ${collective.name}!`, 'success');
+            }
+
+            setCurrentCollective({
+                id: collective.id,
+                name: collective.name,
+                code: collective.code,
+                description: collective.description
+            });
+            updateUserState('eventInfo', { ...MOCK_EVENT_INFO, collectiveName: collective.name, eventName: `Evento de ${collective.name}` });
+
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao entrar no coletivo.', 'error');
         }
     };
 
