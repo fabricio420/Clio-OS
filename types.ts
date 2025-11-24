@@ -233,4 +233,23 @@ export interface AuditLog {
     collectiveId?: string;
 }
 
+// --- CLIO PULSE NOTIFICATION TYPES ---
+export type NotificationType = 'success' | 'error' | 'info' | 'warning';
+
+export interface NotificationAction {
+    label: string;
+    onClick: () => void;
+}
+
+export interface ClioNotification {
+    id: string;
+    title: string;
+    message?: string;
+    type: NotificationType;
+    timestamp: number;
+    duration?: number; // in ms
+    action?: NotificationAction;
+    read: boolean;
+}
+
 export type ModalView = 'task' | 'schedule' | 'artist' | 'info' | 'media' | 'inventory' | 'member' | 'avatar_viewer' | 'financial_project' | 'transaction' | 'notebook' | 'photo_album' | 'photo' | 'collective_document' | 'meeting_minute' | 'voting_topic' | 'profile';

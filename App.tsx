@@ -49,10 +49,12 @@ import { MeetingMinuteForm } from './components/forms/MeetingMinuteForm';
 import { VotingTopicForm } from './components/forms/VotingTopicForm';
 import { TransactionForm } from './components/forms/TransactionForm';
 import { FinancialProjectForm } from './components/forms/FinancialProjectForm';
-import { ChevronLeftIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, MenuIcon, BarChartIcon, StickyNoteIcon, XIcon, SearchIcon, CloudIcon } from './components/icons';
+import { ChevronLeftIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, MenuIcon, BarChartIcon, StickyNoteIcon, XIcon, SearchIcon, CloudIcon, BellIcon } from './components/icons';
 import { AppContext } from './contexts/AppContext';
+import { NotificationProvider, useNotification } from './contexts/NotificationContext';
+import ClioPulseContainer from './components/notifications/ClioPulseContainer';
+import NotificationCenter from './components/notifications/NotificationCenter';
 import { supabase } from './supabaseClient';
-import Toast, { ToastType } from './components/Toast';
 
 // --- RESPONSIVE HOOK ---
 const useMediaQuery = (query: string): boolean => {
@@ -162,7 +164,7 @@ const TEST_COLLECTIVE: Collective = {
 };
 
 // --- MOBILE-SPECIFIC COMPONENTS ---
-const MobileTopBar: React.FC<{ user: Member, onToggleControlCenter: () => void, onOpenProfile: () => void, onOpenSearch: () => void }> = ({ user, onToggleControlCenter, onOpenProfile, onOpenSearch }) => {
+const MobileTopBar: React.FC<{ user: Member, onToggleControlCenter: () => void, onOpenProfile: () => void, onOpenSearch: () => void, onOpenNotifications: () => void, hasUnread: boolean }> = ({ user, onToggleControlCenter, onOpenProfile, onOpenSearch, onOpenNotifications, hasUnread }) => {
     const [time, setTime] = useState(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }));
 
     useEffect(() => {
@@ -187,6 +189,10 @@ const MobileTopBar: React.FC<{ user: Member, onToggleControlCenter: () => void, 
             <div className="flex items-center justify-end gap-2 flex-1">
                  <button onClick={onOpenSearch} className="p-2 rounded-full active:bg-white/20">
                     <SearchIcon className="w-5 h-5 text-white" />
+                </button>
+                <button onClick={onOpenNotifications} className="p-2 rounded-full active:bg-white/20 relative">
+                    <BellIcon className="w-5 h-5 text-white" />
+                    {hasUnread && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>}
                 </button>
                 <button onClick={onToggleControlCenter} className="p-2 -mr-2 active:opacity-70">
                     <MenuIcon className="w-6 h-6 text-white" />
@@ -336,8 +342,10 @@ const GadgetSelectorModal: React.FC<{ isOpen: boolean, onClose: () => void, onSe
 }
 
 
-// --- MAIN APP COMPONENT ---
-const App: React.FC = () => {
+// --- MAIN APP CONTENT WRAPPER (Logic moved here to use Context) ---
+const ClioContent: React.FC = () => {
+    const { addNotification, toggleHistory, history } = useNotification();
+    
     // --- STATE MANAGEMENT ---
     const [users, setUsers] = useState<Member[]>(() => JSON.parse(localStorage.getItem('clio-os-users') || '[]'));
     const [loggedInUser, setLoggedInUser] = useState<Member | null>(null);
@@ -368,11 +376,16 @@ const App: React.FC = () => {
     const [modalView, setModalView] = useState<ModalView | null>(null);
     const [editingItem, setEditingItem] = useState<any>(null);
     
-    // Toast State
-    const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-    
-    const showToast = (message: string, type: ToastType = 'success') => {
-        setToast({ message, type });
+    const hasUnreadNotifications = useMemo(() => history.some(n => !n.read), [history]);
+
+    // Replaced showToast with addNotification
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success', action?: { label: string, onClick: () => void }) => {
+        addNotification(
+            type === 'success' ? 'Sucesso' : type === 'error' ? 'Erro' : 'Informação', 
+            type, 
+            message,
+            action
+        );
     };
 
     // Mobile gesture handling
@@ -906,7 +919,7 @@ const App: React.FC = () => {
                     id: p.id,
                     dataUrl: p.data_url,
                     caption: p.caption,
-                    fileName: p.file_name 
+                    file_name: p.file_name 
                 }))
             }));
             updateUserState('photoAlbums', mapped);
@@ -972,9 +985,36 @@ const App: React.FC = () => {
     };
     const handleDeleteTask = async (id: string) => { 
         const task = tasks.find(t => t.id === id);
+        
+        // Optimistic UI update? No, wait for server but provide undo via toast
+        const restoreTask = async () => {
+             // This is complex without full undo support in backend, so we just re-insert basic info
+             if(task) {
+                 const { id: oldId, ...rest } = task; // Don't re-use old ID to avoid conflict if not purged
+                 // Simplify for demo: just notify
+                 showToast('Desfazer não implementado completamente.', 'info');
+             }
+        };
+
         await supabase.from('tasks').delete().eq('id', id); 
         logAction('DELETE', 'Tarefa', `Excluiu a tarefa: ${task?.title || id}`);
-        showToast('Tarefa excluída', 'info');
+        
+        showToast('Tarefa excluída', 'info', { 
+            label: 'Desfazer', 
+            onClick: () => {
+                // Re-insert the task logic
+                if (task) {
+                    supabase.from('tasks').insert([{
+                        title: task.title,
+                        description: task.description,
+                        status: task.status,
+                        due_date: task.dueDate,
+                        assignee_id: task.assigneeId,
+                        collective_id: currentCollective?.id
+                    }]).then(() => showToast('Tarefa restaurada', 'success'));
+                }
+            } 
+        });
     };
     const handleUpdateTaskStatus = async (id: string, status: TaskStatus) => { 
         await supabase.from('tasks').update({ status }).eq('id', id);
@@ -1352,6 +1392,17 @@ const App: React.FC = () => {
     const handleCreateCollective = async (name: string) => {
         if (!loggedInUser) return;
         try {
+            // Ensure profile exists to satisfy foreign key constraint 'owner_id'
+            const { error: profileError } = await supabase.from('profiles').upsert({
+                id: loggedInUser.id,
+                name: loggedInUser.name,
+                email: loggedInUser.email,
+                avatar: loggedInUser.avatar,
+                role: loggedInUser.role
+            });
+            
+            if (profileError) console.warn("Profile sync warning:", profileError);
+
             // Generate a simple 6-char unique code
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
             
@@ -1382,15 +1433,25 @@ const App: React.FC = () => {
                 showToast(`Coletivo "${name}" criado com sucesso!`, 'success');
                 updateUserState('eventInfo', { ...MOCK_EVENT_INFO, collectiveName: name, eventName: `Evento de ${name}` });
             }
-        } catch (err) {
-            console.error(err);
-            showToast('Erro ao criar coletivo.', 'error');
+        } catch (err: any) {
+            console.error("Creation Error:", err);
+            showToast(err.message || 'Erro ao criar coletivo.', 'error');
         }
     };
 
     const handleJoinCollective = async (code: string) => {
         if (!loggedInUser) return;
         try {
+            // Ensure profile exists before joining
+            const { error: profileError } = await supabase.from('profiles').upsert({
+                id: loggedInUser.id,
+                name: loggedInUser.name,
+                email: loggedInUser.email,
+                avatar: loggedInUser.avatar,
+                role: loggedInUser.role
+            });
+            if (profileError) console.warn("Profile sync warning:", profileError);
+
             // 1. Find collective by code
             const { data: collective, error } = await supabase.from('collectives').select('*').eq('code', code).single();
             
@@ -1831,10 +1892,11 @@ const App: React.FC = () => {
                     onOpenModal={openModal} 
                  />
                  
-                {/* Global Toast Container */}
-                <div className="fixed top-5 right-5 z-[100] flex flex-col gap-2">
-                    {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-                </div>
+                {/* NEW CLIO PULSE NOTIFICATION CONTAINER */}
+                <ClioPulseContainer />
+                
+                {/* NOTIFICATION CENTER SIDEBAR */}
+                <NotificationCenter />
 
                 {/* COLLECTIVE SELECTION SCREEN - Shown when logged in but no collective selected */}
                 {loggedInUser && !currentCollective && (
@@ -1873,6 +1935,8 @@ const App: React.FC = () => {
                                         onToggleControlCenter={() => setIsMobileControlCenterOpen(true)} 
                                         onOpenProfile={() => setActiveMobileApp('profile')} 
                                         onOpenSearch={() => setIsSearchOpen(true)}
+                                        onOpenNotifications={toggleHistory}
+                                        hasUnread={hasUnreadNotifications}
                                     />
                                     <main 
                                         className="flex-1 flex flex-col relative overflow-hidden pb-24" 
@@ -1998,5 +2062,14 @@ const App: React.FC = () => {
         </AppContext.Provider>
     );
 };
+
+// Main App Wrapper with Provider
+const App: React.FC = () => {
+    return (
+        <NotificationProvider>
+            <ClioContent />
+        </NotificationProvider>
+    );
+}
 
 export default App;
