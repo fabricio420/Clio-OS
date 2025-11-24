@@ -637,9 +637,8 @@ const ClioContent: React.FC = () => {
             };
             
             const { error } = await supabase.from('audit_logs').insert(payload);
-            if (error && error.code === '42703') { // Undefined column
-                 const { collective_id, ...rest } = payload;
-                 await supabase.from('audit_logs').insert(rest);
+            if (error) {
+                 console.error("Error logging action:", error);
             }
         } catch (err) {
             console.error("Error logging action:", err); 
@@ -670,18 +669,7 @@ const ClioContent: React.FC = () => {
             }
 
             const res = await query;
-            if (!res.error) return res;
-
-            // If error is related to missing column, try fallback (Shared Space Mode)
-            // PGRST204: Column not found. 42703: Undefined column.
-            if (res.error.code === 'PGRST204' || res.error.code === '42703' || res.error.message?.includes('column')) {
-                let fallback = supabase.from(table).select(select);
-                if (orderBy) fallback = fallback.order(orderBy.col, { ascending: orderBy.asc });
-                if (limit) fallback = fallback.limit(limit);
-                return await fallback;
-            }
-            
-            throw res.error;
+            return res;
         } catch (err) {
             console.warn(`Error fetching ${table} (safely):`, err);
             return { data: null, error: err };
@@ -972,11 +960,7 @@ const ClioContent: React.FC = () => {
                     collective_id: currentCollective.id
                 };
                 
-                const { error } = await supabase.from('tasks').insert([payload]);
-                if (error && error.code === '42703') {
-                     const { collective_id, ...rest } = payload;
-                     await supabase.from('tasks').insert([rest]);
-                }
+                await supabase.from('tasks').insert([payload]);
                 
                 logAction('CREATE', 'Tarefa', `Criou nova tarefa: ${taskData.title}`);
                 showToast('Tarefa criada!', 'success');
@@ -1027,20 +1011,12 @@ const ClioContent: React.FC = () => {
         if (!currentCollective) return;
         const payload = { name: data.name, performance_type: data.performanceType, contact: data.contact, notes: data.notes, instagram: data.instagram, whatsapp: data.whatsapp, cpf: data.cpf, rg: data.rg, document_image: data.documentImage, collective_id: currentCollective.id };
         
-        const performInsert = async (p: any) => {
-            const { error } = await supabase.from('artists').insert([p]);
-            if (error && error.code === '42703') {
-                const { collective_id, ...rest } = p;
-                await supabase.from('artists').insert([rest]);
-            }
-        };
-
         if(id) {
             await supabase.from('artists').update(payload).eq('id', id);
             logAction('UPDATE', 'Artista', `Atualizou dados de: ${data.name}`);
             showToast('Artista atualizado!', 'success');
         } else {
-            await performInsert(payload);
+            await supabase.from('artists').insert([payload]);
             logAction('CREATE', 'Artista', `Cadastrou novo artista: ${data.name}`);
             showToast('Artista cadastrado!', 'success');
         }
@@ -1061,11 +1037,7 @@ const ClioContent: React.FC = () => {
             logAction('UPDATE', 'Cronograma', `Editou item do cronograma: ${data.time} - ${data.title}`);
             showToast('Cronograma atualizado!', 'success');
         } else {
-            const { error } = await supabase.from('schedule_items').insert([payload]);
-            if (error && error.code === '42703') {
-                const { collective_id, ...rest } = payload;
-                await supabase.from('schedule_items').insert([rest]);
-            }
+            await supabase.from('schedule_items').insert([payload]);
             logAction('CREATE', 'Cronograma', `Adicionou ao cronograma: ${data.time} - ${data.title}`);
             showToast('Item adicionado ao cronograma!', 'success');
         }
@@ -1086,11 +1058,7 @@ const ClioContent: React.FC = () => {
             logAction('UPDATE', 'Inventário', `Atualizou item: ${data.name} (${data.quantity})`);
             showToast('Item atualizado!', 'success');
         } else {
-            const { error } = await supabase.from('inventory_items').insert([payload]);
-            if (error && error.code === '42703') {
-                 const { collective_id, ...rest } = payload;
-                 await supabase.from('inventory_items').insert([rest]);
-            }
+            await supabase.from('inventory_items').insert([payload]);
             logAction('CREATE', 'Inventário', `Adicionou item: ${data.name} (${data.quantity})`);
             showToast('Item adicionado ao inventário!', 'success');
         }
@@ -1111,11 +1079,7 @@ const ClioContent: React.FC = () => {
             showToast('Projeto atualizado!', 'success');
         } else {
             const payload = { name: data.name, description: data.description, collective_id: currentCollective.id };
-            const { error } = await supabase.from('financial_projects').insert([payload]);
-             if (error && error.code === '42703') {
-                 const { collective_id, ...rest } = payload;
-                 await supabase.from('financial_projects').insert([rest]);
-            }
+            await supabase.from('financial_projects').insert([payload]);
             logAction('CREATE', 'Financeiro', `Criou projeto: ${data.name}`);
             showToast('Projeto criado!', 'success');
         }
@@ -1148,21 +1112,13 @@ const ClioContent: React.FC = () => {
     const handleAddPost = async (content: string, author: Member) => {
         if (!loggedInUser || !currentCollective) return;
         const payload = { content, author_id: loggedInUser.id, collective_id: currentCollective.id };
-        const { error } = await supabase.from('team_feed_posts').insert([payload]);
-        if (error && error.code === '42703') {
-             const { collective_id, ...rest } = payload;
-             await supabase.from('team_feed_posts').insert([rest]);
-        }
+        await supabase.from('team_feed_posts').insert([payload]);
         showToast('Postagem publicada!', 'success');
     };
     const handleUpdateTeamStatus = async (statusText: string) => {
         if (!loggedInUser || !currentCollective) return;
         const payload = { member_id: loggedInUser.id, status: statusText, collective_id: currentCollective.id };
-        const { error } = await supabase.from('team_statuses').upsert(payload);
-        if (error && error.code === '42703') {
-              const { collective_id, ...rest } = payload;
-             await supabase.from('team_statuses').upsert(rest);
-        }
+        await supabase.from('team_statuses').upsert(payload);
         showToast('Status atualizado!', 'success');
     };
 
@@ -1177,11 +1133,7 @@ const ClioContent: React.FC = () => {
             uploader_id: uploaderId,
             collective_id: currentCollective.id
         };
-        const { error } = await supabase.from('collective_documents').insert([payload]);
-         if (error && error.code === '42703') {
-             const { collective_id, ...rest } = payload;
-             await supabase.from('collective_documents').insert([rest]);
-        }
+        await supabase.from('collective_documents').insert([payload]);
         logAction('CREATE', 'Documentos', `Carregou documento: ${docData.name}`);
         showToast('Documento salvo!', 'success');
     };
@@ -1201,11 +1153,7 @@ const ClioContent: React.FC = () => {
             logAction('UPDATE', 'Reuniões', `Atualizou ata de: ${data.date}`);
             showToast('Ata atualizada!', 'success');
         } else {
-            const { error } = await supabase.from('meeting_minutes').insert([payload]);
-            if (error && error.code === '42703') {
-                const { collective_id, ...rest } = payload;
-                await supabase.from('meeting_minutes').insert([rest]);
-            }
+            await supabase.from('meeting_minutes').insert([payload]);
             logAction('CREATE', 'Reuniões', `Criou ata de reunião: ${data.date}`);
             showToast('Ata salva!', 'success');
         }
@@ -1223,20 +1171,11 @@ const ClioContent: React.FC = () => {
         
         const payload = { title: data.title, description: data.description, creator_id: creatorId, collective_id: currentCollective.id };
         
-        // Try inserting with collective_id
-        let { data: topic, error } = await supabase
+        const { data: topic, error } = await supabase
             .from('voting_topics')
             .insert([payload])
             .select()
             .single();
-        
-        // Fallback if column missing
-        if (error && error.code === '42703') {
-             const { collective_id, ...rest } = payload;
-             const res = await supabase.from('voting_topics').insert([rest]).select().single();
-             topic = res.data;
-             error = res.error;
-        }
         
         if (topic && !error) {
             const optionsPayload = data.options.map((o: any) => ({
@@ -1287,11 +1226,7 @@ const ClioContent: React.FC = () => {
              showToast('Caderno renomeado!', 'success');
         } else {
              const payload = { name, owner_id: loggedInUser.id, collective_id: currentCollective.id };
-             const { error } = await supabase.from('notebooks').insert([payload]);
-             if (error && error.code === '42703') {
-                  const { collective_id, ...rest } = payload;
-                  await supabase.from('notebooks').insert([rest]);
-             }
+             await supabase.from('notebooks').insert([payload]);
              showToast('Caderno criado!', 'success');
         }
     };
@@ -1333,11 +1268,7 @@ const ClioContent: React.FC = () => {
             artist_id: mediaData.artistId,
             collective_id: currentCollective.id
         };
-        const { error } = await supabase.from('media_items').insert([payload]);
-        if (error && error.code === '42703') {
-             const { collective_id, ...rest } = payload;
-             await supabase.from('media_items').insert([rest]);
-        }
+        await supabase.from('media_items').insert([payload]);
         logAction('CREATE', 'Mídia', `Upload de arquivo: ${mediaData.title}`);
         showToast('Mídia salva!', 'success');
     };
@@ -1357,11 +1288,7 @@ const ClioContent: React.FC = () => {
             showToast('Álbum atualizado!', 'success');
         } else {
             const payload = { ...albumData, collective_id: currentCollective.id };
-            const { error } = await supabase.from('photo_albums').insert([payload]);
-            if (error && error.code === '42703') {
-                 const { collective_id, ...rest } = payload;
-                 await supabase.from('photo_albums').insert([rest]);
-            }
+            await supabase.from('photo_albums').insert([payload]);
             showToast('Álbum criado!', 'success');
         }
     };
@@ -1412,8 +1339,15 @@ const ClioContent: React.FC = () => {
                 owner_id: loggedInUser.id
             };
 
+            // Insert into DB
             const { data: collective, error } = await supabase.from('collectives').insert([payload]).select().single();
             
+            // If specific error regarding columns is missing, alert user
+            if (error && (error.code === '42703' || error.message.includes('column'))) {
+                showToast('Banco de dados incompleto. Execute o script SQL no Supabase.', 'error');
+                throw error;
+            }
+
             if (error) throw error;
 
             // Add creator as member
@@ -1427,7 +1361,7 @@ const ClioContent: React.FC = () => {
                 setCurrentCollective({
                     id: collective.id,
                     name: collective.name,
-                    code: collective.code,
+                    code: collective.code || '', 
                     description: collective.description
                 });
                 showToast(`Coletivo "${name}" criado com sucesso!`, 'success');
@@ -1456,7 +1390,12 @@ const ClioContent: React.FC = () => {
             const { data: collective, error } = await supabase.from('collectives').select('*').eq('code', code).single();
             
             if (error || !collective) {
-                showToast('Coletivo não encontrado com este código.', 'error');
+                // If the error is specifically about the column missing
+                if (error && (error.code === '42703' || error.code === 'PGRST204')) {
+                     showToast('O sistema de convites por código não está configurado no banco de dados.', 'error');
+                } else {
+                     showToast('Coletivo não encontrado com este código.', 'error');
+                }
                 return;
             }
 

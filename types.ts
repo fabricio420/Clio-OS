@@ -8,7 +8,7 @@ export enum TaskStatus {
 export interface Collective {
   id: string;
   name: string;
-  code: string; // Used for sharing/joining
+  code?: string; // Used for sharing/joining, optional for backward compatibility
   description?: string;
 }
 
