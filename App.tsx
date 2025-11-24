@@ -593,39 +593,59 @@ const ClioContent: React.FC = () => {
     
     const checkUserMembership = async (userId: string) => {
         try {
-            // Check if user is linked to any collective
+            // Use .maybeSingle() or fetch array to handle cases where multiple rows might exist
+            // or .single() fails. This is safer for initial load.
             const { data, error } = await supabase
                 .from('collective_members')
                 .select('collective_id, collectives(*)')
-                .eq('member_id', userId)
-                .single(); // For now, assuming user belongs to one collective. If multiple, this needs array handling.
+                .eq('member_id', userId);
 
-            if (data && data.collectives) {
-                const c = data.collectives as any;
-                const loadedCollective: Collective = {
-                    id: c.id,
-                    name: c.name,
-                    code: c.code,
-                    description: c.description,
-                    isPublic: c.is_public,
-                    instagram: c.instagram,
-                    tags: c.tags,
-                    coverImage: c.cover_image
-                };
-                setCurrentCollective(loadedCollective);
-                updateUserState('eventInfo', { 
-                    ...MOCK_EVENT_INFO, 
-                    collectiveName: c.name, 
-                    description: c.description || MOCK_EVENT_INFO.description,
-                    eventName: `Evento de ${c.name}`,
-                    isPublic: c.is_public,
-                    instagram: c.instagram,
-                    artTypes: c.tags || [],
-                    coverImage: c.cover_image
-                });
-            } else {
-                setCurrentCollective(null); // Will trigger selection screen
+            if (error) {
+                console.error("Membership check error:", error);
+                setCurrentCollective(null);
+                return;
             }
+
+            // Take the first valid membership found
+            if (data && data.length > 0) {
+                // data[0].collectives might be an object or array depending on the relationship,
+                // but usually 'collectives(*)' on a foreign key returns the single object.
+                // TS needs help here as Supabase types are loose in this context.
+                const firstMembership = data[0];
+                
+                if (firstMembership.collectives) {
+                    const c = firstMembership.collectives as any;
+                    // Ensure we have the essential ID
+                    if (c && c.id) {
+                        const loadedCollective: Collective = {
+                            id: c.id,
+                            name: c.name,
+                            code: c.code,
+                            description: c.description,
+                            isPublic: c.is_public,
+                            instagram: c.instagram,
+                            tags: c.tags,
+                            coverImage: c.cover_image
+                        };
+                        setCurrentCollective(loadedCollective);
+                        updateUserState('eventInfo', { 
+                            ...MOCK_EVENT_INFO, 
+                            collectiveName: c.name, 
+                            description: c.description || MOCK_EVENT_INFO.description,
+                            eventName: `Evento de ${c.name}`,
+                            isPublic: c.is_public,
+                            instagram: c.instagram,
+                            artTypes: c.tags || [],
+                            coverImage: c.cover_image
+                        });
+                        return;
+                    }
+                }
+            }
+            
+            // If no valid collective found after all checks
+            setCurrentCollective(null);
+
         } catch (err) {
             console.error("Error checking membership:", err);
             setCurrentCollective(null);
