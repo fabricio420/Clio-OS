@@ -8,8 +8,14 @@ export enum TaskStatus {
 export interface Collective {
   id: string;
   name: string;
-  code?: string; // Used for sharing/joining, optional for backward compatibility
+  code?: string; // Used for sharing/joining
   description?: string;
+  // Public Profile Fields
+  isPublic?: boolean;
+  instagram?: string;
+  tags?: string[];
+  coverImage?: string;
+  ownerId?: string;
 }
 
 export interface Member {
@@ -77,6 +83,10 @@ export interface EventInfoData {
     isCollab: boolean;
     collabDescription: string;
     collectiveId?: string;
+    // Public Settings
+    isPublic?: boolean;
+    instagram?: string;
+    coverImage?: string;
 }
 
 export interface MediaItem {

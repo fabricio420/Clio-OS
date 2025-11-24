@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
     PowerIcon, WalletIcon, BrushIcon, BookMarkedIcon, HomeIcon,
@@ -113,6 +114,7 @@ const ClioOSDesktop: React.FC<ClioOSDesktopProps> = ({
         { id: 'collab_clio', label: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon> },
         { id: 'browser', label: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon> },
         { type: 'separator' },
+        { id: 'cultural_network', label: 'Rede Cultural', icon: <DockAppIcon bgColorClasses="bg-gradient-to-r from-violet-600 to-fuchsia-600"><GlobeIcon /></DockAppIcon> },
         { id: 'profile', label: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon> },
         { id: 'personalize', label: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon> },
     ];

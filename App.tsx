@@ -11,6 +11,7 @@ import NotebooksApp from './components/NotebooksApp';
 import PhotoGalleryApp from './components/PhotoGalleryApp';
 import BrowserApp from './components/BrowserApp';
 import CollabClioApp from './components/CollabClioApp';
+import CulturalNetworkApp from './components/CulturalNetworkApp';
 import GadgetWrapper from './components/gadgets/GadgetWrapper';
 import AnalogClock from './components/gadgets/AnalogClock';
 import CountdownGadget from './components/gadgets/CountdownGadget';
@@ -88,6 +89,9 @@ const MOCK_EVENT_INFO: EventInfoData = {
     awardsDescription: '',
     isCollab: false,
     collabDescription: '',
+    isPublic: false,
+    instagram: '',
+    coverImage: ''
 };
 
 const DEFAULT_GADGETS: Gadget[] = [
@@ -131,7 +135,7 @@ const wallpapers = [
 export type AppName = 
     | 'dashboard' | 'info' | 'tasks' | 'schedule' | 'artists' | 'team_hub' 
     | 'media' | 'inventory' | 'reports' | 'documentation' | 'clio_company' 
-    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'profile';
+    | 'personalize' | 'finances' | 'notebooks' | 'gallery' | 'browser' | 'collab_clio' | 'cultural_network' | 'profile';
 
 export type AppStatus = 'open' | 'minimized' | 'closed';
 export type AppStates = Record<AppName, AppStatus>;
@@ -141,7 +145,7 @@ const initialAppStates: AppStates = {
     artists: 'closed', team_hub: 'closed', media: 'closed', inventory: 'closed',
     reports: 'closed', documentation: 'closed', clio_company: 'closed',
     personalize: 'closed', finances: 'closed', notebooks: 'closed', gallery: 'closed',
-    browser: 'closed', collab_clio: 'closed', profile: 'closed'
+    browser: 'closed', collab_clio: 'closed', cultural_network: 'closed', profile: 'closed'
 };
 
 const DEFAULT_WALLPAPER = 'https://i.postimg.cc/0NYRtj9R/clio-rebelde-editada-0-6.jpg';
@@ -513,6 +517,14 @@ const ClioContent: React.FC = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'photos' }, () => fetchAlbums())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchAllProfiles())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => fetchAuditLogs())
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'collectives', filter: `id=eq.${currentCollective.id}` }, (payload) => {
+                // Update current collective info live
+                if(payload.new) {
+                    const c = payload.new;
+                    setCurrentCollective(prev => prev ? { ...prev, name: c.name, description: c.description, isPublic: c.is_public, instagram: c.instagram, tags: c.tags, coverImage: c.cover_image } : null);
+                    updateUserState('eventInfo', (prev: any) => ({ ...prev, collectiveName: c.name, description: c.description, isPublic: c.is_public, instagram: c.instagram, artTypes: c.tags || [], coverImage: c.cover_image }));
+                }
+            })
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
                     console.log('Clio OS Realtime: Conectado');
@@ -594,10 +606,23 @@ const ClioContent: React.FC = () => {
                     id: c.id,
                     name: c.name,
                     code: c.code,
-                    description: c.description
+                    description: c.description,
+                    isPublic: c.is_public,
+                    instagram: c.instagram,
+                    tags: c.tags,
+                    coverImage: c.cover_image
                 };
                 setCurrentCollective(loadedCollective);
-                updateUserState('eventInfo', { ...MOCK_EVENT_INFO, collectiveName: c.name, eventName: `Evento de ${c.name}` });
+                updateUserState('eventInfo', { 
+                    ...MOCK_EVENT_INFO, 
+                    collectiveName: c.name, 
+                    description: c.description || MOCK_EVENT_INFO.description,
+                    eventName: `Evento de ${c.name}`,
+                    isPublic: c.is_public,
+                    instagram: c.instagram,
+                    artTypes: c.tags || [],
+                    coverImage: c.cover_image
+                });
             } else {
                 setCurrentCollective(null); // Will trigger selection screen
             }
@@ -1420,9 +1445,22 @@ const ClioContent: React.FC = () => {
                 id: collective.id,
                 name: collective.name,
                 code: collective.code,
-                description: collective.description
+                description: collective.description,
+                isPublic: collective.is_public,
+                instagram: collective.instagram,
+                tags: collective.tags,
+                coverImage: collective.cover_image
             });
-            updateUserState('eventInfo', { ...MOCK_EVENT_INFO, collectiveName: collective.name, eventName: `Evento de ${collective.name}` });
+            updateUserState('eventInfo', { 
+                ...MOCK_EVENT_INFO, 
+                collectiveName: collective.name, 
+                description: collective.description || MOCK_EVENT_INFO.description,
+                eventName: `Evento de ${collective.name}`,
+                isPublic: collective.is_public,
+                instagram: collective.instagram,
+                artTypes: collective.tags || [],
+                coverImage: collective.cover_image
+            });
 
         } catch (err) {
             console.error(err);
@@ -1580,7 +1618,29 @@ const ClioContent: React.FC = () => {
         return { success: true, message: 'Simulação: Senha alterada!' };
     };
 
-    const handleSaveEventInfo = (infoData: EventInfoData) => updateUserState('eventInfo', infoData);
+    // UPDATED: Handles saving to Database now
+    const handleSaveEventInfo = async (infoData: EventInfoData) => {
+        if (!currentCollective) return;
+        try {
+            await supabase.from('collectives').update({
+                name: infoData.collectiveName,
+                description: infoData.description,
+                is_public: infoData.isPublic,
+                instagram: infoData.instagram,
+                tags: infoData.artTypes,
+                cover_image: infoData.coverImage,
+                // Assuming we might want to store the next event date if schema supported it, 
+                // but for now we focus on public profile parts
+                next_event_date: infoData.eventDate ? new Date(infoData.eventDate).toISOString() : null
+            }).eq('id', currentCollective.id);
+            
+            updateUserState('eventInfo', infoData);
+            showToast('Informações salvas e sincronizadas!', 'success');
+        } catch(err) {
+            console.error("Error saving event info:", err);
+            showToast('Erro ao salvar informações no banco.', 'error');
+        }
+    };
     
     
      const handleAddGadget = (type: GadgetType) => {
@@ -1749,6 +1809,7 @@ const ClioContent: React.FC = () => {
         { name: 'notebooks', title: 'Cadernos', icon: <DockAppIcon bgColorClasses="bg-amber-600"><BookMarkedIcon /></DockAppIcon>, component: <NotebooksApp notebooks={notebooks} handleSaveNotebook={handleSaveNotebook} handleDeleteNotebook={handleDeleteNotebook} handleSaveNote={handleSaveNote} handleDeleteNote={handleDeleteNote} /> },
         { name: 'collab_clio', title: 'Collab Clio', icon: <DockAppIcon bgColorClasses="bg-cyan-700"><BriefcaseIcon /></DockAppIcon>, component: <CollabClioApp onOpenModal={openModal} currentUser={loggedInUser} {...userState} handleDeleteCollectiveDocument={handleDeleteCollectiveDocument} handleDeleteMeetingMinute={handleDeleteMeetingMinute} handleCastVote={handleCastVote} handleCloseVoting={handleCloseVoting} /> },
         { name: 'browser', title: 'Navegador', icon: <DockAppIcon bgColorClasses="bg-cyan-600"><GlobeIcon /></DockAppIcon>, component: <BrowserApp /> },
+        { name: 'cultural_network', title: 'Rede Cultural', icon: <DockAppIcon bgColorClasses="bg-gradient-to-r from-violet-600 to-fuchsia-600"><GlobeIcon /></DockAppIcon>, component: <CulturalNetworkApp currentCollectiveId={currentCollective?.id} /> },
         { name: 'profile', title: 'Meu Perfil', icon: <DockAppIcon bgColorClasses="bg-gray-500"><UserIcon /></DockAppIcon>, component: <ProfileApp currentUser={loggedInUser} onSaveProfile={handleSaveProfile} onChangePassword={handleChangePassword} /> },
         { name: 'personalize', title: 'Personalizar', icon: <DockAppIcon bgColorClasses="bg-gradient-to-br from-rose-500 to-violet-600"><BrushIcon /></DockAppIcon>, component: <PersonalizeApp currentWallpaper={wallpaperImage || sessionRandomWallpaper} onSetWallpaper={handleSetWallpaper} onResetWallpaper={handleResetWallpaper} handleAddGadget={handleAddGadget} wallpapers={wallpapers} mediaItems={mediaItems} photoAlbums={photoAlbums} collectiveDocuments={collectiveDocuments} /> },
     ];

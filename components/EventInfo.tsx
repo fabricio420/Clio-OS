@@ -1,6 +1,7 @@
+
 import React from 'react';
 import type { EventInfoData, Artist } from '../types';
-import { MapPinIcon, CalendarIcon } from './icons';
+import { MapPinIcon, CalendarIcon, GlobeIcon } from './icons';
 import Header from './Header';
 
 interface EventInfoProps {
@@ -51,6 +52,26 @@ const EventInfo: React.FC<EventInfoProps> = ({ onOpenModal, eventInfo, artists }
       />
       <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Public Status Card */}
+          <div className={`lg:col-span-3 p-4 rounded-lg flex items-center justify-between ${eventInfo.isPublic ? 'bg-gradient-to-r from-lime-500/20 to-emerald-500/20 border border-lime-500/30' : 'bg-slate-900 border border-slate-700'}`}>
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${eventInfo.isPublic ? 'bg-lime-500 text-slate-900' : 'bg-slate-700 text-slate-400'}`}>
+                        <GlobeIcon className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h4 className={`font-bold ${eventInfo.isPublic ? 'text-white' : 'text-slate-300'}`}>
+                            {eventInfo.isPublic ? 'Visível na Rede Cultural' : 'Coletivo Oculto'}
+                        </h4>
+                        <p className="text-xs text-slate-400">
+                            {eventInfo.isPublic 
+                                ? 'Outros coletivos podem encontrar seu perfil público.' 
+                                : 'Ative o "Perfil Público" na edição para aparecer na Rede Cultural.'}
+                        </p>
+                    </div>
+                </div>
+          </div>
+
           <InfoCard title="Descrição do Evento" className="lg:col-span-2">
             <p className="text-slate-300 whitespace-pre-wrap">{eventInfo.description || 'Nenhuma descrição fornecida.'}</p>
           </InfoCard>
