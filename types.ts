@@ -70,6 +70,20 @@ export interface FeedPost {
   collectiveId?: string;
 }
 
+export interface NetworkComment {
+    id: string;
+    post_id: string;
+    user_id: string;
+    content: string;
+    created_at: string;
+    author: {
+        id: string;
+        name: string;
+        vulgo?: string;
+        avatar: string;
+    }
+}
+
 export interface NetworkPost {
     id: string;
     content: string;
@@ -78,6 +92,7 @@ export interface NetworkPost {
     album_name?: string;
     created_at: string;
     likes_count: number;
+    comments_count: number;
     author: {
         id: string;
         name: string;
