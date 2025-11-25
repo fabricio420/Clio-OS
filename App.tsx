@@ -448,30 +448,49 @@ const ClioContent: React.FC = () => {
         touchEndY.current = null; touchEndX.current = null;
     };
 
-    // --- SUPABASE AUTH ---
+    // --- SUPABASE AUTH & INIT ---
     useEffect(() => {
-        // Check active session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setLoadingAuth(true);
-            if (session?.user) {
-                fetchUserProfile(session.user.id, session.user.email!);
-            } else {
-                setLoadingAuth(false);
-            }
-        });
+        let mounted = true;
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const initializeAuth = async () => {
+            setLoadingAuth(true);
+            
+            // 1. Get initial session
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (mounted) {
+                if (session?.user) {
+                    await fetchUserProfileAndCollective(session.user.id, session.user.email!);
+                } else {
+                    setLoadingAuth(false);
+                }
+            }
+        };
+
+        initializeAuth();
+
+        // 2. Subscribe to changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (!mounted) return;
+            
+            // 'INITIAL_SESSION' is handled by getSession above to avoid double-fetch.
+            if (event === 'INITIAL_SESSION') return;
+
             if (session?.user) {
-                fetchUserProfile(session.user.id, session.user.email!);
-            } else {
+                setLoadingAuth(true);
+                await fetchUserProfileAndCollective(session.user.id, session.user.email!);
+            } else if (event === 'SIGNED_OUT') {
                 setLoggedInUser(null);
                 setCurrentCollective(null);
-                setUserState(MOCK_INITIAL_DATA); // Reset to defaults
+                setUserState(MOCK_INITIAL_DATA);
                 setLoadingAuth(false);
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     // --- FETCH DATA WHEN COLLECTIVE CHANGES ---
@@ -537,118 +556,121 @@ const ClioContent: React.FC = () => {
     }, [loggedInUser, currentCollective]);
 
 
-    const fetchUserProfile = async (userId: string, email: string) => {
+    // Combined fetcher to ensure sequence
+    const fetchUserProfileAndCollective = async (userId: string, email: string) => {
         try {
-            const { data, error } = await supabase
+            // 1. Fetch Profile
+            const { data: profileData } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
                 .single();
             
-            if (data) {
-                const user: Member = {
-                    id: data.id,
+            let user: Member;
+
+            if (profileData) {
+                user = {
+                    id: profileData.id,
                     email: email,
-                    name: data.name || 'Usuário',
-                    role: data.role || 'Membro',
-                    avatar: data.avatar || DEFAULT_AVATAR
+                    name: profileData.name || 'Usuário',
+                    role: profileData.role || 'Membro',
+                    avatar: profileData.avatar || DEFAULT_AVATAR
                 };
-                setLoggedInUser(user);
-                loadUserData(email);
-                fetchAllProfiles();
-                await checkUserMembership(userId); // Wait for membership check
             } else {
-                 // Profile doesn't exist in DB (maybe signed up before table existed), create it now
-                 const newUser: Member = {
+                 // Profile auto-creation
+                 user = {
                     id: userId,
                     email: email,
-                    name: email.split('@')[0], // Default name
+                    name: email.split('@')[0],
                     role: 'Membro',
                     avatar: DEFAULT_AVATAR
                 };
-                 
-                 const { error: insertError } = await supabase.from('profiles').insert([{ 
+                 await supabase.from('profiles').insert([{ 
                      id: userId, 
-                     name: newUser.name, 
-                     email: newUser.email, 
-                     role: newUser.role, 
-                     avatar: newUser.avatar 
+                     name: user.name, 
+                     email: user.email, 
+                     role: user.role, 
+                     avatar: user.avatar 
                  }]);
-
-                 if (!insertError) {
-                     setLoggedInUser(newUser);
-                     loadUserData(email);
-                     fetchAllProfiles();
-                     await checkUserMembership(userId); // Wait for membership check
-                 } else {
-                     console.error("Error auto-creating profile:", insertError);
-                 }
             }
+            
+            setLoggedInUser(user);
+            loadUserData(email);
+            
+            // 2. Fetch Collective (Sequentially)
+            const collective = await getCollectiveForUser(userId);
+            if (collective) {
+                setCurrentCollective(collective);
+                // Sync event info with collective data
+                updateUserState('eventInfo', { 
+                    ...MOCK_EVENT_INFO, 
+                    collectiveName: collective.name, 
+                    description: collective.description || MOCK_EVENT_INFO.description,
+                    eventName: `Evento de ${collective.name}`,
+                    isPublic: collective.isPublic,
+                    instagram: collective.instagram,
+                    artTypes: collective.tags || [],
+                    coverImage: collective.coverImage
+                });
+            } else {
+                setCurrentCollective(null);
+            }
+
+            // 3. Fetch all profiles for UI
+            await fetchAllProfiles();
+
         } catch (err) {
-            console.error(err);
+            console.error("Auth Flow Error:", err);
         } finally {
             setLoadingAuth(false);
         }
     };
     
-    const checkUserMembership = async (userId: string) => {
+    // New Robust Membership Check
+    const getCollectiveForUser = async (userId: string): Promise<Collective | null> => {
         try {
-            // Use .maybeSingle() or fetch array to handle cases where multiple rows might exist
-            // or .single() fails. This is safer for initial load.
-            const { data, error } = await supabase
+            // Step 1: Get membership row
+            const { data: memberData, error: memberError } = await supabase
                 .from('collective_members')
-                .select('collective_id, collectives(*)')
-                .eq('member_id', userId);
+                .select('collective_id')
+                .eq('member_id', userId)
+                .maybeSingle();
 
-            if (error) {
-                console.error("Membership check error:", error);
-                setCurrentCollective(null);
-                return;
+            if (memberError) {
+                console.error("Erro ao buscar afiliação:", memberError);
+                return null;
             }
 
-            // Take the first valid membership found
-            if (data && data.length > 0) {
-                const firstMembership = data[0];
-                
-                if (firstMembership.collectives) {
-                    // Fix: Handle case where collectives might be array or single object
-                    const cData = Array.isArray(firstMembership.collectives) ? firstMembership.collectives[0] : firstMembership.collectives;
-                    const c = cData as any;
-
-                    // Ensure we have the essential ID
-                    if (c && c.id) {
-                        const loadedCollective: Collective = {
-                            id: c.id,
-                            name: c.name,
-                            code: c.code,
-                            description: c.description,
-                            isPublic: c.is_public,
-                            instagram: c.instagram,
-                            tags: c.tags,
-                            coverImage: c.cover_image
-                        };
-                        setCurrentCollective(loadedCollective);
-                        updateUserState('eventInfo', { 
-                            ...MOCK_EVENT_INFO, 
-                            collectiveName: c.name, 
-                            description: c.description || MOCK_EVENT_INFO.description,
-                            eventName: `Evento de ${c.name}`,
-                            isPublic: c.is_public,
-                            instagram: c.instagram,
-                            artTypes: c.tags || [],
-                            coverImage: c.cover_image
-                        });
-                        return;
-                    }
-                }
+            if (!memberData) {
+                return null;
             }
-            
-            // If no valid collective found after all checks
-            setCurrentCollective(null);
+
+            // Step 2: Get collective details
+            const { data: collectiveData, error: collectiveError } = await supabase
+                .from('collectives')
+                .select('*')
+                .eq('id', memberData.collective_id)
+                .single();
+
+            if (collectiveError || !collectiveData) {
+                console.error("Erro ao buscar dados do coletivo:", collectiveError);
+                return null;
+            }
+
+            return {
+                id: collectiveData.id,
+                name: collectiveData.name,
+                code: collectiveData.code,
+                description: collectiveData.description,
+                isPublic: collectiveData.is_public,
+                instagram: collectiveData.instagram,
+                tags: collectiveData.tags,
+                coverImage: collectiveData.cover_image
+            };
 
         } catch (err) {
-            console.error("Error checking membership:", err);
-            setCurrentCollective(null);
+            console.error("Erro crítico no check de afiliação:", err);
+            return null;
         }
     }
     
