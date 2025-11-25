@@ -556,7 +556,7 @@ const ClioContent: React.FC = () => {
                 setLoggedInUser(user);
                 loadUserData(email);
                 fetchAllProfiles();
-                checkUserMembership(userId); // Check if they are already in a collective
+                await checkUserMembership(userId); // Wait for membership check
             } else {
                  // Profile doesn't exist in DB (maybe signed up before table existed), create it now
                  const newUser: Member = {
@@ -579,7 +579,7 @@ const ClioContent: React.FC = () => {
                      setLoggedInUser(newUser);
                      loadUserData(email);
                      fetchAllProfiles();
-                     checkUserMembership(userId);
+                     await checkUserMembership(userId); // Wait for membership check
                  } else {
                      console.error("Error auto-creating profile:", insertError);
                  }
@@ -608,13 +608,13 @@ const ClioContent: React.FC = () => {
 
             // Take the first valid membership found
             if (data && data.length > 0) {
-                // data[0].collectives might be an object or array depending on the relationship,
-                // but usually 'collectives(*)' on a foreign key returns the single object.
-                // TS needs help here as Supabase types are loose in this context.
                 const firstMembership = data[0];
                 
                 if (firstMembership.collectives) {
-                    const c = firstMembership.collectives as any;
+                    // Fix: Handle case where collectives might be array or single object
+                    const cData = Array.isArray(firstMembership.collectives) ? firstMembership.collectives[0] : firstMembership.collectives;
+                    const c = cData as any;
+
                     // Ensure we have the essential ID
                     if (c && c.id) {
                         const loadedCollective: Collective = {
