@@ -69,6 +69,24 @@ export interface FeedPost {
   collectiveId?: string;
 }
 
+export interface NetworkPost {
+    id: string;
+    content: string;
+    created_at: string;
+    likes_count: number;
+    author: {
+        id: string;
+        name: string;
+        avatar: string;
+        role: string;
+    };
+    collective: {
+        id: string;
+        name: string;
+    };
+    isLikedByMe?: boolean;
+}
+
 export interface EventInfoData {
     eventName: string;
     collectiveName: string;
