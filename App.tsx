@@ -487,15 +487,17 @@ const ClioContent: React.FC = () => {
         touchEndY.current = null; touchEndX.current = null;
     };
 
-    // Safety timeout for loading (fallback)
+    // Safety timeout for loading (fallback) - Reduced to 5s
     useEffect(() => {
         const timer = setTimeout(() => {
             if (loadingAuth) {
                 setShowLongLoadingMessage(true);
+                // Failsafe: if waiting too long and we have a user, just show the app
+                if (loggedInUser) setLoadingAuth(false);
             }
-        }, 8000);
+        }, 5000);
         return () => clearTimeout(timer);
-    }, [loadingAuth]);
+    }, [loadingAuth, loggedInUser]);
 
     // --- SUPABASE AUTH & INIT ---
     useEffect(() => {
@@ -506,8 +508,11 @@ const ClioContent: React.FC = () => {
             if (!loggedInUser) setLoadingAuth(true);
             
             try {
-                // Check session in background
-                const { data: { session } } = await supabase.auth.getSession();
+                // Check session in background with timeout
+                const sessionPromise = supabase.auth.getSession();
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000));
+                
+                const { data: { session } } : any = await Promise.race([sessionPromise, timeoutPromise]);
                 
                 if (mounted) {
                     if (session?.user) {
@@ -529,7 +534,8 @@ const ClioContent: React.FC = () => {
                 }
             } catch (error) {
                 console.error("Auth Init Error:", error);
-                if (mounted && !loggedInUser) setLoadingAuth(false);
+                // Failsafe: stop loading
+                if (mounted) setLoadingAuth(false);
             }
         };
 
@@ -544,13 +550,14 @@ const ClioContent: React.FC = () => {
                 setLoggedInUser(null);
                 setCurrentCollective(null);
                 setUserState(MOCK_INITIAL_DATA);
-                localStorage.removeItem('clio-last-active-user'); // Clear cache pointer
+                localStorage.removeItem('clio-last-active-user'); 
                 setLoadingAuth(false);
             } 
             else if (event === 'SIGNED_IN' && session?.user) {
                 // Only trigger if user ID changed or if we were purely loading
                 if (!loggedInUser || loggedInUser.id !== session.user.id) {
-                    setLoadingAuth(true);
+                    // Dont set loading if we already have a user (optimistic fix)
+                    if (!loggedInUser) setLoadingAuth(true);
                     await fetchUserProfileAndCollective(session.user.id, session.user.email!);
                 }
             }
@@ -602,7 +609,7 @@ const ClioContent: React.FC = () => {
             }
             
             setLoggedInUser(user);
-            loadUserData(email); // Load/Refresh local user data
+            loadUserData(email); 
             
             // 2. Fetch Collective (Sequentially)
             const collective = await getCollectiveForUser(userId);
@@ -620,21 +627,21 @@ const ClioContent: React.FC = () => {
                     coverImage: collective.coverImage
                 });
                 
-                // 3. Fetch Realtime Data (Tasks, etc) from Supabase
-                // This ensures optimistic data is replaced by server truth
+                // 3. Fetch Realtime Data explicitly with ID
+                const cid = collective.id;
                 await Promise.all([
-                    fetchTasks(),
-                    fetchArtists(),
-                    fetchSchedule(),
-                    fetchInventory(),
-                    fetchFinancialData(),
-                    fetchFeedPosts(),
-                    fetchTeamStatuses(),
-                    fetchCollabData(),
-                    fetchNotebooks(),
-                    fetchMedia(),
-                    fetchAlbums(),
-                    fetchAuditLogs(),
+                    fetchTasks(cid),
+                    fetchArtists(cid),
+                    fetchSchedule(cid),
+                    fetchInventory(cid),
+                    fetchFinancialData(cid),
+                    fetchFeedPosts(cid),
+                    fetchTeamStatuses(cid),
+                    fetchCollabData(cid),
+                    fetchNotebooks(cid),
+                    fetchMedia(cid),
+                    fetchAlbums(cid),
+                    fetchAuditLogs(cid),
                     fetchAllProfiles()
                 ]);
 
@@ -765,57 +772,11 @@ const ClioContent: React.FC = () => {
     };
 
     // --- SUPABASE DATA FETCHING (CORE) ---
-    // NOTE: These functions now rely on currentCollective state or the one passed during init
-    // Since they are closures, they might see stale state if called from inside fetchUserProfileAndCollective 
-    // UNLESS we pass the collective explicitly or rely on the fact that state updates are batched/async.
-    // BUT: fetchUserProfileAndCollective sets currentCollective state.
-    // To make this robust, these fetchers should check the ref or just use safeFetch with currentCollective.id
-    // However, currentCollective state might not be updated yet inside the same function call.
-    // Simplified for this context: We are calling them AFTER await, so state *should* be updated in next render cycle, 
-    // but here we are in the same cycle.
-    // FIX: Update safeFetch usage to get ID dynamically or rely on state if available.
-    
-    // Actually, inside fetchUserProfileAndCollective, we set state but it won't be available immediately in the next lines.
-    // So we should reload the page? No.
-    // We can't easily pass IDs to all these functions without refactoring all of them.
-    // Strategy: We will wait for the effect to trigger them? No, we called them explicitly.
-    // Better: Update these functions to use `supabase` directly and update state.
-    // The `currentCollective` state is used inside `safeFetch`.
-    // If `currentCollective` is null (initially), safeFetch returns null.
-    // But we set it in `fetchUserProfileAndCollective`.
-    // REACT STATE UPDATE IS ASYNC.
-    // So we should move these fetch calls to a useEffect that depends on `currentCollective`.
-    
-    useEffect(() => {
-        if (currentCollective && loggedInUser && !loadingAuth) {
-            // This effect handles fetching data when collective changes or on initial load if already set
-            // But we already called them in `fetchUserProfileAndCollective`.
-            // To avoid double fetch, we can skip if we just did it?
-            // Actually, simpler: Remove explicit calls in `fetchUserProfileAndCollective` and let this effect handle it.
-            // EXCEPT: We want to ensure data is fresh immediately after login.
-            
-            // Let's just let this effect do the work. It runs when `currentCollective` is set.
-            Promise.all([
-                fetchTasks(),
-                fetchArtists(),
-                fetchSchedule(),
-                fetchInventory(),
-                fetchFinancialData(),
-                fetchFeedPosts(),
-                fetchTeamStatuses(),
-                fetchCollabData(),
-                fetchNotebooks(),
-                fetchMedia(),
-                fetchAlbums(),
-                fetchAuditLogs(),
-                fetchAllProfiles()
-            ]);
-        }
-    }, [currentCollective?.id]); // Only re-run if ID changes
-
-    const fetchTasks = async () => {
-        if (!currentCollective) return;
-        const { data } = await safeFetch('tasks', '*', currentCollective.id);
+    // Updated to accept ID explicitly
+    const fetchTasks = async (overrideId?: string) => {
+        const cid = overrideId || currentCollective?.id;
+        if (!cid) return;
+        const { data } = await safeFetch('tasks', '*', cid);
         if (data) {
             const mappedTasks: Task[] = data.map((t: any) => ({
                 id: t.id,
@@ -830,9 +791,10 @@ const ClioContent: React.FC = () => {
         }
     };
 
-    const fetchArtists = async () => {
-        if (!currentCollective) return;
-        const { data } = await safeFetch('artists', '*', currentCollective.id);
+    const fetchArtists = async (overrideId?: string) => {
+        const cid = overrideId || currentCollective?.id;
+        if (!cid) return;
+        const { data } = await safeFetch('artists', '*', cid);
         if (data) {
             const mappedArtists: Artist[] = data.map((a: any) => ({
                 id: a.id,
@@ -851,17 +813,19 @@ const ClioContent: React.FC = () => {
         }
     };
 
-    const fetchSchedule = async () => {
-        if (!currentCollective) return;
-        const { data } = await safeFetch('schedule_items', '*', currentCollective.id);
+    const fetchSchedule = async (overrideId?: string) => {
+        const cid = overrideId || currentCollective?.id;
+        if (!cid) return;
+        const { data } = await safeFetch('schedule_items', '*', cid);
         if (data) {
             updateUserState('schedule', data);
         }
     };
 
-    const fetchInventory = async () => {
-        if (!currentCollective) return;
-        const { data } = await safeFetch('inventory_items', '*', currentCollective.id);
+    const fetchInventory = async (overrideId?: string) => {
+        const cid = overrideId || currentCollective?.id;
+        if (!cid) return;
+        const { data } = await safeFetch('inventory_items', '*', cid);
         if (data) {
             const mappedInventory = data.map((i: any) => ({
                 id: i.id,
@@ -875,9 +839,10 @@ const ClioContent: React.FC = () => {
         }
     };
 
-    const fetchFinancialData = async () => {
-        if (!currentCollective) return;
-        const { data } = await safeFetch('financial_projects', '*, transactions (*)', currentCollective.id);
+    const fetchFinancialData = async (overrideId?: string) => {
+        const cid = overrideId || currentCollective?.id;
+        if (!cid) return;
+        const { data } = await safeFetch('financial_projects', '*, transactions (*)', cid);
 
         if (data) {
             const mappedProjects: FinancialProject[] = data.map((p: any) => ({
@@ -899,12 +864,13 @@ const ClioContent: React.FC = () => {
     };
 
     // --- SUPABASE FEED & COLLAB FETCHING ---
-    const fetchFeedPosts = async () => {
-        if (!currentCollective) return;
+    const fetchFeedPosts = async (overrideId?: string) => {
+        const cid = overrideId || currentCollective?.id;
+        if (!cid) return;
         const { data } = await safeFetch(
             'team_feed_posts', 
             '*, author:profiles(*)', 
-            currentCollective.id, 
+            cid, 
             { col: 'created_at', asc: false }
         );
 
@@ -927,9 +893,10 @@ const ClioContent: React.FC = () => {
         }
     };
 
-    const fetchTeamStatuses = async () => {
-        if (!currentCollective) return;
-        const { data } = await safeFetch('team_statuses', '*', currentCollective.id);
+    const fetchTeamStatuses = async (overrideId?: string) => {
+        const cid = overrideId || currentCollective?.id;
+        if (!cid) return;
+        const { data } = await safeFetch('team_statuses', '*', cid);
         if (data) {
             const mappedStatuses = data.map((s: any) => ({
                 memberId: s.member_id,
@@ -940,10 +907,11 @@ const ClioContent: React.FC = () => {
         }
     };
 
-    const fetchCollabData = async () => {
-        if (!currentCollective) return;
+    const fetchCollabData = async (overrideId?: string) => {
+        const cid = overrideId || currentCollective?.id;
+        if (!cid) return;
         // Documents
-        const { data: docs } = await safeFetch('collective_documents', '*', currentCollective.id);
+        const { data: docs } = await safeFetch('collective_documents', '*', cid);
         if (docs) {
             const mappedDocs = docs.map((d: any) => ({
                 id: d.id,
@@ -959,7 +927,7 @@ const ClioContent: React.FC = () => {
         }
 
         // Meeting Minutes
-        const { data: minutes } = await safeFetch('meeting_minutes', '*', currentCollective.id);
+        const { data: minutes } = await safeFetch('meeting_minutes', '*', cid);
         if (minutes) {
             const mappedMinutes = minutes.map((m: any) => ({
                 id: m.id,
@@ -973,7 +941,7 @@ const ClioContent: React.FC = () => {
         }
 
         // Voting Topics & Options
-        const { data: topics } = await safeFetch('voting_topics', '*, options:voting_options(*)', currentCollective.id);
+        const { data: topics } = await safeFetch('voting_topics', '*, options:voting_options(*)', cid);
         
         if (topics) {
             const mappedTopics: VotingTopic[] = topics.map((t: any) => ({
@@ -995,9 +963,10 @@ const ClioContent: React.FC = () => {
     };
     
     // --- SUPABASE NOTEBOOKS, MEDIA, GALLERY ---
-    const fetchNotebooks = async () => {
-        if (!currentCollective) return;
-        const { data } = await safeFetch('notebooks', '*, notes(*)', currentCollective.id);
+    const fetchNotebooks = async (overrideId?: string) => {
+        const cid = overrideId || currentCollective?.id;
+        if (!cid) return;
+        const { data } = await safeFetch('notebooks', '*, notes(*)', cid);
         if(data) {
             const mapped = data.map((nb: any) => ({
                 id: nb.id,
@@ -1014,9 +983,10 @@ const ClioContent: React.FC = () => {
         }
     };
 
-    const fetchMedia = async () => {
-         if (!currentCollective) return;
-         const { data } = await safeFetch('media_items', '*', currentCollective.id);
+    const fetchMedia = async (overrideId?: string) => {
+         const cid = overrideId || currentCollective?.id;
+         if (!cid) return;
+         const { data } = await safeFetch('media_items', '*', cid);
          if(data) {
             const mapped = data.map((m: any) => ({
                 id: m.id,
@@ -1031,9 +1001,10 @@ const ClioContent: React.FC = () => {
          }
     }
 
-    const fetchAlbums = async () => {
-         if (!currentCollective) return;
-         const { data } = await safeFetch('photo_albums', '*, photos(*)', currentCollective.id);
+    const fetchAlbums = async (overrideId?: string) => {
+         const cid = overrideId || currentCollective?.id;
+         if (!cid) return;
+         const { data } = await safeFetch('photo_albums', '*, photos(*)', cid);
          if(data) {
             const mapped = data.map((a: any) => ({
                 id: a.id,
@@ -1051,12 +1022,13 @@ const ClioContent: React.FC = () => {
          }
     }
 
-    const fetchAuditLogs = async () => {
-        if (!currentCollective) return;
+    const fetchAuditLogs = async (overrideId?: string) => {
+        const cid = overrideId || currentCollective?.id;
+        if (!cid) return;
         const { data } = await safeFetch(
             'audit_logs', 
             '*', 
-            currentCollective.id, 
+            cid, 
             { col: 'created_at', asc: false }, 
             50
         );
@@ -1679,13 +1651,14 @@ const ClioContent: React.FC = () => {
     };
 
     const handleLogout = async () => {
-        localStorage.removeItem('clio-last-active-user'); // NEW: Clear optimistic cache
+        localStorage.removeItem('clio-last-active-user'); 
         await supabase.auth.signOut();
         setLoggedInUser(null);
         setCurrentCollective(null);
         setUserState(MOCK_INITIAL_DATA);
         setAppStates(initialAppStates);
         setActiveMobileApp(null);
+        setLoadingAuth(false);
     };
 
     const randomLoginWallpaper = useMemo(() => {
@@ -1836,6 +1809,10 @@ const ClioContent: React.FC = () => {
         }
     };
     
+    const handleForceReset = () => {
+        localStorage.clear();
+        window.location.reload();
+    };
 
     // --- RENDER LOGIC ---
     if (loadingAuth) {
@@ -1843,14 +1820,22 @@ const ClioContent: React.FC = () => {
             <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-900 text-white gap-4">
                 <p className="animate-pulse text-lg">Carregando Clio OS...</p>
                 {showLongLoadingMessage && (
-                    <div className="flex flex-col items-center gap-2 animate-in fade-in">
-                        <p className="text-sm text-slate-400">Está demorando mais que o esperado...</p>
-                        <button 
-                            onClick={() => window.location.reload()} 
-                            className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition"
-                        >
-                            Recarregar Página
-                        </button>
+                    <div className="flex flex-col items-center gap-4 animate-in fade-in">
+                        <p className="text-sm text-slate-400">Conexão lenta...</p>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setLoadingAuth(false)} 
+                                className="px-4 py-2 bg-slate-700 rounded-md hover:bg-slate-600 transition text-sm"
+                            >
+                                Tentar Entrar Assim Mesmo
+                            </button>
+                            <button 
+                                onClick={handleForceReset} 
+                                className="px-4 py-2 bg-red-600/80 rounded-md hover:bg-red-600 transition text-sm"
+                            >
+                                Resetar Dados Locais
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
