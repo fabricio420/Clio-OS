@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
-import { GlobeIcon, InstagramIcon, CalendarIcon, SearchIcon, ActivityIcon, ZapIcon, XIcon, PlusIcon } from './icons';
+import { GlobeIcon, InstagramIcon, CalendarIcon, SearchIcon, ActivityIcon, ZapIcon, XIcon, PlusIcon, MusicIcon, MicIcon, FileTextIcon, SparklesIcon, BookOpenIcon } from './icons';
 import Header from './Header';
 import type { Collective, NetworkPost } from '../types';
 import { useAppContext } from '../contexts/AppContext';
@@ -13,6 +13,16 @@ interface NetworkCollective extends Collective {
     instagram?: string;
     cover_image?: string;
 }
+
+const ART_CATEGORIES = [
+    { id: 'Poesia', label: 'Poesia', icon: <SparklesIcon className="w-3 h-3"/>, color: 'text-purple-400 border-purple-400/30 bg-purple-400/10' },
+    { id: 'Rap', label: 'Rap', icon: <MicIcon className="w-3 h-3"/>, color: 'text-orange-400 border-orange-400/30 bg-orange-400/10' },
+    { id: 'Música', label: 'Música', icon: <MusicIcon className="w-3 h-3"/>, color: 'text-sky-400 border-sky-400/30 bg-sky-400/10' },
+    { id: 'Monólogo', label: 'Monólogo', icon: <ActivityIcon className="w-3 h-3"/>, color: 'text-pink-400 border-pink-400/30 bg-pink-400/10' },
+    { id: 'Texto', label: 'Texto', icon: <FileTextIcon className="w-3 h-3"/>, color: 'text-slate-400 border-slate-400/30 bg-slate-400/10' },
+    { id: 'Slam', label: 'Slam', icon: <ZapIcon className="w-3 h-3"/>, color: 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10' },
+    { id: 'Outro', label: 'Outro', icon: <BookOpenIcon className="w-3 h-3"/>, color: 'text-lime-400 border-lime-400/30 bg-lime-400/10' },
+];
 
 // --- SUB-COMPONENTS ---
 
@@ -49,6 +59,8 @@ const PostCard: React.FC<{ post: NetworkPost, currentUserId?: string, onDelete: 
 
     // Prioritize Vulgo if available
     const displayName = post.author.vulgo || post.author.name;
+    
+    const categoryStyle = ART_CATEGORIES.find(c => c.id === post.category) || ART_CATEGORIES[6];
 
     return (
         <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl p-6 border border-white/5 hover:border-white/10 transition-all duration-300 shadow-lg relative overflow-hidden group">
@@ -80,9 +92,30 @@ const PostCard: React.FC<{ post: NetworkPost, currentUserId?: string, onDelete: 
                 )}
             </div>
 
+            {/* Post Metadata (Title & Category) */}
+            <div className="mb-4 relative z-10">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                    {post.title && (
+                        <h3 className="text-xl font-bold text-white font-serif tracking-wide">{post.title}</h3>
+                    )}
+                    {post.category && (
+                        <span className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border font-semibold ${categoryStyle.color}`}>
+                            {categoryStyle.icon}
+                            {post.category}
+                        </span>
+                    )}
+                </div>
+                {post.album_name && (
+                    <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                        <MusicIcon className="w-3 h-3" />
+                        <span className="italic">Álbum/Contexto: {post.album_name}</span>
+                    </div>
+                )}
+            </div>
+
             {/* Content - The Poetry Core */}
             <div className="mb-6 relative z-10 pl-4 border-l-2 border-slate-800">
-                <p className="text-lg text-slate-200 font-serif leading-relaxed whitespace-pre-wrap italic opacity-90 selection:bg-lime-500/30 selection:text-lime-200">
+                <p className="text-lg text-slate-200 font-serif leading-relaxed whitespace-pre-wrap opacity-90 selection:bg-lime-500/30 selection:text-lime-200">
                     {post.content}
                 </p>
             </div>
@@ -187,7 +220,10 @@ const CulturalNetworkApp: React.FC<{ currentCollectiveId?: string }> = ({ curren
     const [searchTerm, setSearchTerm] = useState('');
     
     // Post Creation State
+    const [newPostTitle, setNewPostTitle] = useState('');
     const [newPostContent, setNewPostContent] = useState('');
+    const [newPostCategory, setNewPostCategory] = useState('Post');
+    const [newPostAlbum, setNewPostAlbum] = useState('');
     const [isPosting, setIsPosting] = useState(false);
 
     // FETCH DATA
@@ -218,6 +254,9 @@ const CulturalNetworkApp: React.FC<{ currentCollectiveId?: string }> = ({ curren
             .select(`
                 id,
                 content,
+                title,
+                category,
+                album_name,
                 created_at,
                 likes_count,
                 author:profiles!author_id (id, name, vulgo, avatar, role),
@@ -240,6 +279,9 @@ const CulturalNetworkApp: React.FC<{ currentCollectiveId?: string }> = ({ curren
             const formattedPosts: NetworkPost[] = data.map((p: any) => ({
                 id: p.id,
                 content: p.content,
+                title: p.title,
+                category: p.category,
+                album_name: p.album_name,
                 created_at: p.created_at,
                 likes_count: p.likes_count,
                 author: p.author,
@@ -267,7 +309,10 @@ const CulturalNetworkApp: React.FC<{ currentCollectiveId?: string }> = ({ curren
         const { error } = await supabase
             .from('network_posts')
             .insert({
+                title: newPostTitle.trim() || undefined,
                 content: newPostContent,
+                category: newPostCategory,
+                album_name: newPostAlbum.trim() || undefined,
                 author_id: currentUser.id,
                 collective_id: currentCollectiveId
             });
@@ -276,7 +321,11 @@ const CulturalNetworkApp: React.FC<{ currentCollectiveId?: string }> = ({ curren
             alert("Erro ao publicar. Tente novamente.");
             console.error(error);
         } else {
+            // Reset Form
+            setNewPostTitle('');
             setNewPostContent('');
+            setNewPostCategory('Post');
+            setNewPostAlbum('');
             fetchPosts(); // Refresh
         }
         setIsPosting(false);
@@ -355,30 +404,71 @@ const CulturalNetworkApp: React.FC<{ currentCollectiveId?: string }> = ({ curren
                 {activeTab === 'feed' && (
                     <div className="max-w-3xl mx-auto">
                         {/* Compose Box */}
-                        <div className="bg-slate-900 rounded-xl p-4 mb-8 border border-slate-800 shadow-lg transition-all focus-within:ring-2 focus-within:ring-lime-500/50">
+                        <div className="bg-slate-900 rounded-xl p-5 mb-8 border border-slate-800 shadow-lg transition-all focus-within:ring-2 focus-within:ring-lime-500/50">
                             <div className="flex gap-4">
-                                <div className="flex-shrink-0">
+                                <div className="flex-shrink-0 hidden sm:block">
                                     <img src={currentUser?.avatar} className="w-12 h-12 rounded-full border-2 border-slate-700" alt="Me" />
                                 </div>
-                                <div className="flex-grow">
+                                <div className="flex-grow space-y-4">
+                                    {/* Title Input */}
+                                    <input
+                                        type="text"
+                                        value={newPostTitle}
+                                        onChange={(e) => setNewPostTitle(e.target.value)}
+                                        placeholder="Título da Obra (Opcional)"
+                                        className="w-full bg-transparent text-xl font-bold text-white placeholder:text-slate-600 border-none outline-none font-serif"
+                                    />
+                                    
+                                    {/* Categories Selector */}
+                                    <div className="flex flex-wrap gap-2">
+                                        {ART_CATEGORIES.map(cat => (
+                                            <button
+                                                key={cat.id}
+                                                onClick={() => setNewPostCategory(cat.id)}
+                                                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${
+                                                    newPostCategory === cat.id 
+                                                    ? `${cat.color} ring-1 ring-offset-1 ring-offset-slate-900` 
+                                                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                                                }`}
+                                            >
+                                                {cat.icon}
+                                                {cat.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Content Area */}
                                     <textarea
                                         value={newPostContent}
                                         onChange={(e) => setNewPostContent(e.target.value)}
-                                        placeholder="Compartilhe sua poesia, pensamento ou arte com a rede..."
-                                        className="w-full bg-transparent text-lg text-slate-200 placeholder:text-slate-500 border-none outline-none resize-none font-serif min-h-[100px]"
+                                        placeholder="Compartilhe sua poesia, letra, pensamento ou arte..."
+                                        className="w-full bg-slate-800/50 p-4 rounded-lg text-lg text-slate-200 placeholder:text-slate-500 border border-slate-700 focus:border-lime-500/50 outline-none resize-none font-serif min-h-[120px]"
                                     />
-                                    <div className="flex justify-between items-center mt-2 border-t border-slate-800 pt-2">
-                                        <span className="text-xs text-slate-500 flex items-center gap-1">
-                                            <ZapIcon className="w-3 h-3" /> 
-                                            Publicando como <span className="text-sky-400 font-bold">{currentUser?.vulgo || currentUser?.name}</span>
-                                        </span>
-                                        <button 
-                                            onClick={handleCreatePost}
-                                            disabled={!newPostContent.trim() || isPosting}
-                                            className="px-4 py-2 bg-lime-600 hover:bg-lime-500 text-white font-bold rounded-full text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                        >
-                                            {isPosting ? 'Publicando...' : <><PlusIcon className="w-4 h-4" /> Publicar</>}
-                                        </button>
+
+                                    {/* Footer: Album/Context & Post Button */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+                                        <div className="flex-1">
+                                            <input
+                                                type="text"
+                                                value={newPostAlbum}
+                                                onChange={(e) => setNewPostAlbum(e.target.value)}
+                                                placeholder="Álbum ou Contexto (Ex: Mixtape Vol.1)"
+                                                className="w-full bg-transparent text-sm text-slate-400 placeholder:text-slate-600 border-b border-slate-700 focus:border-sky-500 outline-none py-1 transition-colors"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between sm:justify-end gap-4">
+                                            <span className="text-xs text-slate-500 flex items-center gap-1">
+                                                <ZapIcon className="w-3 h-3" /> 
+                                                como <span className="text-sky-400 font-bold">{currentUser?.vulgo || currentUser?.name}</span>
+                                            </span>
+                                            <button 
+                                                onClick={handleCreatePost}
+                                                disabled={!newPostContent.trim() || isPosting}
+                                                className="px-6 py-2 bg-lime-600 hover:bg-lime-500 text-white font-bold rounded-full text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-lime-500/20"
+                                            >
+                                                {isPosting ? 'Publicando...' : <><PlusIcon className="w-4 h-4" /> Publicar</>}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

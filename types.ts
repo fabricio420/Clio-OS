@@ -73,6 +73,9 @@ export interface FeedPost {
 export interface NetworkPost {
     id: string;
     content: string;
+    title?: string;
+    category?: string;
+    album_name?: string;
     created_at: string;
     likes_count: number;
     author: {
