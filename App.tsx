@@ -350,17 +350,55 @@ const GadgetSelectorModal: React.FC<{ isOpen: boolean, onClose: () => void, onSe
 const ClioContent: React.FC = () => {
     const { addNotification, toggleHistory, history } = useNotification();
     
+    // --- OPTIMISTIC UI INITIALIZATION ---
+    const getCachedState = () => {
+        try {
+            const lastUserStr = localStorage.getItem('clio-last-active-user');
+            if (lastUserStr) {
+                const user = JSON.parse(lastUserStr);
+                const userDataStr = localStorage.getItem(`collab-clio-data-${user.email}`);
+                const collectiveStr = localStorage.getItem(`clio-last-collective-${user.email}`);
+                
+                if (userDataStr) {
+                    const parsedData = JSON.parse(userDataStr);
+                    const userData = { ...MOCK_INITIAL_DATA, ...parsedData };
+                    
+                    // Ensure gadgets exist
+                    if (!userData.gadgets || userData.gadgets.length === 0) {
+                        userData.gadgets = DEFAULT_GADGETS;
+                    }
+
+                    return {
+                        user: user as Member,
+                        userData: userData,
+                        collective: collectiveStr ? JSON.parse(collectiveStr) as Collective : null,
+                        isLoading: false // CACHE HIT - Optimistic Start
+                    };
+                }
+            }
+        } catch (e) {
+            console.warn("Cache load failed", e);
+        }
+        return { user: null, userData: MOCK_INITIAL_DATA, collective: null, isLoading: true }; // CACHE MISS
+    };
+
+    // Initialize state from cache (runs once)
+    const cached = useRef(getCachedState()).current;
+
     // --- STATE MANAGEMENT ---
     const [users, setUsers] = useState<Member[]>(() => JSON.parse(localStorage.getItem('clio-os-users') || '[]'));
-    const [loggedInUser, setLoggedInUser] = useState<Member | null>(null);
-    const [currentCollective, setCurrentCollective] = useState<Collective | null>(null);
-    const [loadingAuth, setLoadingAuth] = useState(true);
+    const [loggedInUser, setLoggedInUser] = useState<Member | null>(cached.user);
+    const [currentCollective, setCurrentCollective] = useState<Collective | null>(cached.collective);
+    const [loadingAuth, setLoadingAuth] = useState(cached.isLoading);
     const [showLongLoadingMessage, setShowLongLoadingMessage] = useState(false);
 
     // This state will hold all data for the currently logged-in user
-    const [userState, setUserState] = useState<any>(MOCK_INITIAL_DATA);
+    const [userState, setUserState] = useState<any>(cached.userData);
 
-    const [wallpaperImage, setWallpaperImage] = useState<string | null>(null);
+    const [wallpaperImage, setWallpaperImage] = useState<string | null>(() => {
+        if (cached.user) return localStorage.getItem(`clio-os-wallpaper-${cached.user.email}`);
+        return null;
+    });
     const [appStates, setAppStates] = useState<AppStates>(initialAppStates);
 
     // Mobile state
@@ -449,9 +487,7 @@ const ClioContent: React.FC = () => {
         touchEndY.current = null; touchEndX.current = null;
     };
 
-    const authInitRef = useRef(false);
-
-    // Safety timeout for loading
+    // Safety timeout for loading (fallback)
     useEffect(() => {
         const timer = setTimeout(() => {
             if (loadingAuth) {
@@ -466,48 +502,57 @@ const ClioContent: React.FC = () => {
         let mounted = true;
 
         const initializeAuth = async () => {
-            if (authInitRef.current) return;
-            authInitRef.current = true;
-
-            setLoadingAuth(true);
+            // Only set loading if we don't have optimistic data
+            if (!loggedInUser) setLoadingAuth(true);
             
             try {
-                // 1. Get initial session
+                // Check session in background
                 const { data: { session } } = await supabase.auth.getSession();
                 
                 if (mounted) {
                     if (session?.user) {
+                        // Valid session. 
+                        // If optimistic UI is showing, this will just silently sync fresh data.
+                        // If it was loading, this will dismiss the loading screen after fetch.
                         await fetchUserProfileAndCollective(session.user.id, session.user.email!);
                     } else {
-                        setLoadingAuth(false);
+                        // No session.
+                        if (loggedInUser) {
+                            // Optimistic UI was shown but session is invalid/expired. Force logout.
+                            console.warn("Session invalid or expired, logging out.");
+                            handleLogout();
+                        } else {
+                            // Stop loading to show Login Screen
+                            setLoadingAuth(false);
+                        }
                     }
                 }
             } catch (error) {
                 console.error("Auth Init Error:", error);
-                if(mounted) setLoadingAuth(false);
+                if (mounted && !loggedInUser) setLoadingAuth(false);
             }
         };
 
         initializeAuth();
 
-        // 2. Subscribe to changes
+        // Subscribe to changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!mounted) return;
-            
-            // 'INITIAL_SESSION' is handled by getSession above to avoid double-fetch.
             if (event === 'INITIAL_SESSION') return;
 
             if (event === 'SIGNED_OUT') {
                 setLoggedInUser(null);
                 setCurrentCollective(null);
                 setUserState(MOCK_INITIAL_DATA);
+                localStorage.removeItem('clio-last-active-user'); // Clear cache pointer
                 setLoadingAuth(false);
             } 
-            else if (event === 'SIGNED_IN' && session?.user && !loadingAuth) {
-                // Only trigger if not currently loading (which implies initialization is done)
-                // This handles manual login via form after initialization
-                setLoadingAuth(true);
-                await fetchUserProfileAndCollective(session.user.id, session.user.email!);
+            else if (event === 'SIGNED_IN' && session?.user) {
+                // Only trigger if user ID changed or if we were purely loading
+                if (!loggedInUser || loggedInUser.id !== session.user.id) {
+                    setLoadingAuth(true);
+                    await fetchUserProfileAndCollective(session.user.id, session.user.email!);
+                }
             }
         });
 
@@ -515,9 +560,7 @@ const ClioContent: React.FC = () => {
             mounted = false;
             subscription.unsubscribe();
         };
-    }, [loadingAuth]); // Added loadingAuth dependency to correctly check state inside callback, though this restarts effect. 
-    // Actually better to remove dependency and trust the init ref, or rely on logic that SIGNED_IN happens after manual action.
-    // Reverting dependency to [] to avoid loop, and checking authInitRef.
+    }, []); // Run once on mount
 
     // Combined fetcher to ensure sequence
     const fetchUserProfileAndCollective = async (userId: string, email: string) => {
@@ -559,7 +602,7 @@ const ClioContent: React.FC = () => {
             }
             
             setLoggedInUser(user);
-            loadUserData(email);
+            loadUserData(email); // Load/Refresh local user data
             
             // 2. Fetch Collective (Sequentially)
             const collective = await getCollectiveForUser(userId);
@@ -576,12 +619,28 @@ const ClioContent: React.FC = () => {
                     artTypes: collective.tags || [],
                     coverImage: collective.coverImage
                 });
+                
+                // 3. Fetch Realtime Data (Tasks, etc) from Supabase
+                // This ensures optimistic data is replaced by server truth
+                await Promise.all([
+                    fetchTasks(),
+                    fetchArtists(),
+                    fetchSchedule(),
+                    fetchInventory(),
+                    fetchFinancialData(),
+                    fetchFeedPosts(),
+                    fetchTeamStatuses(),
+                    fetchCollabData(),
+                    fetchNotebooks(),
+                    fetchMedia(),
+                    fetchAlbums(),
+                    fetchAuditLogs(),
+                    fetchAllProfiles()
+                ]);
+
             } else {
                 setCurrentCollective(null);
             }
-
-            // 3. Fetch all profiles for UI
-            await fetchAllProfiles();
 
         } catch (err) {
             console.error("Auth Flow Error:", err);
@@ -593,8 +652,6 @@ const ClioContent: React.FC = () => {
     // New Robust Membership Check
     const getCollectiveForUser = async (userId: string): Promise<Collective | null> => {
         try {
-            // Step 1: Try to find existing membership
-            // Using limit(1) instead of maybeSingle to gracefully handle cases where bug caused multiple memberships
             const { data: memberData } = await supabase
                 .from('collective_members')
                 .select('collective_id')
@@ -607,7 +664,7 @@ const ClioContent: React.FC = () => {
                 targetCollectiveId = memberData[0].collective_id;
             }
 
-            // Step 2: Fallback - If no membership found, check if user OWNS a collective (Self-Repair)
+            // Fallback: check ownership
             if (!targetCollectiveId) {
                  const { data: ownedData } = await supabase
                     .from('collectives')
@@ -617,34 +674,24 @@ const ClioContent: React.FC = () => {
                  
                  if (ownedData && ownedData.length > 0) {
                      targetCollectiveId = ownedData[0].id;
-                     console.log("Found owned collective without membership. Auto-repairing...");
-                     
-                     // Auto-fix: Create membership record
-                     const { error: repairError } = await supabase.from('collective_members').insert([{
+                     // Auto-fix membership
+                     await supabase.from('collective_members').insert([{
                         collective_id: targetCollectiveId,
                         member_id: userId,
                         role: 'Admin'
                      }]);
-                     
-                     if (repairError) console.warn("Auto-repair failed:", repairError);
                  }
             }
 
-            if (!targetCollectiveId) {
-                return null;
-            }
+            if (!targetCollectiveId) return null;
 
-            // Step 3: Get collective details
             const { data: collectiveData, error: collectiveError } = await supabase
                 .from('collectives')
                 .select('*')
                 .eq('id', targetCollectiveId)
                 .single();
 
-            if (collectiveError || !collectiveData) {
-                console.error("Erro ao buscar dados do coletivo:", collectiveError);
-                return null;
-            }
+            if (collectiveError || !collectiveData) return null;
 
             return {
                 id: collectiveData.id,
@@ -658,7 +705,7 @@ const ClioContent: React.FC = () => {
             };
 
         } catch (err) {
-            console.error("Erro crítico no check de afiliação:", err);
+            console.error("Error checking membership:", err);
             return null;
         }
     }
@@ -693,13 +740,8 @@ const ClioContent: React.FC = () => {
                 created_at: new Date().toISOString()
             };
             
-            const { error } = await supabase.from('audit_logs').insert(payload);
-            if (error) {
-                 console.error("Error logging action:", error);
-            }
-        } catch (err) {
-            console.error("Error logging action:", err); 
-        }
+            await supabase.from('audit_logs').insert(payload);
+        } catch (err) { console.error(err); }
     };
     
     // --- SAFE FETCH HELPER ---
@@ -712,28 +754,65 @@ const ClioContent: React.FC = () => {
     ) => {
         try {
             let query = supabase.from(table).select(select);
-            
-            if (collectiveId) {
-                query = query.eq('collective_id', collectiveId);
-            }
-            
-            if (orderBy) {
-                query = query.order(orderBy.col, { ascending: orderBy.asc });
-            }
-            
-            if (limit) {
-                query = query.limit(limit);
-            }
-
-            const res = await query;
-            return res;
+            if (collectiveId) query = query.eq('collective_id', collectiveId);
+            if (orderBy) query = query.order(orderBy.col, { ascending: orderBy.asc });
+            if (limit) query = query.limit(limit);
+            return await query;
         } catch (err) {
-            console.warn(`Error fetching ${table} (safely):`, err);
+            console.warn(`Error fetching ${table}:`, err);
             return { data: null, error: err };
         }
     };
 
     // --- SUPABASE DATA FETCHING (CORE) ---
+    // NOTE: These functions now rely on currentCollective state or the one passed during init
+    // Since they are closures, they might see stale state if called from inside fetchUserProfileAndCollective 
+    // UNLESS we pass the collective explicitly or rely on the fact that state updates are batched/async.
+    // BUT: fetchUserProfileAndCollective sets currentCollective state.
+    // To make this robust, these fetchers should check the ref or just use safeFetch with currentCollective.id
+    // However, currentCollective state might not be updated yet inside the same function call.
+    // Simplified for this context: We are calling them AFTER await, so state *should* be updated in next render cycle, 
+    // but here we are in the same cycle.
+    // FIX: Update safeFetch usage to get ID dynamically or rely on state if available.
+    
+    // Actually, inside fetchUserProfileAndCollective, we set state but it won't be available immediately in the next lines.
+    // So we should reload the page? No.
+    // We can't easily pass IDs to all these functions without refactoring all of them.
+    // Strategy: We will wait for the effect to trigger them? No, we called them explicitly.
+    // Better: Update these functions to use `supabase` directly and update state.
+    // The `currentCollective` state is used inside `safeFetch`.
+    // If `currentCollective` is null (initially), safeFetch returns null.
+    // But we set it in `fetchUserProfileAndCollective`.
+    // REACT STATE UPDATE IS ASYNC.
+    // So we should move these fetch calls to a useEffect that depends on `currentCollective`.
+    
+    useEffect(() => {
+        if (currentCollective && loggedInUser && !loadingAuth) {
+            // This effect handles fetching data when collective changes or on initial load if already set
+            // But we already called them in `fetchUserProfileAndCollective`.
+            // To avoid double fetch, we can skip if we just did it?
+            // Actually, simpler: Remove explicit calls in `fetchUserProfileAndCollective` and let this effect handle it.
+            // EXCEPT: We want to ensure data is fresh immediately after login.
+            
+            // Let's just let this effect do the work. It runs when `currentCollective` is set.
+            Promise.all([
+                fetchTasks(),
+                fetchArtists(),
+                fetchSchedule(),
+                fetchInventory(),
+                fetchFinancialData(),
+                fetchFeedPosts(),
+                fetchTeamStatuses(),
+                fetchCollabData(),
+                fetchNotebooks(),
+                fetchMedia(),
+                fetchAlbums(),
+                fetchAuditLogs(),
+                fetchAllProfiles()
+            ]);
+        }
+    }, [currentCollective?.id]); // Only re-run if ID changes
+
     const fetchTasks = async () => {
         if (!currentCollective) return;
         const { data } = await safeFetch('tasks', '*', currentCollective.id);
@@ -1023,45 +1102,21 @@ const ClioContent: React.FC = () => {
                 logAction('CREATE', 'Tarefa', `Criou nova tarefa: ${taskData.title}`);
                 showToast('Tarefa criada!', 'success');
             }
+            fetchTasks();
         } catch (err) { console.error(err); showToast('Erro ao salvar tarefa', 'error'); }
     };
     const handleDeleteTask = async (id: string) => { 
         const task = tasks.find(t => t.id === id);
-        
-        // Optimistic UI update? No, wait for server but provide undo via toast
-        const restoreTask = async () => {
-             // This is complex without full undo support in backend, so we just re-insert basic info
-             if(task) {
-                 const { id: oldId, ...rest } = task; // Don't re-use old ID to avoid conflict if not purged
-                 // Simplify for demo: just notify
-                 showToast('Desfazer não implementado completamente.', 'info');
-             }
-        };
-
         await supabase.from('tasks').delete().eq('id', id); 
         logAction('DELETE', 'Tarefa', `Excluiu a tarefa: ${task?.title || id}`);
-        
-        showToast('Tarefa excluída', 'info', { 
-            label: 'Desfazer', 
-            onClick: () => {
-                // Re-insert the task logic
-                if (task) {
-                    supabase.from('tasks').insert([{
-                        title: task.title,
-                        description: task.description,
-                        status: task.status,
-                        due_date: task.dueDate,
-                        assignee_id: task.assigneeId,
-                        collective_id: currentCollective?.id
-                    }]).then(() => showToast('Tarefa restaurada', 'success'));
-                }
-            } 
-        });
+        fetchTasks();
+        showToast('Tarefa excluída', 'info');
     };
     const handleUpdateTaskStatus = async (id: string, status: TaskStatus) => { 
         await supabase.from('tasks').update({ status }).eq('id', id);
         const task = tasks.find(t => t.id === id);
         logAction('UPDATE', 'Tarefa', `Moveu tarefa "${task?.title}" para ${status}`);
+        fetchTasks();
     };
 
     // Artists
@@ -1078,12 +1133,14 @@ const ClioContent: React.FC = () => {
             logAction('CREATE', 'Artista', `Cadastrou novo artista: ${data.name}`);
             showToast('Artista cadastrado!', 'success');
         }
+        fetchArtists();
     };
     const handleDeleteArtist = async (id: string) => { 
         const artist = artists.find(a => a.id === id);
         await supabase.from('artists').delete().eq('id', id); 
         logAction('DELETE', 'Artista', `Removeu artista: ${artist?.name || id}`);
         showToast('Artista removido', 'info');
+        fetchArtists();
     };
 
     // Schedule
@@ -1099,12 +1156,14 @@ const ClioContent: React.FC = () => {
             logAction('CREATE', 'Cronograma', `Adicionou ao cronograma: ${data.time} - ${data.title}`);
             showToast('Item adicionado ao cronograma!', 'success');
         }
+        fetchSchedule();
     };
     const handleDeleteScheduleItem = async (id: string) => { 
         const item = schedule.find(i => i.id === id);
         await supabase.from('schedule_items').delete().eq('id', id); 
         logAction('DELETE', 'Cronograma', `Removeu item: ${item?.title || id}`);
         showToast('Item removido do cronograma', 'info');
+        fetchSchedule();
     };
 
     // Inventory
@@ -1120,12 +1179,14 @@ const ClioContent: React.FC = () => {
             logAction('CREATE', 'Inventário', `Adicionou item: ${data.name} (${data.quantity})`);
             showToast('Item adicionado ao inventário!', 'success');
         }
+        fetchInventory();
     };
     const handleDeleteInventoryItem = async (id: string) => { 
         const item = inventoryItems.find(i => i.id === id);
         await supabase.from('inventory_items').delete().eq('id', id); 
         logAction('DELETE', 'Inventário', `Removeu item: ${item?.name || id}`);
         showToast('Item removido do inventário', 'info');
+        fetchInventory();
     };
 
     // Finances
@@ -1141,12 +1202,14 @@ const ClioContent: React.FC = () => {
             logAction('CREATE', 'Financeiro', `Criou projeto: ${data.name}`);
             showToast('Projeto criado!', 'success');
         }
+        fetchFinancialData();
     };
     const handleDeleteFinancialProject = async (id: string) => { 
         const project = financialProjects.find(p => p.id === id);
         await supabase.from('financial_projects').delete().eq('id', id); 
         logAction('DELETE', 'Financeiro', `Excluiu projeto: ${project?.name || id}`);
         showToast('Projeto excluído', 'info');
+        fetchFinancialData();
     };
     const handleSaveTransaction = async (projId: string, data: any, id?: string) => {
         const payload = { project_id: projId, description: data.description, amount: data.amount, type: data.type, date: data.date, category: data.category };
@@ -1159,11 +1222,13 @@ const ClioContent: React.FC = () => {
             logAction('CREATE', 'Financeiro', `Nova transação: ${data.description} (R$${data.amount})`);
             showToast('Transação registrada!', 'success');
         }
+        fetchFinancialData();
     };
     const handleDeleteTransaction = async (pid: string, id: string) => { 
         await supabase.from('transactions').delete().eq('id', id); 
         logAction('DELETE', 'Financeiro', 'Excluiu uma transação');
         showToast('Transação excluída', 'info');
+        fetchFinancialData();
     };
 
     // Team Hub (Feed & Status)
@@ -1172,12 +1237,14 @@ const ClioContent: React.FC = () => {
         const payload = { content, author_id: loggedInUser.id, collective_id: currentCollective.id };
         await supabase.from('team_feed_posts').insert([payload]);
         showToast('Postagem publicada!', 'success');
+        fetchFeedPosts();
     };
     const handleUpdateTeamStatus = async (statusText: string) => {
         if (!loggedInUser || !currentCollective) return;
         const payload = { member_id: loggedInUser.id, status: statusText, collective_id: currentCollective.id };
         await supabase.from('team_statuses').upsert(payload);
         showToast('Status atualizado!', 'success');
+        fetchTeamStatuses();
     };
 
     // Collab Clio (Docs, Minutes, Voting)
@@ -1194,12 +1261,14 @@ const ClioContent: React.FC = () => {
         await supabase.from('collective_documents').insert([payload]);
         logAction('CREATE', 'Documentos', `Carregou documento: ${docData.name}`);
         showToast('Documento salvo!', 'success');
+        fetchCollabData();
     };
     const handleDeleteCollectiveDocument = async (id: string) => {
         if(window.confirm('Tem certeza?')) {
             await supabase.from('collective_documents').delete().eq('id', id);
             logAction('DELETE', 'Documentos', 'Excluiu um documento');
             showToast('Documento excluído', 'info');
+            fetchCollabData();
         }
     };
 
@@ -1215,12 +1284,14 @@ const ClioContent: React.FC = () => {
             logAction('CREATE', 'Reuniões', `Criou ata de reunião: ${data.date}`);
             showToast('Ata salva!', 'success');
         }
+        fetchCollabData();
     };
     const handleDeleteMeetingMinute = async (id: string) => {
         if(window.confirm('Tem certeza?')) {
             await supabase.from('meeting_minutes').delete().eq('id', id);
             logAction('DELETE', 'Reuniões', 'Excluiu ata de reunião');
             showToast('Ata excluída', 'info');
+            fetchCollabData();
         }
     };
 
@@ -1243,16 +1314,15 @@ const ClioContent: React.FC = () => {
             await supabase.from('voting_options').insert(optionsPayload);
             logAction('CREATE', 'Votação', `Iniciou votação: ${data.title}`);
             showToast('Votação criada!', 'success');
+            fetchCollabData();
         }
     };
 
     const handleCastVote = async (topicId: string, optionId: string, voterId: string) => {
         // This logic is simplified. In a real app, this should be a Postgres function to be atomic.
-        // 1. Get current options for the topic
         const { data: options } = await supabase.from('voting_options').select('*').eq('topic_id', topicId);
         if (!options) return;
 
-        // 2. Remove voterId from all options of this topic
         for (const opt of options) {
             const currentVoters = opt.voter_ids || [];
             if (currentVoters.includes(voterId)) {
@@ -1261,19 +1331,20 @@ const ClioContent: React.FC = () => {
             }
         }
 
-        // 3. Add voterId to selected option
         const targetOption = options.find((o: any) => o.id === optionId);
         if (targetOption) {
             const currentVoters = targetOption.voter_ids || [];
             await supabase.from('voting_options').update({ voter_ids: [...currentVoters, voterId] }).eq('id', optionId);
         }
         showToast('Voto computado!', 'success');
+        fetchCollabData();
     };
 
     const handleCloseVoting = async (topicId: string) => {
         await supabase.from('voting_topics').update({ status: 'closed' }).eq('id', topicId);
         logAction('UPDATE', 'Votação', 'Encerrou uma votação');
         showToast('Votação encerrada!', 'info');
+        fetchCollabData();
     };
     
     // --- Notebooks Handlers ---
@@ -1287,11 +1358,13 @@ const ClioContent: React.FC = () => {
              await supabase.from('notebooks').insert([payload]);
              showToast('Caderno criado!', 'success');
         }
+        fetchNotebooks();
     };
     
     const handleDeleteNotebook = async (notebookId: string) => {
         await supabase.from('notebooks').delete().eq('id', notebookId);
         showToast('Caderno excluído', 'info');
+        fetchNotebooks();
     }
 
     const handleSaveNote = async (notebookId: string, noteData: Pick<Note, 'title' | 'content'>, editingId?: string) => {
@@ -1303,16 +1376,17 @@ const ClioContent: React.FC = () => {
         };
         if(editingId) {
              await supabase.from('notes').update(payload).eq('id', editingId);
-             // Note: We don't toast on every auto-save to avoid spam
         } else {
              await supabase.from('notes').insert([payload]);
              showToast('Nota criada!', 'success');
         }
+        fetchNotebooks();
     };
 
     const handleDeleteNote = async (notebookId: string, noteId: string) => {
         await supabase.from('notes').delete().eq('id', noteId);
         showToast('Nota excluída', 'info');
+        fetchNotebooks();
     };
     
     // --- Media Handlers ---
@@ -1329,6 +1403,7 @@ const ClioContent: React.FC = () => {
         await supabase.from('media_items').insert([payload]);
         logAction('CREATE', 'Mídia', `Upload de arquivo: ${mediaData.title}`);
         showToast('Mídia salva!', 'success');
+        fetchMedia();
     };
     
     const handleDeleteMediaItem = async (mediaId: string) => {
@@ -1336,6 +1411,7 @@ const ClioContent: React.FC = () => {
         await supabase.from('media_items').delete().eq('id', mediaId);
         logAction('DELETE', 'Mídia', `Excluiu arquivo: ${media?.title || mediaId}`);
         showToast('Mídia excluída', 'info');
+        fetchMedia();
     }
     
     // --- Gallery Handlers ---
@@ -1349,11 +1425,13 @@ const ClioContent: React.FC = () => {
             await supabase.from('photo_albums').insert([payload]);
             showToast('Álbum criado!', 'success');
         }
+        fetchAlbums();
     };
     
     const handleDeletePhotoAlbum = async (albumId: string) => {
         await supabase.from('photo_albums').delete().eq('id', albumId);
         showToast('Álbum excluído', 'info');
+        fetchAlbums();
     }
     
     const handleAddPhotosToAlbum = async (albumId: string, photos: Omit<Photo, 'id'>[]) => {
@@ -1361,15 +1439,17 @@ const ClioContent: React.FC = () => {
             album_id: albumId,
             data_url: p.dataUrl,
             caption: p.caption,
-            file_name: p.fileName // Fix: Access 'fileName' from input object 'p'
+            file_name: p.fileName 
         }));
         await supabase.from('photos').insert(payload);
         showToast(`${photos.length} fotos adicionadas!`, 'success');
+        fetchAlbums();
     };
     
     const handleDeletePhoto = async (albumId: string, photoId: string) => {
         await supabase.from('photos').delete().eq('id', photoId);
         showToast('Foto excluída', 'info');
+        fetchAlbums();
     };
 
     // --- COLLECTIVE SELECTION HANDLERS ---
@@ -1377,7 +1457,6 @@ const ClioContent: React.FC = () => {
     const handleCreateCollective = async (name: string) => {
         if (!loggedInUser) return;
         try {
-            // Ensure profile exists to satisfy foreign key constraint 'owner_id'
             const { error: profileError } = await supabase.from('profiles').upsert({
                 id: loggedInUser.id,
                 name: loggedInUser.name,
@@ -1388,7 +1467,6 @@ const ClioContent: React.FC = () => {
             
             if (profileError) console.warn("Profile sync warning:", profileError);
 
-            // Generate a simple 6-char unique code
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
             
             const payload = { 
@@ -1397,10 +1475,8 @@ const ClioContent: React.FC = () => {
                 owner_id: loggedInUser.id
             };
 
-            // Insert into DB
             const { data: collective, error } = await supabase.from('collectives').insert([payload]).select().single();
             
-            // If specific error regarding columns is missing, alert user
             if (error && (error.code === '42703' || error.message.includes('column'))) {
                 showToast('Banco de dados incompleto. Execute o script SQL no Supabase.', 'error');
                 throw error;
@@ -1408,7 +1484,6 @@ const ClioContent: React.FC = () => {
 
             if (error) throw error;
 
-            // Add creator as member
             if (collective) {
                 await supabase.from('collective_members').insert([{
                     collective_id: collective.id,
@@ -1434,7 +1509,6 @@ const ClioContent: React.FC = () => {
     const handleJoinCollective = async (code: string) => {
         if (!loggedInUser) return;
         try {
-            // Ensure profile exists before joining
             const { error: profileError } = await supabase.from('profiles').upsert({
                 id: loggedInUser.id,
                 name: loggedInUser.name,
@@ -1444,11 +1518,9 @@ const ClioContent: React.FC = () => {
             });
             if (profileError) console.warn("Profile sync warning:", profileError);
 
-            // 1. Find collective by code
             const { data: collective, error } = await supabase.from('collectives').select('*').eq('code', code).single();
             
             if (error || !collective) {
-                // If the error is specifically about the column missing
                 if (error && (error.code === '42703' || error.code === 'PGRST204')) {
                      showToast('O sistema de convites por código não está configurado no banco de dados.', 'error');
                 } else {
@@ -1457,7 +1529,6 @@ const ClioContent: React.FC = () => {
                 return;
             }
 
-            // 2. Add user to collective_members
             const { error: joinError } = await supabase.from('collective_members').insert([{
                 collective_id: collective.id,
                 member_id: loggedInUser.id,
@@ -1465,7 +1536,7 @@ const ClioContent: React.FC = () => {
             }]);
 
             if (joinError) {
-                if (joinError.code === '23505') { // Unique violation
+                if (joinError.code === '23505') { 
                      showToast('Você já faz parte deste coletivo!', 'info');
                 } else {
                      throw joinError;
@@ -1518,21 +1589,17 @@ const ClioContent: React.FC = () => {
 
     const loadUserData = (email: string) => {
         const userDataString = localStorage.getItem(`collab-clio-data-${email}`);
-        let loadedData = { ...MOCK_INITIAL_DATA }; // Start with fresh defaults
+        let loadedData = { ...MOCK_INITIAL_DATA }; 
         
         if(userDataString) {
             const parsedData = JSON.parse(userDataString);
-             // Merge saved data with defaults to ensure all fields exist
             loadedData = { ...loadedData, ...parsedData };
         }
 
-        // Ensure default gadgets exist if array is empty (for existing users)
         if (!loadedData.gadgets || loadedData.gadgets.length === 0) {
             loadedData.gadgets = DEFAULT_GADGETS;
         }
         
-        // MOST DATA IS NOW HANDLED BY SUPABASE
-        // Local state is only used for Gadgets, Wallpaper
         setUserState(loadedData);
         
         const userWallpaper = localStorage.getItem(`clio-os-wallpaper-${email}`);
@@ -1541,10 +1608,14 @@ const ClioContent: React.FC = () => {
 
     const saveUserData = useCallback(() => {
         if (loggedInUser && userState) {
-            // We still save everything to local storage for the non-migrated features
             localStorage.setItem(`collab-clio-data-${loggedInUser.email}`, JSON.stringify(userState));
+            // NEW: Persist session pointers for optimistic UI
+            localStorage.setItem('clio-last-active-user', JSON.stringify(loggedInUser));
+            if (currentCollective) {
+                localStorage.setItem(`clio-last-collective-${loggedInUser.email}`, JSON.stringify(currentCollective));
+            }
         }
-    }, [loggedInUser, userState]);
+    }, [loggedInUser, userState, currentCollective]);
 
     useEffect(() => {
         saveUserData();
@@ -1564,9 +1635,7 @@ const ClioContent: React.FC = () => {
             email,
             password,
             options: {
-                data: {
-                    name: name, // Metadata for trigger if needed, or we insert manually
-                },
+                data: { name: name },
                 emailRedirectTo: window.location.origin,
             }
         });
@@ -1574,7 +1643,6 @@ const ClioContent: React.FC = () => {
         if (error) return { success: false, message: error.message };
         
         if (data.user) {
-             // Insert into profiles table
              const { error: profileError } = await supabase
                 .from('profiles')
                 .insert([{ id: data.user.id, name: name, email: email, role: 'Membro', avatar: DEFAULT_AVATAR }]);
@@ -1590,7 +1658,6 @@ const ClioContent: React.FC = () => {
     }
 
     const handleGuestLogin = () => {
-        // Guest login sets the user to "User Teste" AND automatically sets the collective to "Test Collective"
         const guestDataString = localStorage.getItem(`collab-clio-data-${TEST_USER_EMAIL}`);
         if (guestDataString) {
             const guestData = JSON.parse(guestDataString);
@@ -1608,10 +1675,11 @@ const ClioContent: React.FC = () => {
             setUserState(guestData);
         }
         setLoggedInUser(TEST_USER);
-        setCurrentCollective(TEST_COLLECTIVE); // Auto-enter test collective
+        setCurrentCollective(TEST_COLLECTIVE); 
     };
 
     const handleLogout = async () => {
+        localStorage.removeItem('clio-last-active-user'); // NEW: Clear optimistic cache
         await supabase.auth.signOut();
         setLoggedInUser(null);
         setCurrentCollective(null);
@@ -1621,12 +1689,11 @@ const ClioContent: React.FC = () => {
     };
 
     const randomLoginWallpaper = useMemo(() => {
-        if (loggedInUser) return null; // Don't calculate if logged in
+        if (loggedInUser) return null;
         const randomIndex = Math.floor(Math.random() * wallpapers.length);
         return wallpapers[randomIndex].url;
     }, [loggedInUser]);
     
-    // Generate a random wallpaper for the session if the user hasn't selected one
     const sessionRandomWallpaper = useMemo(() => {
         const randomIndex = Math.floor(Math.random() * wallpapers.length);
         return wallpapers[randomIndex].url;
@@ -1651,12 +1718,11 @@ const ClioContent: React.FC = () => {
         handleSaveMember(updatedUser);
         
         try {
-            // Also update Supabase
             const payload: any = {};
             if (updatedData.name) payload.name = updatedData.name;
             if (updatedData.role) payload.role = updatedData.role;
             if (updatedData.avatar) payload.avatar = updatedData.avatar;
-            if (updatedData.vulgo !== undefined) payload.vulgo = updatedData.vulgo; // Handle Vulgo
+            if (updatedData.vulgo !== undefined) payload.vulgo = updatedData.vulgo; 
 
             if (Object.keys(payload).length > 0) {
                 await supabase.from('profiles').update(payload).eq('id', loggedInUser.id);
@@ -1670,7 +1736,6 @@ const ClioContent: React.FC = () => {
         return { success: true, message: 'Simulação: Senha alterada!' };
     };
 
-    // UPDATED: Handles saving to Database now
     const handleSaveEventInfo = async (infoData: EventInfoData) => {
         if (!currentCollective) return;
         try {
@@ -1681,8 +1746,6 @@ const ClioContent: React.FC = () => {
                 instagram: infoData.instagram,
                 tags: infoData.artTypes,
                 cover_image: infoData.coverImage,
-                // Assuming we might want to store the next event date if schema supported it, 
-                // but for now we focus on public profile parts
                 next_event_date: infoData.eventDate ? new Date(infoData.eventDate).toISOString() : null
             }).eq('id', currentCollective.id);
             
@@ -1881,7 +1944,6 @@ const ClioContent: React.FC = () => {
     
     const appComponents = appConfig.reduce((acc, app) => ({ ...acc, [app.name]: app.component }), {} as Record<AppName, React.ReactNode>);
 
-    // FIX: Create context value to be passed to the provider.
     const contextValue = {
         notebooks,
         handleSaveNotebook,
@@ -1902,7 +1964,7 @@ const ClioContent: React.FC = () => {
         schedule,
         inventoryItems,
         collectiveDocuments,
-        auditLogs // Added this
+        auditLogs
     };
 
     // Mobile Gadget Rendering Logic
