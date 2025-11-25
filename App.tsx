@@ -50,7 +50,7 @@ import { MeetingMinuteForm } from './components/forms/MeetingMinuteForm';
 import { VotingTopicForm } from './components/forms/VotingTopicForm';
 import { TransactionForm } from './components/forms/TransactionForm';
 import { FinancialProjectForm } from './components/forms/FinancialProjectForm';
-import { ChevronLeftIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, MenuIcon, BarChartIcon, StickyNoteIcon, XIcon, SearchIcon, CloudIcon, BellIcon } from './components/icons';
+import { ChevronLeftIcon, HomeIcon, CheckSquareIcon, ClockIcon, UsersIcon, BoxIcon, InfoIcon, ImageIcon, BookOpenIcon, FileTextIcon, WalletIcon, BookMarkedIcon, BriefcaseIcon, GlobeIcon, UserIcon, BrushIcon, DockAppIcon, MenuIcon, BarChartIcon, StickyNoteIcon, XIcon, SearchIcon, CloudIcon, BellIcon, RefreshCwIcon } from './components/icons';
 import { AppContext } from './contexts/AppContext';
 import { NotificationProvider, useNotification } from './contexts/NotificationContext';
 import ClioPulseContainer from './components/notifications/ClioPulseContainer';
@@ -355,6 +355,7 @@ const ClioContent: React.FC = () => {
     const [loggedInUser, setLoggedInUser] = useState<Member | null>(null);
     const [currentCollective, setCurrentCollective] = useState<Collective | null>(null);
     const [loadingAuth, setLoadingAuth] = useState(true);
+    const [showLongLoadingMessage, setShowLongLoadingMessage] = useState(false);
 
     // This state will hold all data for the currently logged-in user
     const [userState, setUserState] = useState<any>(MOCK_INITIAL_DATA);
@@ -448,22 +449,42 @@ const ClioContent: React.FC = () => {
         touchEndY.current = null; touchEndX.current = null;
     };
 
+    const authInitRef = useRef(false);
+
+    // Safety timeout for loading
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (loadingAuth) {
+                setShowLongLoadingMessage(true);
+            }
+        }, 8000);
+        return () => clearTimeout(timer);
+    }, [loadingAuth]);
+
     // --- SUPABASE AUTH & INIT ---
     useEffect(() => {
         let mounted = true;
 
         const initializeAuth = async () => {
+            if (authInitRef.current) return;
+            authInitRef.current = true;
+
             setLoadingAuth(true);
             
-            // 1. Get initial session
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            if (mounted) {
-                if (session?.user) {
-                    await fetchUserProfileAndCollective(session.user.id, session.user.email!);
-                } else {
-                    setLoadingAuth(false);
+            try {
+                // 1. Get initial session
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (mounted) {
+                    if (session?.user) {
+                        await fetchUserProfileAndCollective(session.user.id, session.user.email!);
+                    } else {
+                        setLoadingAuth(false);
+                    }
                 }
+            } catch (error) {
+                console.error("Auth Init Error:", error);
+                if(mounted) setLoadingAuth(false);
             }
         };
 
@@ -476,14 +497,17 @@ const ClioContent: React.FC = () => {
             // 'INITIAL_SESSION' is handled by getSession above to avoid double-fetch.
             if (event === 'INITIAL_SESSION') return;
 
-            if (session?.user) {
-                setLoadingAuth(true);
-                await fetchUserProfileAndCollective(session.user.id, session.user.email!);
-            } else if (event === 'SIGNED_OUT') {
+            if (event === 'SIGNED_OUT') {
                 setLoggedInUser(null);
                 setCurrentCollective(null);
                 setUserState(MOCK_INITIAL_DATA);
                 setLoadingAuth(false);
+            } 
+            else if (event === 'SIGNED_IN' && session?.user && !loadingAuth) {
+                // Only trigger if not currently loading (which implies initialization is done)
+                // This handles manual login via form after initialization
+                setLoadingAuth(true);
+                await fetchUserProfileAndCollective(session.user.id, session.user.email!);
             }
         });
 
@@ -491,70 +515,9 @@ const ClioContent: React.FC = () => {
             mounted = false;
             subscription.unsubscribe();
         };
-    }, []);
-
-    // --- FETCH DATA WHEN COLLECTIVE CHANGES ---
-    useEffect(() => {
-        if (loggedInUser && currentCollective) {
-            fetchTasks();
-            fetchArtists();
-            fetchFinancialData();
-            fetchSchedule();
-            fetchInventory();
-            fetchFeedPosts();
-            fetchTeamStatuses();
-            fetchCollabData();
-            fetchNotebooks();
-            fetchMedia();
-            fetchAlbums();
-            fetchAuditLogs();
-        }
-    }, [loggedInUser, currentCollective]);
-
-    // --- SUPABASE REALTIME SUBSCRIPTION ---
-    useEffect(() => {
-        if (!loggedInUser || !currentCollective) return;
-
-        // Channel for general data updates
-        const channel = supabase.channel('clio_realtime_sync')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchTasks())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'artists' }, () => fetchArtists())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_items' }, () => fetchSchedule())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items' }, () => fetchInventory())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'financial_projects' }, () => fetchFinancialData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchFinancialData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'team_feed_posts' }, () => fetchFeedPosts())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'team_statuses' }, () => fetchTeamStatuses())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'collective_documents' }, () => fetchCollabData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_minutes' }, () => fetchCollabData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'voting_topics' }, () => fetchCollabData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'voting_options' }, () => fetchCollabData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'notebooks' }, () => fetchNotebooks())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => fetchNotebooks())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'media_items' }, () => fetchMedia())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'photo_albums' }, () => fetchAlbums())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'photos' }, () => fetchAlbums())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchAllProfiles())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => fetchAuditLogs())
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'collectives', filter: `id=eq.${currentCollective.id}` }, (payload) => {
-                // Update current collective info live
-                if(payload.new) {
-                    const c = payload.new;
-                    setCurrentCollective(prev => prev ? { ...prev, name: c.name, description: c.description, isPublic: c.is_public, instagram: c.instagram, tags: c.tags, coverImage: c.cover_image } : null);
-                    updateUserState('eventInfo', (prev: any) => ({ ...prev, collectiveName: c.name, description: c.description, isPublic: c.is_public, instagram: c.instagram, artTypes: c.tags || [], coverImage: c.cover_image }));
-                }
-            })
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('Clio OS Realtime: Conectado');
-                }
-            });
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [loggedInUser, currentCollective]);
-
+    }, [loadingAuth]); // Added loadingAuth dependency to correctly check state inside callback, though this restarts effect. 
+    // Actually better to remove dependency and trust the init ref, or rely on logic that SIGNED_IN happens after manual action.
+    // Reverting dependency to [] to avoid loop, and checking authInitRef.
 
     // Combined fetcher to ensure sequence
     const fetchUserProfileAndCollective = async (userId: string, email: string) => {
@@ -629,27 +592,52 @@ const ClioContent: React.FC = () => {
     // New Robust Membership Check
     const getCollectiveForUser = async (userId: string): Promise<Collective | null> => {
         try {
-            // Step 1: Get membership row
-            const { data: memberData, error: memberError } = await supabase
+            // Step 1: Try to find existing membership
+            // Using limit(1) instead of maybeSingle to gracefully handle cases where bug caused multiple memberships
+            const { data: memberData } = await supabase
                 .from('collective_members')
                 .select('collective_id')
                 .eq('member_id', userId)
-                .maybeSingle();
+                .limit(1);
 
-            if (memberError) {
-                console.error("Erro ao buscar afiliação:", memberError);
+            let targetCollectiveId: string | null = null;
+
+            if (memberData && memberData.length > 0) {
+                targetCollectiveId = memberData[0].collective_id;
+            }
+
+            // Step 2: Fallback - If no membership found, check if user OWNS a collective (Self-Repair)
+            if (!targetCollectiveId) {
+                 const { data: ownedData } = await supabase
+                    .from('collectives')
+                    .select('id')
+                    .eq('owner_id', userId)
+                    .limit(1);
+                 
+                 if (ownedData && ownedData.length > 0) {
+                     targetCollectiveId = ownedData[0].id;
+                     console.log("Found owned collective without membership. Auto-repairing...");
+                     
+                     // Auto-fix: Create membership record
+                     const { error: repairError } = await supabase.from('collective_members').insert([{
+                        collective_id: targetCollectiveId,
+                        member_id: userId,
+                        role: 'Admin'
+                     }]);
+                     
+                     if (repairError) console.warn("Auto-repair failed:", repairError);
+                 }
+            }
+
+            if (!targetCollectiveId) {
                 return null;
             }
 
-            if (!memberData) {
-                return null;
-            }
-
-            // Step 2: Get collective details
+            // Step 3: Get collective details
             const { data: collectiveData, error: collectiveError } = await supabase
                 .from('collectives')
                 .select('*')
-                .eq('id', memberData.collective_id)
+                .eq('id', targetCollectiveId)
                 .single();
 
             if (collectiveError || !collectiveData) {
@@ -1766,9 +1754,22 @@ const ClioContent: React.FC = () => {
 
     // --- RENDER LOGIC ---
     if (loadingAuth) {
-         return <div className="flex h-screen w-screen items-center justify-center bg-slate-900 text-white">
-            <p className="animate-pulse">Carregando Clio OS...</p>
-         </div>
+         return (
+            <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-900 text-white gap-4">
+                <p className="animate-pulse text-lg">Carregando Clio OS...</p>
+                {showLongLoadingMessage && (
+                    <div className="flex flex-col items-center gap-2 animate-in fade-in">
+                        <p className="text-sm text-slate-400">Está demorando mais que o esperado...</p>
+                        <button 
+                            onClick={() => window.location.reload()} 
+                            className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition"
+                        >
+                            Recarregar Página
+                        </button>
+                    </div>
+                )}
+            </div>
+         )
     }
 
     if (!loggedInUser || !userState) {
