@@ -21,6 +21,7 @@ export interface Collective {
 export interface Member {
   id: string;
   name: string;
+  vulgo?: string;
   avatar: string;
   role: string;
   email: string;
@@ -77,6 +78,7 @@ export interface NetworkPost {
     author: {
         id: string;
         name: string;
+        vulgo?: string;
         avatar: string;
         role: string;
     };

@@ -536,6 +536,7 @@ const ClioContent: React.FC = () => {
                     id: profileData.id,
                     email: email,
                     name: profileData.name || 'Usuário',
+                    vulgo: profileData.vulgo,
                     role: profileData.role || 'Membro',
                     avatar: profileData.avatar || DEFAULT_AVATAR
                 };
@@ -668,6 +669,7 @@ const ClioContent: React.FC = () => {
             const mappedMembers = data.map((p: any) => ({
                 id: p.id,
                 name: p.name || 'Sem Nome',
+                vulgo: p.vulgo,
                 role: p.role || 'Membro',
                 avatar: p.avatar || DEFAULT_AVATAR,
                 email: p.email || ''
@@ -682,7 +684,7 @@ const ClioContent: React.FC = () => {
         try {
             const payload = {
                 user_id: loggedInUser.id,
-                user_name: loggedInUser.name,
+                user_name: loggedInUser.vulgo || loggedInUser.name,
                 user_avatar: loggedInUser.avatar,
                 action: action,
                 entity: entity,
@@ -836,6 +838,7 @@ const ClioContent: React.FC = () => {
                 author: {
                     id: p.author?.id,
                     name: p.author?.name || 'Desconhecido',
+                    vulgo: p.author?.vulgo,
                     role: p.author?.role || '',
                     avatar: p.author?.avatar || DEFAULT_AVATAR,
                     email: p.author?.email || ''
@@ -1011,7 +1014,7 @@ const ClioContent: React.FC = () => {
                     description: taskData.description, 
                     due_date: taskData.dueDate, 
                     assignee_id: taskData.assigneeId || null, 
-                    status: TaskStatusEnum.ToDo,
+                    status: TaskStatusEnum.ToDo, 
                     collective_id: currentCollective.id
                 };
                 
@@ -1635,13 +1638,32 @@ const ClioContent: React.FC = () => {
     };
     
     // --- LOCAL HANDLERS (Legacy / Not Migrated Yet) ---
-    const handleSaveMember = (memberData: Member) => updateUserState('members', userState.members.map((m: Member) => m.id === memberData.id ? { ...m, ...memberData } : m));
-    const handleSaveProfile = (updatedData: Partial<Member>) => {
+    const handleSaveMember = (memberData: Member) => {
+        updateUserState('members', userState.members.map((m: Member) => m.id === memberData.id ? { ...m, ...memberData } : m));
+        if (loggedInUser && loggedInUser.id === memberData.id) {
+            setLoggedInUser({ ...loggedInUser, ...memberData });
+        }
+    };
+    const handleSaveProfile = async (updatedData: Partial<Member>) => {
         if(!loggedInUser) return;
         const updatedUser = { ...loggedInUser, ...updatedData };
         setLoggedInUser(updatedUser);
         handleSaveMember(updatedUser);
-        // Ideally update 'profiles' table here too
+        
+        try {
+            // Also update Supabase
+            const payload: any = {};
+            if (updatedData.name) payload.name = updatedData.name;
+            if (updatedData.role) payload.role = updatedData.role;
+            if (updatedData.avatar) payload.avatar = updatedData.avatar;
+            if (updatedData.vulgo !== undefined) payload.vulgo = updatedData.vulgo; // Handle Vulgo
+
+            if (Object.keys(payload).length > 0) {
+                await supabase.from('profiles').update(payload).eq('id', loggedInUser.id);
+            }
+        } catch (e) {
+            console.error("Error saving profile to Supabase", e);
+        }
     }
     const handleChangePassword = (currentPassword: string, newPassword: string) => {
         alert('Alteração de senha via Supabase ainda será implementada.');

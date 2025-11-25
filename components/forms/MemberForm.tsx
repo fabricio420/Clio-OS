@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Member } from '../../types';
 import { FormInput } from './FormElements';
@@ -11,7 +12,7 @@ const fileToBase64 = (file: File): Promise<string> =>
 });
 
 export const MemberForm: React.FC<{ onSubmit: (data: Member) => void, member: Member | null }> = ({ onSubmit, member }) => {
-    const [formData, setFormData] = useState({ name: '', role: '' });
+    const [formData, setFormData] = useState({ name: '', vulgo: '', role: '' });
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(member?.avatar || null);
     const [error, setError] = useState('');
@@ -19,7 +20,7 @@ export const MemberForm: React.FC<{ onSubmit: (data: Member) => void, member: Me
 
     useEffect(() => {
         if (member) {
-            setFormData({ name: member.name, role: member.role });
+            setFormData({ name: member.name, vulgo: member.vulgo || '', role: member.role });
             setPreviewUrl(member.avatar);
         }
     }, [member]);
@@ -62,7 +63,9 @@ export const MemberForm: React.FC<{ onSubmit: (data: Member) => void, member: Me
             }
             onSubmit({
                 ...member,
-                ...formData,
+                name: formData.name,
+                vulgo: formData.vulgo || undefined,
+                role: formData.role,
                 avatar: avatarDataUrl,
             });
         } catch (err) {
@@ -94,7 +97,8 @@ export const MemberForm: React.FC<{ onSubmit: (data: Member) => void, member: Me
                 </button>
             </div>
             
-            <FormInput label="Nome" name="name" value={formData.name} onChange={handleFormChange} required />
+            <FormInput label="Nome Completo" name="name" value={formData.name} onChange={handleFormChange} required />
+            <FormInput label="Nome Artístico (Vulgo)" name="vulgo" value={formData.vulgo} onChange={handleFormChange} placeholder="Opcional" />
             <FormInput label="Função / Cargo" name="role" value={formData.role} onChange={handleFormChange} required />
 
             {error && <p className="text-red-400 text-sm text-center">{error}</p>}

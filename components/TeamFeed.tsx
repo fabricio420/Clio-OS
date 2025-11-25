@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { FeedPost, Member } from '../types';
 
@@ -49,7 +50,7 @@ const TeamFeed: React.FC<TeamFeedProps> = ({ posts, currentUser, onAddPost, isRe
             <img src={post.author.avatar} alt={post.author.name} className="w-12 h-12 rounded-full" />
             <div className="flex-grow">
               <div className="flex items-baseline space-x-2">
-                <p className="font-bold text-lime-400">{post.author.name}</p>
+                <p className="font-bold text-lime-400">{post.author.vulgo || post.author.name}</p>
                 <p className="text-xs text-slate-400">
                   {new Date(post.timestamp).toLocaleString('pt-BR')}
                 </p>

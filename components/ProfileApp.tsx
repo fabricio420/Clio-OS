@@ -34,6 +34,7 @@ export const ProfileApp: React.FC<ProfileAppProps> = ({ currentUser, onSaveProfi
 
     // Core Member Data
     const [name, setName] = useState(currentUser.name);
+    const [vulgo, setVulgo] = useState(currentUser.vulgo || '');
     const [role, setRole] = useState(currentUser.role);
     const [avatar, setAvatar] = useState(currentUser.avatar);
     
@@ -142,7 +143,7 @@ export const ProfileApp: React.FC<ProfileAppProps> = ({ currentUser, onSaveProfi
     const handleIdentitySubmit = (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            onSaveProfile({ name, role }); 
+            onSaveProfile({ name, role, vulgo: vulgo.trim() || undefined }); 
             setMessage({ type: 'success', text: 'Identidade atualizada com sucesso!' });
             setTimeout(() => setMessage(null), 3000);
         } catch (error) {
@@ -205,7 +206,9 @@ export const ProfileApp: React.FC<ProfileAppProps> = ({ currentUser, onSaveProfi
                                 <input type="file" ref={avatarInputRef} onChange={(e) => handleImageUpload(e, 'avatar')} className="hidden" accept="image/*" />
                             </div>
 
-                            <h2 className="text-3xl font-bold text-white mt-4 mb-1 tracking-tight">{name}</h2>
+                            <h2 className="text-3xl font-bold text-white mt-4 mb-1 tracking-tight">{vulgo || name}</h2>
+                            {vulgo && <p className="text-slate-500 text-xs mb-1">{name}</p>}
+                            
                             <div className="flex flex-col items-center gap-1 mb-4">
                                 <p className="text-sky-400 font-medium text-sm uppercase tracking-wider">{role}</p>
                                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-lime-300 font-medium">
@@ -297,8 +300,10 @@ export const ProfileApp: React.FC<ProfileAppProps> = ({ currentUser, onSaveProfi
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormInput label="Nome Completo" name="name" value={name} onChange={(e) => setName((e.target as HTMLInputElement).value)} icon={<UserIcon className="w-4 h-4"/>} required />
-                                <FormInput label="Função no Coletivo" name="role" value={role} onChange={(e) => setRole((e.target as HTMLInputElement).value)} icon={<SparklesIcon className="w-4 h-4"/>} required />
+                                <FormInput label="Nome Artístico (Vulgo)" name="vulgo" value={vulgo} onChange={(e) => setVulgo((e.target as HTMLInputElement).value)} icon={<SparklesIcon className="w-4 h-4"/>} placeholder="Como você quer ser chamado na rede" />
                             </div>
+                            
+                            <FormInput label="Função no Coletivo" name="role" value={role} onChange={(e) => setRole((e.target as HTMLInputElement).value)} icon={<BadgeIcon className="w-4 h-4"/>} required />
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-2">Bio / Manifesto</label>

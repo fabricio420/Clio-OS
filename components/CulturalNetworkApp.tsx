@@ -47,6 +47,9 @@ const PostCard: React.FC<{ post: NetworkPost, currentUserId?: string, onDelete: 
         onLike(post.id);
     };
 
+    // Prioritize Vulgo if available
+    const displayName = post.author.vulgo || post.author.name;
+
     return (
         <div className="bg-slate-900/80 backdrop-blur-sm rounded-xl p-6 border border-white/5 hover:border-white/10 transition-all duration-300 shadow-lg relative overflow-hidden group">
             {/* Decorative gradient background for "elevation" feel */}
@@ -56,13 +59,13 @@ const PostCard: React.FC<{ post: NetworkPost, currentUserId?: string, onDelete: 
             <div className="flex items-start justify-between mb-4 relative z-10">
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        <img src={post.author.avatar} alt={post.author.name} className="w-10 h-10 rounded-full border border-slate-700 object-cover" />
+                        <img src={post.author.avatar} alt={displayName} className="w-10 h-10 rounded-full border border-slate-700 object-cover" />
                         <div className="absolute -bottom-1 -right-1 bg-slate-800 rounded-full p-0.5 border border-slate-700" title={post.collective.name}>
                             <GlobeIcon className="w-3 h-3 text-lime-400" />
                         </div>
                     </div>
                     <div>
-                        <h4 className="text-white font-bold text-sm">{post.author.name}</h4>
+                        <h4 className="text-white font-bold text-sm">{displayName}</h4>
                         <p className="text-xs text-slate-400 flex items-center gap-1">
                             <span className="text-sky-400">{post.collective.name}</span>
                             <span>•</span>
@@ -209,6 +212,7 @@ const CulturalNetworkApp: React.FC<{ currentCollectiveId?: string }> = ({ curren
         setLoading(true);
         
         // Join query: Posts -> Author (Profile) & Posts -> Collective
+        // Include 'vulgo' in author select
         const { data, error } = await supabase
             .from('network_posts')
             .select(`
@@ -216,7 +220,7 @@ const CulturalNetworkApp: React.FC<{ currentCollectiveId?: string }> = ({ curren
                 content,
                 created_at,
                 likes_count,
-                author:profiles!author_id (id, name, avatar, role),
+                author:profiles!author_id (id, name, vulgo, avatar, role),
                 collective:collectives!collective_id (id, name)
             `)
             .order('created_at', { ascending: false })
@@ -366,7 +370,7 @@ const CulturalNetworkApp: React.FC<{ currentCollectiveId?: string }> = ({ curren
                                     <div className="flex justify-between items-center mt-2 border-t border-slate-800 pt-2">
                                         <span className="text-xs text-slate-500 flex items-center gap-1">
                                             <ZapIcon className="w-3 h-3" /> 
-                                            Publicando como <span className="text-sky-400 font-bold">{currentUser?.name}</span>
+                                            Publicando como <span className="text-sky-400 font-bold">{currentUser?.vulgo || currentUser?.name}</span>
                                         </span>
                                         <button 
                                             onClick={handleCreatePost}

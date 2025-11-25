@@ -1,3 +1,4 @@
+
 import React, { memo, useState, useEffect } from 'react';
 import type { Member, FeedPost, TeamStatus } from '../types';
 import TeamFeed from './TeamFeed';
@@ -24,7 +25,8 @@ const MemberProfileCard: React.FC<{ member: Member; onEdit: () => void }> = memo
             alt={member.name}
             className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-slate-700"
         />
-        <h3 className="text-lg font-bold text-white">{member.name}</h3>
+        <h3 className="text-lg font-bold text-white">{member.vulgo || member.name}</h3>
+        {member.vulgo && <p className="text-xs text-slate-500 mb-1">{member.name}</p>}
         <p className="text-sm text-sky-400">{member.role}</p>
     </button>
 ));
